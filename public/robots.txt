@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.aaronbenjamin.design/fifthwheel/sitemap.xml
+Sitemap: https://fifthwheel.community/sitemap.xml

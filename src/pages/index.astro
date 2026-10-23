@@ -1,5 +1,52 @@
 ---
-// GitHub Pages lives at /fifthwheel/. A root-absolute /landing/ redirect
-// would 404 on the custom domain, so keep the repo base in the target.
-return Astro.redirect(`${import.meta.env.BASE_URL}landing/`);
+// Landing CSS is imported here (not in Base) so legal pages never download it.
+import "../styles/landing.css";
+import Base from "../layouts/Base.astro";
+import Masthead from "../components/Masthead.astro";
+import Hero from "../components/Hero.astro";
+import TheNight from "../components/TheNight.astro";
+import Neighborhoods from "../components/Neighborhoods.astro";
+import WhyFive from "../components/WhyFive.astro";
+import Facts from "../components/Facts.astro";
+import Waitlist from "../components/Waitlist.astro";
+import Faq from "../components/Faq.astro";
+import Footer from "../components/Footer.astro";
+import { faqs } from "../data/faq";
+import { landingMeta } from "../data/site";
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answers
+        .map((answer) => answer.replace(/<[^>]+>/g, ""))
+        .join(" "),
+    },
+  })),
+};
 ---
+
+<Base
+  title={landingMeta.title}
+  description={landingMeta.description}
+  ogDescription={landingMeta.ogDescription}
+  path={landingMeta.path}
+  theme="landing"
+  jsonLd={[faqSchema]}
+>
+  <Masthead />
+  <main id="main">
+    <Hero />
+    <TheNight />
+    <Neighborhoods />
+    <WhyFive />
+    <Facts />
+    <Waitlist />
+    <Faq />
+  </main>
+  <Footer />
+</Base>

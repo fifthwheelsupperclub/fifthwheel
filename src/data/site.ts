@@ -1,8 +1,8 @@
-// Canonical host is this GitHub Pages project site.
-export const siteUrl = "https://www.aaronbenjamin.design/fifthwheel";
+export const siteUrl = "https://fifthwheel.community";
 
-// Staff console and waitlist API stay on the existing Vercel app.
-export const productionAppUrl = "https://www.5thwheel.app";
+// Product app host. Waitlist POSTs still go to the live 5thwheel.app API
+// until admin.fifthwheel.community is deployed.
+export const productionAppUrl = "https://admin.fifthwheel.community";
 
 export const organization = {
   name: "Fifth Wheel",
@@ -19,7 +19,7 @@ export const landingMeta = {
     "A curated night out in Atlanta for five single strangers. Drinks, dinner, dessert — three walkable stops in one neighborhood. Join the waitlist.",
   ogDescription:
     "A curated night out in Atlanta for five single strangers. Three walkable stops, one table, one private vote at dessert.",
-  path: "/landing/",
+  path: "/",
 };
 
 export const termsMeta = {
