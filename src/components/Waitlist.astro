@@ -37,15 +37,18 @@
           </div>
 
           <div class="field full">
-            <label for="f-age">Age</label>
-            <select id="f-age" name="age_range" required>
-              <option value="">Select</option>
-              <option>21–26</option>
-              <option>27–32</option>
-              <option>33–38</option>
-              <option>39–45</option>
-              <option>46+</option>
-            </select>
+            <label for="f-birthdate">Date of birth</label>
+            <input
+              id="f-birthdate"
+              name="birthdate"
+              type="date"
+              autocomplete="bday"
+              required
+              aria-describedby="birthdate-hint"
+            />
+            <p class="hint" id="birthdate-hint">
+              Confirms you are 21 or older. Never shown to the table.
+            </p>
           </div>
 
           <fieldset class="field full">
@@ -95,43 +98,56 @@
             </p>
           </fieldset>
 
-          <div class="field full">
-            <label for="f-age-open">What age are you open to meeting?</label>
-            <select id="f-age-open" name="age_open_to" required>
-              <option>Open to any age group</option>
-              <option>32–38</option>
-              <option>39–45</option>
-              <option>46–51</option>
-              <option>52–57</option>
-              <option>58–63</option>
-              <option>64+</option>
-            </select>
-          </div>
-
-          <div class="field full range-field">
-            <label id="looking-label" for="f-looking"
-              >What are you looking for?</label
-            >
-            <input
-              id="f-looking"
-              name="looking_for"
-              type="range"
-              min="0"
-              max="2"
-              step="1"
-              value="1"
-              aria-labelledby="looking-label"
-              aria-valuemin="0"
-              aria-valuemax="2"
-              aria-valuenow="1"
-              aria-valuetext="Open"
-            />
-            <div class="range-stops" aria-hidden="true">
-              <span data-stop="0">Casual</span>
-              <span data-stop="1" class="is-current">Open</span>
-              <span data-stop="2">Relationship</span>
+          <fieldset class="field full" aria-describedby="match-age-hint">
+            <legend>Ages you want to meet</legend>
+            <div class="field-pair">
+              <div class="field">
+                <label for="f-match-min">Youngest</label>
+                <input
+                  id="f-match-min"
+                  name="match_age_min"
+                  type="number"
+                  inputmode="numeric"
+                  min="21"
+                  step="1"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="f-match-max">Oldest</label>
+                <input
+                  id="f-match-max"
+                  name="match_age_max"
+                  type="number"
+                  inputmode="numeric"
+                  min="21"
+                  step="1"
+                  required
+                />
+              </div>
             </div>
-          </div>
+            <p class="hint" id="match-age-hint">
+              Who we will seat you with — never shown to the table.
+            </p>
+          </fieldset>
+
+          <fieldset class="field full">
+            <legend>What are you looking for?</legend>
+            <div class="choices">
+              <label class="choice">
+                <input type="radio" name="looking_for" value="Casual" required />
+                <span>Casual</span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="looking_for" value="Open" />
+                <span>Open</span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="looking_for" value="Relationship" />
+                <span>Relationship</span>
+              </label>
+            </div>
+          </fieldset>
 
           <fieldset class="field full">
             <legend>I'm open to a surprise game or conversation prompt at my table</legend>

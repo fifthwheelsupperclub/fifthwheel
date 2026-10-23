@@ -1,6 +1,9 @@
-// This repo is the marketing site. `/api/waitlist` still lives on the existing
-// Vercel app; the payload shape below must stay compatible with Airtable there.
+// This repo is the marketing site. The payload is member facts for the
+// interest list. `/api/waitlist` still lives on the existing Vercel app and
+// does not persist birthdate or match-range keys yet.
 const ENDPOINT = "https://www.5thwheel.app/api/waitlist";
+const STATUS_ID = "formStatus";
+const MINIMUM_AGE = 21;
 
 const form = document.getElementById("waitlistForm");
 const statusEl = document.getElementById("formStatus");
@@ -9,29 +12,6 @@ const formPanel = document.getElementById("formPanel");
 const thanksPanel = document.getElementById("thanksPanel");
 const heroEmail = document.getElementById("hero-email");
 const jump = document.querySelector("[data-jump]");
-const lookingFor = document.getElementById("f-looking");
-
-const lookingForStops = ["Casual", "Open", "Relationship"] as const;
-
-function lookingForLabel(value: string): (typeof lookingForStops)[number] {
-  const index = Number(value);
-  return lookingForStops[index] ?? "Open";
-}
-
-function syncLookingFor(input: HTMLInputElement): void {
-  const label = lookingForLabel(input.value);
-  input.setAttribute("aria-valuenow", input.value);
-  input.setAttribute("aria-valuetext", label);
-
-  const stops = input.parentElement?.querySelectorAll("[data-stop]");
-  if (!stops) return;
-  stops.forEach((stop) => {
-    stop.classList.toggle(
-      "is-current",
-      stop.getAttribute("data-stop") === input.value,
-    );
-  });
-}
 
 if (
   !(form instanceof HTMLFormElement) ||
@@ -40,20 +20,90 @@ if (
   !(formPanel instanceof HTMLElement) ||
   !(thanksPanel instanceof HTMLElement) ||
   !(heroEmail instanceof HTMLInputElement) ||
-  !(jump instanceof HTMLElement) ||
-  !(lookingFor instanceof HTMLInputElement)
+  !(jump instanceof HTMLElement)
 ) {
   throw new Error("Waitlist form markup is incomplete.");
 }
 
-syncLookingFor(lookingFor);
-lookingFor.addEventListener("input", () => {
-  syncLookingFor(lookingFor);
-});
-
 function setStatus(el: HTMLElement, msg: string, kind?: "err" | "ok"): void {
   el.textContent = msg;
   el.className = "form-status" + (kind ? ` ${kind}` : "");
+}
+
+let describedField: HTMLElement | null = null;
+let describedByBefore: string | null = null;
+
+function clearFieldError(): void {
+  if (!describedField) return;
+  describedField.removeAttribute("aria-invalid");
+  if (describedByBefore) {
+    describedField.setAttribute("aria-describedby", describedByBefore);
+  } else {
+    describedField.removeAttribute("aria-describedby");
+  }
+  describedField = null;
+  describedByBefore = null;
+}
+
+function firstNamedControl(name: string): HTMLElement | null {
+  const el = form.elements.namedItem(name);
+  if (el instanceof HTMLElement) return el;
+  if (el instanceof RadioNodeList) {
+    const first = el.item(0);
+    return first instanceof HTMLElement ? first : null;
+  }
+  return null;
+}
+
+function failField(name: string, message: string): void {
+  clearFieldError();
+  setStatus(statusEl, message, "err");
+  const control = firstNamedControl(name);
+  if (!control) return;
+  describedByBefore = control.getAttribute("aria-describedby");
+  const describedIds = new Set(
+    (describedByBefore ?? "").split(/\s+/).filter(Boolean),
+  );
+  describedIds.add(STATUS_ID);
+  control.setAttribute("aria-invalid", "true");
+  control.setAttribute("aria-describedby", [...describedIds].join(" "));
+  describedField = control;
+  control.focus();
+}
+
+function parseIsoDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function ageOn(birth: Date, on: Date): number {
+  let age = on.getFullYear() - birth.getFullYear();
+  const monthDelta = on.getMonth() - birth.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && on.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age;
+}
+
+function parseWholeAge(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  return Number(value);
 }
 
 function prefersReducedMotion(): boolean {
@@ -126,67 +176,102 @@ form.addEventListener("submit", (event) => {
   const email = String(data.get("email") ?? "").trim();
   const name = String(data.get("first_name") ?? "").trim();
   const openTo = data.getAll("open_to").map(String);
+  const birthdateValue = String(data.get("birthdate") ?? "").trim();
+  const matchMinValue = String(data.get("match_age_min") ?? "").trim();
+  const matchMaxValue = String(data.get("match_age_max") ?? "").trim();
 
   if (!name) {
-    setStatus(
-      statusEl,
-      "Add your first name so we know who we’re seating.",
-      "err",
-    );
-    document.getElementById("f-name")?.focus();
+    failField("first_name", "Add your first name so we know who we’re seating.");
     return;
   }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    setStatus(statusEl, "That email address looks incomplete.", "err");
-    document.getElementById("f-email")?.focus();
+    failField("email", "That email address looks incomplete.");
     return;
   }
-  if (!data.get("age_range")) {
-    setStatus(statusEl, "Select your age range.", "err");
-    document.getElementById("f-age")?.focus();
+
+  const birthdate = parseIsoDate(birthdateValue);
+  const today = startOfLocalDay(new Date());
+  if (!birthdateValue) {
+    failField("birthdate", "Add your date of birth so we know you’re 21 or older.");
     return;
   }
+  if (!birthdate) {
+    failField("birthdate", "That date isn’t a valid birthday.");
+    return;
+  }
+  if (birthdate.getTime() > today.getTime()) {
+    failField("birthdate", "Date of birth can’t be in the future.");
+    return;
+  }
+  if (ageOn(birthdate, today) < MINIMUM_AGE) {
+    failField("birthdate", "Fifth Wheel is for adults 21 and over.");
+    return;
+  }
+
   if (!data.get("identity")) {
-    setStatus(
-      statusEl,
+    failField(
+      "identity",
       "Let us know how you identify — it’s how we balance the table.",
-      "err",
     );
     return;
   }
   if (openTo.length === 0) {
-    setStatus(
-      statusEl,
-      "Choose at least one option under “Seat you with.”",
-      "err",
+    failField("open_to", "Choose at least one option under “Seat you with.”");
+    return;
+  }
+
+  const matchMin = parseWholeAge(matchMinValue);
+  const matchMax = parseWholeAge(matchMaxValue);
+  if (matchMin === null) {
+    failField("match_age_min", "Add the youngest age you want to meet.");
+    return;
+  }
+  if (matchMax === null) {
+    failField("match_age_max", "Add the oldest age you want to meet.");
+    return;
+  }
+  if (matchMin < MINIMUM_AGE) {
+    failField("match_age_min", "Ages you want to meet have to be 21 or older.");
+    return;
+  }
+  if (matchMax < MINIMUM_AGE) {
+    failField("match_age_max", "Ages you want to meet have to be 21 or older.");
+    return;
+  }
+  if (matchMax < matchMin) {
+    failField(
+      "match_age_max",
+      "The oldest age has to be at least as high as the youngest.",
     );
     return;
   }
-  if (!data.get("age_open_to")) {
-    setStatus(statusEl, "Tell us what ages you’re open to meeting.", "err");
-    document.getElementById("f-age-open")?.focus();
+
+  if (!data.get("looking_for")) {
+    failField("looking_for", "Tell us what you’re looking for.");
     return;
   }
   if (!data.get("surprise_game")) {
-    setStatus(
-      statusEl,
+    failField(
+      "surprise_game",
       "Let us know if you’d like a surprise game at the table.",
-      "err",
     );
     return;
   }
   if (!data.get("neighborhood")) {
-    setStatus(statusEl, "Pick a neighborhood you’d walk to.", "err");
-    document.getElementById("f-hood")?.focus();
+    failField("neighborhood", "Pick a neighborhood you’d walk to.");
     return;
   }
 
-  // Collapse multi-selects so they land in Airtable as readable text.
+  clearFieldError();
+
+  // Collapse multi-selects so they land as readable text.
   // Empty nights stay "Not specified". `_gotcha` is the honeypot.
   const payload = {
     first_name: name,
     email,
-    age_range: data.get("age_range"),
+    birthdate: birthdateValue,
+    match_age_min: matchMin,
+    match_age_max: matchMax,
     neighborhood: data.get("neighborhood"),
     identity: data.get("identity"),
     open_to: openTo.join(", "),
@@ -195,8 +280,7 @@ form.addEventListener("submit", (event) => {
     source: "landing-page",
     submitted_at: new Date().toISOString(),
     _gotcha: data.get("_gotcha") || "",
-    age_open_to: data.get("age_open_to"),
-    looking_for: lookingForLabel(String(data.get("looking_for") ?? "1")),
+    looking_for: data.get("looking_for"),
     surprise_game: data.get("surprise_game"),
   };
 

@@ -15,13 +15,13 @@ export const faqs: FaqItem[] = [
   {
     question: "How does Fifth Wheel decide who sits at my table?",
     answers: [
-      "Tables are intentionally curated rather than randomly assigned. A Fifth Wheel coordinator considers things like your age range, availability, preferred neighborhood, and the overall conversational balance of the group. There’s no promise you’ll be attracted to anyone but the goal is to create a table worth showing up for.",
+      "Tables are intentionally curated rather than randomly assigned. A Fifth Wheel coordinator considers things like your date of birth, the ages you want to meet, availability, preferred neighborhood, and the overall conversational balance of the group. There’s no promise you’ll be attracted to anyone but the goal is to create a table worth showing up for.",
     ],
   },
   {
     question: "What ages can participate?",
     answers: [
-      "Fifth Wheel is for adults 21+, with the experiences organized around compatible age ranges and profile preferences. The current booking experience should offer age bands extending beyond 46+, including 46–51, 51–56, 56–61, and 61–65.",
+      "Fifth Wheel is for adults 21 or older. You tell us your date of birth and the youngest and oldest ages you want to meet. We seat people whose ages fall inside each other’s range.",
     ],
   },
   {
