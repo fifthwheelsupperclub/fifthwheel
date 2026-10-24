@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fifth Wheel pre-MVP — plan pitch</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 42rem; margin: 2rem auto; padding: 0 1.25rem; line-height: 1.5; color: #111; }
+    h1 { font-size: 1.8rem; line-height: 1.2; }
+    h2 { font-size: 1.15rem; margin-top: 2rem; }
+    .banner { border: 1px solid #111; padding: 0.75rem 1rem; }
+    table { border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 0.9rem; }
+    th, td { border-bottom: 1px solid #ccc; text-align: left; padding: 0.4rem 0.3rem; vertical-align: top; }
+    a { color: #111; }
+  </style>
+</head>
+<body>
+  <p class="banner">High-stakes plan. Agent-run session. Gates are open. This page is not approval to charge a guest, change the live site, or call the dash passed.</p>
+  <h1>One table. Staff approve it. The seat counts when someone pays.</h1>
+  <p>Fifth Wheel’s pre-MVP night is already described in the repo: five people, drinks then dinner then dessert, a private vote at the end. The app should propose a valid table. A person on staff approves it. Invitations go out and do not expire. A guest has a seat only after payment. If someone is removed, staff get one question: replace them with one named person from the waitlist, or not. Interest in another guest is shown only when it is mutual.</p>
+  <p>The landing page still says a real person thoughtfully curates every table, and it still says November. Those sentences are not the workflow and not a date. Allie says do not ship a first charge while the public story, the refund, and deletion are unsettled. That dissent stands.</p>
+
+  <h2>What to build toward</h2>
+  <ul>
+    <li>Block invitation send until the table is approved.</li>
+    <li>Confirm the seat in the webhook, not when the invite is opened.</li>
+    <li>Show no countdown on the invitation.</li>
+    <li>Ask the replacement question once. The new person is unpaid until they pay.</li>
+    <li>Open voting 90 minutes after the start, for 30 minutes, mutual pairs only.</li>
+    <li>Keep age as a date of birth. Hide birthdays and match ranges from other guests.</li>
+  </ul>
+  <p>Do not rebuild login, checkout, or the vote screens. They already exist in the product app. This marketing repo is not that app.</p>
+
+  <h2>Recommended shape, not a selection</h2>
+  <p>Charlie’s recommendation is invite-only: the guest’s home is the one table on the invitation. Two alternatives stay on the table. One lets approved tables be browsed and paid without an invite. The other makes staff send each invite by hand. Aaron has not picked. The wireframe draws the invite-only version so the gates are visible.</p>
+
+  <h2>Left for Aaron</h2>
+  <table>
+    <thead><tr><th>Gate</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td>High-stakes solo halt</td><td>Recorded. A non-author reviewer has not confirmed the tier.</td></tr>
+      <tr><td>Privacy and ethics</td><td>Blocked. Birthdate, identity, relationship intent, payment, and matching. No legal sign-off.</td></tr>
+      <tr><td>Concept</td><td>Table door is a recommendation.</td></tr>
+      <tr><td>Refunds, cutoffs, reschedule, launch success</td><td>Not decided. No numbers and no November milestone.</td></tr>
+      <tr><td>Learning loop</td><td>A research plan exists. Owner and date are unassigned.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Read next</h2>
+  <ul>
+    <li><a href="../scope.md">Scope</a></li>
+    <li><a href="../requirements.md">Requirements</a></li>
+    <li><a href="../flow.md">Flows</a></li>
+    <li><a href="../wireframe.html">Wireframe</a></li>
+    <li><a href="../ethics-review.md">Ethics, including Allie’s challenge</a></li>
+    <li><a href="../privacy-review.md">Privacy brief</a></li>
+    <li><a href="../metrics.md">Metrics with no targets</a></li>
+    <li><a href="../workshop-summary.md">File index</a></li>
+  </ul>
+</body>
+</html>

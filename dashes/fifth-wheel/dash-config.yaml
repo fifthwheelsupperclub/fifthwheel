@@ -1,0 +1,46 @@
+slug: fifth-wheel
+title: Fifth Wheel pre-MVP plan
+date: 2026-10-23
+tier: high-stakes
+session-mode: agent-run
+session-mode-maps-to: solo
+artifact_root: dashes/fifth-wheel
+node_runtime: no_node_runtime
+prototype_workspace: null
+computed-tier-rationale: |
+  Checklist run 2026-10-23. Highest trigger wins. Designer may not lower the tier.
+  T1 — yes. The recorded model collects name, email, date of birth, identity,
+  who someone will sit with, and looking-for (casual / open / relationship),
+  plus a private vote. That is regulated personal data and a sensitive category.
+  Privacy gate is required. Minimum tier: High-stakes.
+  T2 — yes. A seat is confirmed by Stripe checkout. Payment surface.
+  Minimum tier: High-stakes.
+  T3 — no. Reach of 10,000 users, or a multi-tenant rollout, is not in the
+  evidence. Historical signup-volume figures are not targets
+  (decision-historical-dates-not-targets).
+  T4 — yes. This plan is the core invite, pay, seat, and vote workflow.
+  A confirmed charge and a disclosed mutual interest are hard to undo.
+  Minimum tier: High-stakes.
+  T5 — yes, and already below the higher triggers. Guest and Staff are both
+  in scope. Host is a separate night-of role and is not this plan's operator.
+  T6 — does not apply.
+  Provisional tier is High-stakes. P6 Section C flags do not lower it.
+halted-at: P0
+halt-reason: |
+  The method says a solo or agent-run dash that classifies High-stakes halts
+  at P0. Solo mode caps at Standard. High-stakes needs a non-author reviewer
+  and real cross-functional sign-offs. This session did not have those.
+continuation: |
+  Aaron explicitly instructed this authorized agent-run workshop to record the
+  halt honestly and still produce the PLAN artifacts, with human gates marked
+  unassigned / needs Aaron. The extra files are a plan, not a cleared dash.
+tier-override-log: none
+non-author-reviewer: unassigned — needs Aaron
+gates:
+  evidence: not-cleared
+  reconciliation: not-cleared
+  selection: not-cleared
+  ethics: blocked
+  privacy: legal-escalation-pending
+  learning: not-cleared
+sign-offs: none

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fifth Wheel pre-MVP — wireframe (Table door, not selected)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: sans-serif; font-size: 14px; line-height: 1.5; color: #000; background: #fff; margin: 0; padding: 24px; }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    h2 { font-size: 1.25rem; margin: 48px 0 8px; padding-top: 16px; border-top: 2px solid #000; }
+    h3 { font-size: 1rem; margin: 20px 0 8px; }
+    p, ul { margin: 0 0 12px; }
+    .note { border: 1px dashed #000; padding: 12px 16px; margin: 12px 0 24px; }
+    .page { border: 1px solid #000; padding: 16px; margin: 0 0 24px; }
+    .button, button { background: #000; color: #fff; padding: 8px 16px; font-weight: bold; font-size: 14px; border: 1px solid #000; cursor: pointer; display: inline-block; text-decoration: none; }
+    .button.secondary { background: #fff; color: #000; }
+    .button.tertiary { background: transparent; color: #000; border: none; padding: 8px 4px; text-decoration: underline; font-weight: normal; }
+    .button[disabled], .button.disabled { opacity: .4; cursor: not-allowed; }
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; max-width: 360px; }
+    .field label { font-weight: bold; }
+    .field .hint, .meta { font-size: .75rem; color: #444; }
+    .field input { border: 1px solid #000; padding: 8px; font: inherit; }
+    .error-msg { font-style: italic; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
+    th, td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; }
+    .list { list-style: none; padding: 0; margin: 0 0 16px; }
+    .list li { border-bottom: 1px solid #000; padding: 8px 0; }
+    .status { display: inline-block; border: 1px solid #000; padding: 2px 8px; font-size: .75rem; font-weight: bold; }
+    .modal { border: 2px solid #000; padding: 16px; margin: 12px 0; background: #fafafa; }
+    .states { display: grid; gap: 12px; }
+    .state { border: 1px solid #000; padding: 12px; }
+    .state h3 { margin-top: 0; }
+    nav a { margin-right: 12px; }
+  </style>
+</head>
+<body>
+  <!--
+    Page map: h1 is the document. Each illustrated surface is a section with an h2.
+    Concept: Table door (Charlie's recommendation). Selection Gate is not cleared.
+    icon-lib: none. Status uses a text label plus a bordered chip, not color alone.
+    Styles are the button, field, list, and table rules from
+    skills/map-product-flows/references/design-dash/5-wireframing/wireframe-components.html.
+    The catalog page's unused demo CSS is not pasted here. See wireframe-checks.md.
+  -->
+  <h1>Fifth Wheel — plan wireframe</h1>
+  <p class="note">Illustration of <strong>Table door</strong> only. Aaron has not selected a concept. Open board and Guest desk are runners-up in <code>concepts.md</code>. Refund, reschedule, and cutoff controls are absent on purpose. Price shows as “{TBD: seat price}” because <code>seat_price_cents</code> has no amount in the knowledge files.</p>
+  <nav aria-label="Pages in this file">
+    <a href="#your-table">Your table</a>
+    <a href="#take-seat">Take your seat</a>
+    <a href="#table-review">Table review</a>
+    <a href="#replacement">Replacement</a>
+    <a href="#vote">Vote</a>
+    <a href="#reveal">Mutual reveal</a>
+    <a href="#waitlist">Waitlist</a>
+  </nav>
+
+  <section id="your-table" aria-label="Your table">
+    <h2>Your table</h2>
+    <!-- PAGE LEVEL
+         Hub object: Table
+         Attributes: when, neighborhood, itinerary, invitation status
+         Actions: Primary Pay for this seat; Tertiary Account -->
+    <!-- layer: page | object: Table | component-hint: page-heading | ui-rule: ORG_SHOW_ESSENTIAL,FEEDBACK_PERSISTENT_PAGE_STATUS -->
+    <div class="page" id="yt-scale">
+      <p class="meta">At scale · five people · no deadline</p>
+      <p><span class="status">Invited, not paid</span></p>
+      <h3>Virginia Highlands</h3>
+      <p>Saturday drinks, then dinner, then dessert. A walkable three-stop table. You do not have a seat until payment succeeds.</p>
+      <ol class="list" aria-label="Itinerary">
+        <!-- layer: instance | object: Table | component-hint: simple-sequence | ui-rule: DISPLAY_SIMPLE_SEQUENCE -->
+        <li>Drinks — Highland Tap</li>
+        <li>Dinner — Murphy’s</li>
+        <li>Dessert — Truva</li>
+      </ol>
+      <p>Five people. You see first names only. You do not see birthdays or who anyone hopes to meet.</p>
+      <ul class="list" aria-label="People on this table">
+        <li>Maya — you</li>
+        <li>Jordan</li>
+        <li>Sam</li>
+        <li>Alex</li>
+        <li>Riley</li>
+      </ul>
+      <!-- layer: page | object: Seat | component-hint: primary-button | ui-rule: ACTION_PRIMARY_COMMIT -->
+      <a class="button" href="#take-seat">Pay for this seat</a>
+      <a class="button tertiary" href="#your-table">Account</a>
+    </div>
+    <div class="states">
+      <div class="state" id="yt-empty">
+        <h3>Empty</h3>
+        <p><span class="status">Invitation closed</span></p>
+        <p>This invitation is closed. There is nothing to pay.</p>
+      </div>
+      <div class="state" id="yt-loading"><h3>Loading</h3><p>Loading your table…</p></div>
+      <div class="state" id="yt-error">
+        <h3>Error</h3>
+        <p class="error-msg">Payment did not go through. Your invitation is still open. You can try again.</p>
+        <a class="button" href="#take-seat">Pay for this seat</a>
+      </div>
+      <div class="state" id="yt-denied">
+        <h3>Permission denied</h3>
+        <!-- ui-rule: TBD — decision tree has no permission-denied id -->
+        <p><span class="status">Not invited</span> This table is not offered to you. No seat was created.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="take-seat" aria-label="Take your seat">
+    <h2>Take your seat</h2>
+    <!-- PAGE LEVEL
+         Hub object: Seat
+         Attributes: price, table, confirmation rule
+         Actions: Primary Pay; Tertiary Back -->
+    <div class="page" id="pay-scale">
+      <p class="meta">At scale · one seat, not a cart</p>
+      <h3>Virginia Highlands</h3>
+      <p>Price: {TBD: seat price}. You are charged this amount. The seat is confirmed when payment succeeds.</p>
+      <p class="hint">What happens if you cancel later is not decided. This page does not promise a refund.</p>
+      <!-- layer: page | object: Seat | component-hint: primary-button | ui-rule: ACTION_PRIMARY_COMMIT,HELP_ESSENTIAL_VISIBLE -->
+      <a class="button" href="#take-seat">Pay</a>
+      <a class="button tertiary" href="#your-table">Back to your table</a>
+    </div>
+    <div class="states">
+      <div class="state" id="pay-empty">
+        <h3>Empty</h3>
+        <p>Price is not available yet. Pay is unavailable.</p>
+        <button class="button" disabled>Pay</button>
+      </div>
+      <div class="state" id="pay-loading">
+        <h3>Loading</h3>
+        <p><span class="status">Payment processing</span> This is not a confirmed seat.</p>
+      </div>
+      <div class="state" id="pay-error">
+        <h3>Error</h3>
+        <p class="error-msg">The card was declined. Your invitation is still open.</p>
+        <a class="button" href="#take-seat">Pay</a>
+      </div>
+      <div class="state" id="pay-denied">
+        <h3>Permission denied</h3>
+        <p>Tonight opens after the seat is confirmed. You are invited and unpaid, so Tonight stays closed. Voting is not available at arrival.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="table-review" aria-label="Table review">
+    <h2>Table review</h2>
+    <!-- PAGE LEVEL
+         Hub object: Table
+         Attributes: status, paid count, validity
+         Actions: Primary Approve table -->
+    <!-- layer: page | object: Table | component-hint: status | ui-rule: FEEDBACK_PERSISTENT_PAGE_STATUS,META_HIGH_IMPACT_AI_REVIEW -->
+    <div class="page" id="rev-scale">
+      <p class="meta">At scale · five guests · birthdays not in the grid</p>
+      <p><span class="status">Draft</span> <span class="status">0 paid</span> <span class="status">Valid to approve</span></p>
+      <h3>Virginia Highlands · Saturday</h3>
+      <p>The app proposed this table. Approving it sends invitations. Invitations stay open. There is no expiry.</p>
+      <!-- layer: collection | object: Guest | component-hint: data-table | ui-rule: DISPLAY_COMPARABLE_RECORDS,COLLECTION_SORT -->
+      <!-- Sort by: age in years. Filter by: none on this draft. -->
+      <table>
+        <caption>People on this draft</caption>
+        <thead>
+          <tr><th>Name</th><th>Age in years</th><th>Invitation</th><th>Seat</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Maya</td><td>29</td><td>Not sent</td><td>Unpaid</td></tr>
+          <tr><td>Jordan</td><td>31</td><td>Not sent</td><td>Unpaid</td></tr>
+          <tr><td>Sam</td><td>27</td><td>Not sent</td><td>Unpaid</td></tr>
+          <tr><td>Alex</td><td>34</td><td>Not sent</td><td>Unpaid</td></tr>
+          <tr><td>Riley</td><td>30</td><td>Not sent</td><td>Unpaid</td></tr>
+        </tbody>
+      </table>
+      <p class="meta">Birthday is not a column. Staff can open it per person. Span on this sample is 7 years, under the 12-year table rule. Sample ages are representative, not real people.</p>
+      <a class="button" href="#approve">Approve table</a>
+    </div>
+    <div class="modal" id="approve">
+      <h3>Send invitations?</h3>
+      <!-- layer: page | object: Invitation | component-hint: modal | ui-rule: ACTION_PRIMARY_COMMIT,AI_UNCERTAIN_CONSEQUENTIAL -->
+      <p>Approve Virginia Highlands. Five invitations will send and will not expire. Guests confirm a seat only when they pay.</p>
+      <button class="button">Send invitations</button>
+      <button class="button secondary">Keep as draft</button>
+    </div>
+    <div class="states">
+      <div class="state" id="rev-empty"><h3>Empty</h3><p>No draft table yet. Nothing to approve.</p></div>
+      <div class="state" id="rev-loading"><h3>Loading</h3><p>Checking composition…</p></div>
+      <div class="state" id="rev-error">
+        <h3>Error</h3>
+        <p class="error-msg">This group is not valid. Ages do not mutually fit, or the span is over 12 years. Approve is unavailable. No invitations exist.</p>
+        <button class="button" disabled>Approve table</button>
+      </div>
+      <div class="state" id="rev-denied"><h3>Permission denied</h3><p>Guests do not see table review.</p></div>
+    </div>
+  </section>
+
+  <section id="replacement" aria-label="Replacement prompt">
+    <h2>Replacement prompt</h2>
+    <!-- layer: page | object: WaitlistSignup | component-hint: modal | ui-rule: SELECT_BOOLEAN_NAMED_ALTERNATIVES,ACTION_DESTRUCTIVE_IRREVERSIBLE -->
+    <div class="modal" id="rep-scale">
+      <p class="meta">At scale · one suggestion, not a directory</p>
+      <h3>Replace with Sam from the waitlist?</h3>
+      <p>Removing Jordan from Virginia Highlands. Sam keeps the table valid. Sam is not seated until Sam pays. The charge outcome for Jordan is not decided.</p>
+      <button class="button">Replace with Sam</button>
+      <button class="button secondary">Remove without a replacement</button>
+      <button class="button tertiary">Dismiss</button>
+      <p class="meta">Dismiss is drawn and is not in the decision. See assumption A-11.</p>
+    </div>
+    <div class="states">
+      <div class="state" id="rep-empty">
+        <h3>Empty</h3>
+        <p>No eligible replacement in the waitlist this screen can read. Replace is unavailable.</p>
+        <button class="button" disabled>Replace with a guest</button>
+        <button class="button secondary">Remove without a replacement</button>
+      </div>
+      <div class="state" id="rep-loading"><h3>Loading</h3><p>Looking for one composition-safe person…</p></div>
+      <div class="state" id="rep-error">
+        <h3>Error</h3>
+        <p class="error-msg">Sam would make this table invalid. The invitation was not sent.</p>
+      </div>
+      <div class="state" id="rep-denied"><h3>Permission denied</h3><p>Only staff can remove a guest.</p></div>
+    </div>
+  </section>
+
+  <section id="vote" aria-label="Vote">
+    <h2>Vote</h2>
+    <!-- PAGE LEVEL
+         Hub object: Vote
+         Attributes: window, eligible people
+         Actions: Primary Cast vote -->
+    <div class="page" id="vote-scale">
+      <p class="meta">At scale · four other eligible people</p>
+      <p><span class="status">Open</span> Voting is open for 30 minutes. It opened 90 minutes after this table’s scheduled start. {TBD: Aaron has not confirmed that the clock is the scheduled start.}</p>
+      <p>Choose anyone here you hope to see again. They learn that only if they chose you too.</p>
+      <!-- layer: collection | object: Vote | component-hint: checkbox-group | ui-rule: SELECT_MULTI_FEW_VISIBLE -->
+      <fieldset>
+        <legend>Eligible people at your table</legend>
+        <label><input type="checkbox" /> Jordan</label><br />
+        <label><input type="checkbox" /> Sam</label><br />
+        <label><input type="checkbox" /> Alex</label><br />
+        <label><input type="checkbox" /> Riley</label>
+      </fieldset>
+      <p><button class="button">Cast vote</button></p>
+    </div>
+    <div class="states">
+      <div class="state" id="vote-empty">
+        <h3>Empty</h3>
+        <p><span class="status">Closed</span> Voting is closed. It is not open when you arrive, and it does not stay open after the 30 minutes. There is no ballot control.</p>
+      </div>
+      <div class="state" id="vote-loading"><h3>Loading</h3><p>Loading the ballot…</p></div>
+      <div class="state" id="vote-error">
+        <h3>Error</h3>
+        <p class="error-msg">The window closed before this vote was stored. Nothing new was saved.</p>
+      </div>
+      <div class="state" id="vote-denied">
+        <h3>Permission denied</h3>
+        <p>A confirmed seat is required. An invited unpaid guest does not get a ballot. {TBD: “eligible” is not fully decided.}</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="reveal" aria-label="Mutual reveal">
+    <h2>Mutual reveal</h2>
+    <div class="page" id="revl-scale">
+      <p class="meta">At scale · pairs only</p>
+      <p><span class="status">Mutual only</span></p>
+      <ul class="list" aria-label="Mutual interest">
+        <!-- layer: collection | object: Vote | component-hint: list | ui-rule: DISPLAY_SIMPLE_SEQUENCE,ORG_SHOW_ESSENTIAL -->
+        <li>You and Jordan</li>
+      </ul>
+      <a class="button tertiary" href="#your-table">Back to your table</a>
+    </div>
+    <div class="states">
+      <div class="state" id="revl-empty">
+        <h3>Empty</h3>
+        <p>No mutual interest to show. This page does not list people who chose you if you did not choose them.</p>
+      </div>
+      <div class="state" id="revl-loading"><h3>Loading</h3><p>Loading mutual interest… One-sided choices are not part of this state.</p></div>
+      <div class="state" id="revl-error">
+        <h3>Error</h3>
+        <p class="error-msg">Mutual interest could not be loaded. Nothing one-sided is shown instead.</p>
+      </div>
+      <div class="state" id="revl-denied"><h3>Permission denied</h3><p>Only a guest with a confirmed seat on this table can open reveal.</p></div>
+    </div>
+  </section>
+
+  <section id="waitlist" aria-label="Atlanta waitlist">
+    <h2>Atlanta waitlist</h2>
+    <!-- layer: page | object: WaitlistSignup | component-hint: form | ui-rule: INPUT_MEMORABLE_DATE,INPUT_EXACT_NUMBER,FEEDBACK_FIELD_ERROR,ACTION_PRIMARY_COMMIT -->
+    <div class="page" id="wl-empty">
+      <p class="meta">Empty · before submit · one form, not a member directory</p>
+      <h3>Join the Atlanta waitlist</h3>
+      <p>This is not a seat and not an account. A person approves a table before invitations go out. The live site still says a real person curates every table and names November. Those sentences are copy debt, not this wireframe’s promise.</p>
+      <div class="field">
+        <label for="first">First name</label>
+        <input id="first" type="text" value="Maya" />
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="text" value="maya@example.com" />
+      </div>
+      <div class="field">
+        <label for="dob">Date of birth</label>
+        <input id="dob" type="text" value="1997-04-03" />
+        <span class="hint">Age is calculated from this date. On this form the 21+ check uses today.</span>
+      </div>
+      <div class="field">
+        <label for="ymin">Youngest age you want to meet</label>
+        <input id="ymin" type="text" value="25" />
+      </div>
+      <div class="field">
+        <label for="ymax">Oldest age you want to meet</label>
+        <input id="ymax" type="text" value="35" />
+      </div>
+      <button class="button">Join the waitlist</button>
+    </div>
+    <div class="states">
+      <div class="state" id="wl-loading"><h3>Loading</h3><p>Sending your waitlist signup…</p></div>
+      <div class="state" id="wl-error">
+        <h3>Error</h3>
+        <p class="error-msg">You need to be 21 on today’s date. The 21st birthday itself is allowed. Oldest age has to be at least the youngest, and both at least 21.</p>
+      </div>
+      <div class="state" id="wl-denied"><h3>Permission denied</h3><p>Not used. The form is public. Staff-only lists are not on this page.</p></div>
+      <div class="state" id="wl-scale"><h3>At scale</h3><p>Still one form. Other people’s rows are not shown.</p></div>
+    </div>
+  </section>
+</body>
+</html>
