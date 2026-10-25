@@ -37,7 +37,7 @@ Existing integer ages and age-range text in the product app, if they appear late
 
 ## Consequences
 
-The marketing form sends `birthdate`, `match_age_min`, and `match_age_max`. The current waitlist API does not persist those keys. The product app still stores an integer age checked at 18 and asks for a number at onboarding; moving that to 21 and to a derived age is a separate change.
+The marketing form sends `birthdate`, `match_age_min`, and `match_age_max`. The product waitlist API persists those keys on `waitlist`. Guest profiles still store an integer age and ask for a number at onboarding; that integer is checked at 21. Deriving guest age from a stored birthdate remains a separate change.
 
 ## Revisit trigger
 

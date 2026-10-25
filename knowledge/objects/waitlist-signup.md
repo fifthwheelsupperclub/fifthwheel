@@ -50,7 +50,7 @@ Observed on the marketing form (`src/components/Waitlist.astro`):
 
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
-| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://www.5thwheel.app/api/waitlist`. Birthdate and match-range keys are not persisted there yet. |
+| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://admin.fifthwheel.community/api/waitlist`. Birthdate and match range are stored on `waitlist`. |
 | Suggest as replacement | App | Guest removed; composition-safe | Staff sees Yes/No prompt | Do not suggest an invalid replacement |
 
 ## States and transitions
@@ -72,7 +72,7 @@ Visitors think they joined “the Atlanta waitlist,” not that they created an 
 
 ## Open questions
 
-- One system of record: Airtable via `5thwheel.app/api/waitlist`, Supabase `waitlist_signups`, or both?
+- One system of record: the product app writes Supabase `waitlist`. Older `5thwheel.app` rows are historical unless imported.
 - Are waitlisted people eligible replacements before they have an app account and verification?
 - Does neighborhood preference constrain which table they can replace into?
 - Existing app integer ages and age-range text, if they appear later, stay historical. Do not derive a birthday from a band or from “current year minus age.” (`decision-age-from-birthdate`)

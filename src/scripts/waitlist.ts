@@ -1,7 +1,7 @@
-// This repo is the marketing site. The payload is member facts for the
-// interest list. `/api/waitlist` still lives on the existing Vercel app and
-// does not persist birthdate or match-range keys yet.
-const ENDPOINT = "https://www.5thwheel.app/api/waitlist";
+// Posts to the product app. That route writes waitlist rows in Supabase.
+const ENDPOINT =
+  import.meta.env.PUBLIC_WAITLIST_URL ??
+  "https://admin.fifthwheel.community/api/waitlist";
 const STATUS_ID = "formStatus";
 const MINIMUM_AGE = 21;
 
