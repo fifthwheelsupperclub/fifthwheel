@@ -24,7 +24,7 @@ Examples of content that is **not** current project target (the Linear descripti
 - Invitation-expiration language that conflicts with the confirmed “invitations do not expire” rule
 - Founding-waitlist GTM conversion figures
 
-Checked operational items in that document included DNS verification, Meta pixel injection, pixel confirm, and hello@5thwheel.app staff login access. Unchecked items included Meta events, analytics discovery, and campaign launch.
+Checked operational items in that document included DNS verification, Meta pixel injection, pixel confirm, and hello@fifthwheel.community staff login access. Unchecked items included Meta events, analytics discovery, and campaign launch.
 
 ## Context and population
 

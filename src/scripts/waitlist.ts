@@ -305,7 +305,7 @@ form.addEventListener("submit", (event) => {
       btn.textContent = "Join the waitlist";
       setStatus(
         statusEl,
-        "That didn’t go through. Try again, or email hello@5thwheel.app and we’ll add you by hand.",
+        "That didn’t go through. Try again, or email hello@fifthwheel.community and we’ll add you by hand.",
         "err",
       );
     });

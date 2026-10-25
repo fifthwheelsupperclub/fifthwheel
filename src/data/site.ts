@@ -7,7 +7,7 @@ export const productionAppUrl = "https://admin.fifthwheel.community";
 export const organization = {
   name: "Fifth Wheel",
   legalName: "Fifth Wheel Supper Club, LLC",
-  email: "hello@5thwheel.app",
+  email: "hello@fifthwheel.community",
   city: "Atlanta",
   region: "GA",
   country: "US",

@@ -72,7 +72,7 @@ export const faqs: FaqItem[] = [
     question: "How do I provide feedback?",
     answers: [
       "At the end of the evening each guest will receive a short survey. We’d love to hear what worked, what didn’t, and anything that could make your next Fifth Wheel experience even better.",
-      'You can also reach out to us directly anytime at <a href="mailto:hello@5thwheel.app">hello@5thwheel.app</a>. If you have a concern during an evening, please contact your Fifth Wheel coordinator directly.',
+      'You can also reach out to us directly anytime at <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. If you have a concern during an evening, please contact your Fifth Wheel coordinator directly.',
     ],
   },
 ];
