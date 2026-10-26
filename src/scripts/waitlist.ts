@@ -5,25 +5,52 @@ const ENDPOINT =
 const STATUS_ID = "formStatus";
 const MINIMUM_AGE = 21;
 
-const form = document.getElementById("waitlistForm");
-const statusEl = document.getElementById("formStatus");
-const btn = document.getElementById("submitBtn");
-const formPanel = document.getElementById("formPanel");
-const thanksPanel = document.getElementById("thanksPanel");
-const heroEmail = document.getElementById("hero-email");
-const jump = document.querySelector("[data-jump]");
-
-if (
-  !(form instanceof HTMLFormElement) ||
-  !(statusEl instanceof HTMLElement) ||
-  !(btn instanceof HTMLButtonElement) ||
-  !(formPanel instanceof HTMLElement) ||
-  !(thanksPanel instanceof HTMLElement) ||
-  !(heroEmail instanceof HTMLInputElement) ||
-  !(jump instanceof HTMLElement)
-) {
-  throw new Error("Waitlist form markup is incomplete.");
+function requireAs<T extends HTMLElement>(
+  el: unknown,
+  predicate: (value: unknown) => value is T,
+): T {
+  if (!predicate(el)) {
+    throw new Error("Waitlist form markup is incomplete.");
+  }
+  return el;
 }
+
+const form = requireAs(
+  document.getElementById("waitlistForm"),
+  (value): value is HTMLFormElement => value instanceof HTMLFormElement,
+);
+const statusEl = requireAs(
+  document.getElementById("formStatus"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
+const btn = requireAs(
+  document.getElementById("submitBtn"),
+  (value): value is HTMLButtonElement => value instanceof HTMLButtonElement,
+);
+const formPanel = requireAs(
+  document.getElementById("formPanel"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
+const thanksPanel = requireAs(
+  document.getElementById("thanksPanel"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
+const heroEmail = requireAs(
+  document.getElementById("hero-email"),
+  (value): value is HTMLInputElement => value instanceof HTMLInputElement,
+);
+const jump = requireAs(
+  document.querySelector("[data-jump]"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
+const thanksSent = requireAs(
+  thanksPanel.querySelector("[data-thanks='sent']"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
+const thanksStored = requireAs(
+  thanksPanel.querySelector("[data-thanks='stored']"),
+  (value): value is HTMLElement => value instanceof HTMLElement,
+);
 
 function setStatus(el: HTMLElement, msg: string, kind?: "err" | "ok"): void {
   el.textContent = msg;
@@ -110,7 +137,16 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function revealThanks(): void {
+function emailWasAccepted(body: unknown): boolean {
+  if (typeof body !== "object" || body === null || !("email" in body)) {
+    return false;
+  }
+  return body.email === "sent";
+}
+
+function revealThanks(emailSent: boolean): void {
+  thanksSent.hidden = !emailSent;
+  thanksStored.hidden = emailSent;
   const scrollBehavior: ScrollBehavior = prefersReducedMotion()
     ? "auto"
     : "smooth";
@@ -296,9 +332,15 @@ form.addEventListener("submit", (event) => {
     },
     body: JSON.stringify(payload),
   })
-    .then((res) => {
+    .then(async (res) => {
       if (!res.ok) throw new Error("bad response");
-      revealThanks();
+      let body: unknown = null;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+      revealThanks(emailWasAccepted(body));
     })
     .catch(() => {
       btn.disabled = false;

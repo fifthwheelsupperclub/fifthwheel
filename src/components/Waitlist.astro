@@ -6,10 +6,9 @@
         <p class="eyebrow">Atlanta waitlist</p>
         <h2>Tell us who you are and what you're looking for</h2>
         <p>
-          Our first Atlanta tables are seating on November. Tell us a little
-          about yourself and what you’re looking for. This form is just the
-          beginning. A real person thoughtfully curates every table, there’s
-          more to the process than what we ask here.
+          Tell us a little about yourself and what you’re looking for. This
+          form is just the beginning. A real person thoughtfully curates every
+          table, there’s more to the process than what we ask here.
         </p>
       </div>
 
@@ -262,19 +261,29 @@
       </form>
     </div>
 
-    <!-- Shown after a successful POST. Hidden until then; waitlist.ts removes [hidden]. -->
+    <!-- Shown after a stored POST. Hidden until then; waitlist.ts removes [hidden]. -->
     <div class="thanks" id="thanksPanel" hidden>
       <p class="eyebrow">You're on the list</p>
-      <h2>Check your inbox in a moment</h2>
-      <p>
-        A coordinator will reach out when there's a table that fits your nights
-        and your neighborhood. Tables are built one at a time, so it may be a
-        couple of weeks.
-      </p>
-      <p>
-        If your availability changes, just reply to that email — a person reads
-        it.
-      </p>
+      <div data-thanks="sent" hidden>
+        <h2>Check your inbox in a moment</h2>
+        <p>
+          A coordinator will reach out when there's a table that fits your nights
+          and your neighborhood. Tables are built one at a time, so it may be a
+          couple of weeks.
+        </p>
+        <p>
+          If your availability changes, just reply to that email — a person reads
+          it.
+        </p>
+      </div>
+      <div data-thanks="stored" hidden>
+        <h2>The email did not send</h2>
+        <p>
+          You’re on the list. The email did not send. Write to
+          <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>
+          and a person will confirm it.
+        </p>
+      </div>
     </div>
   </div>
 </section>
