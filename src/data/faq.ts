@@ -8,8 +8,7 @@ export const faqs: FaqItem[] = [
   {
     question: "When does Fifth Wheel launch in Atlanta?",
     answers: [
-      "Fifth Wheel is a new social dining experience launching in Atlanta this November. Our first tables open on November with intentionally limited seating as we introduce Fifth Wheel one table at a time.",
-      "Register today for Founder Access to be among the first invited to upcoming tables, neighborhoods, and experience founder perks before dates are released more broadly. Such as free appetizers, swag, and other fun events.",
+      "Fifth Wheel starts in Atlanta. We seat a table when the five people are right, not on a date we have published.",
     ],
   },
   {
@@ -43,16 +42,10 @@ export const faqs: FaqItem[] = [
     ],
   },
   {
-    question: "How does booking work, and how far ahead should I plan?",
+    question: "How does booking work?",
     answers: [
-      "Tables open 7 days in advance. When we find a table that fits, you’ll receive an invitation with the details and a deadline to claim your seat.",
-      "Accept and pay to confirm your spot. Invitations expire when the table fills, or when the claim window closes.",
-    ],
-  },
-  {
-    question: "What happens if I need to cancel or someone else cancels?",
-    answers: [
-      "Cancel 24+ hours ahead and the reservation fee is fully refunded; cancel 6–24 hours ahead and 50% is refunded; within 6 hours the fee is non-refundable. If someone else drops out, Fifth Wheel may bring in a curated substitute, proceed with four guests, or cancel the experience if there are less than 3 participants. If Fifth Wheel cancels the evening, guests receive a full reservation-fee refund or the option to attend a future evening at no additional cost.",
+      "A person approves a table before anyone is invited. An invitation names the date, the neighborhood, and a link to pay.",
+      "Accept and pay to confirm your spot. Invitations do not expire.",
     ],
   },
   {

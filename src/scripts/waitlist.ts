@@ -144,6 +144,15 @@ function emailWasAccepted(body: unknown): boolean {
   return body.email === "sent";
 }
 
+function trackWaitlistLead(): void {
+  const fbq = (
+    window as Window & { fbq?: (...args: unknown[]) => void }
+  ).fbq;
+  if (typeof fbq === "function") {
+    fbq("track", "Lead");
+  }
+}
+
 function revealThanks(emailSent: boolean): void {
   thanksSent.hidden = !emailSent;
   thanksStored.hidden = emailSent;
@@ -341,6 +350,9 @@ form.addEventListener("submit", (event) => {
         body = null;
       }
       revealThanks(emailWasAccepted(body));
+      if (!payload._gotcha) {
+        trackWaitlistLead();
+      }
     })
     .catch(() => {
       btn.disabled = false;
