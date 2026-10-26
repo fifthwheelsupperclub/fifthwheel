@@ -46,7 +46,7 @@ A person Fifth Wheel may waitlist, invite, seat, or show on a ballot. Distinguis
 
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
-| Register / sign in | Guest | Email | Account exists | Open: magic-link vs password not specified here |
+| Register / sign in | Guest | Email is on the waitlist, or a profile already exists | Account exists; signup links by `waitlist.profile_id` | Unknown emails do not get a code. Staff sign in with `is_admin` on the same profile. |
 | Complete profile | Guest | Signed in | Profile usable for curation | Unverified guests may be blocked; not proven in production |
 | Verify identity | Guest | Signed in | Verification recorded | Failure path not modeled |
 | Pay for seat | Guest | Invitation or published table (assumed) | Seat confirmed | Stripe failure leaves seat unconfirmed |
@@ -72,6 +72,6 @@ Guests meet “a table of five,” not an `event` record. Replacement guests are
 
 ## Open questions
 
-- Is a waitlist email the same record as an app account?
+- A waitlist email and an app account are the same person after claim, and two rows. `waitlist.profile_id` is the link. Intake facts copy onto the profile at claim. The historical integer age is left as stored.
 - Which profile fields from onboarding (beyond the marketing form) are required for a valid table?
 - Must identity verification complete before invitation, before payment, or before the night?

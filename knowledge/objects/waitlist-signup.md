@@ -42,7 +42,7 @@ Observed on the marketing form (`src/components/Waitlist.astro`):
 
 | Related object | Relationship | Cardinality | Direction | Lifecycle consequence |
 | --- | --- | --- | --- | --- |
-| Guest | May become | 0..1 | Signup → Guest | Not proven to be the same store |
+| Guest | May become, linked by `waitlist.profile_id` | 0..1 | Signup → Guest | Claimed when that email signs in. The signup row remains. |
 | Invitation | May source a replacement | 0..n | Signup → Invitation | Must keep table valid |
 | Table | Preference, not assignment | 0..n neighborhoods | Signup → Table | Neighborhood is a preference |
 
@@ -50,7 +50,7 @@ Observed on the marketing form (`src/components/Waitlist.astro`):
 
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
-| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://admin.fifthwheel.community/api/waitlist`. Birthdate and match range are stored on `waitlist`. |
+| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://admin.fifthwheel.community/api/waitlist`. Birthdate and match range are stored on `waitlist`. A repeat email updates those answers and does not clear the claim link or the welcome stamp. |
 | Suggest as replacement | App | Guest removed; composition-safe | Staff sees Yes/No prompt | Do not suggest an invalid replacement |
 
 ## States and transitions

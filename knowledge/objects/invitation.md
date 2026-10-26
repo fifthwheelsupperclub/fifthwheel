@@ -17,7 +17,7 @@ related_decisions: [decision-invitations-do-not-expire, decision-staff-approve-b
 
 ## Definition
 
-The staff-approved ask for a Guest to take a Seat at a Table. Distinguished from a WaitlistSignup (interest, not a seat) and from a Seat (paid confirmation).
+The staff-approved ask to take a Seat at a Table. It is addressed to a WaitlistSignup and points at a Guest once that person signs in. Distinguished from a Seat (paid confirmation).
 
 ## Attributes
 
@@ -35,9 +35,9 @@ No expiry timestamp. Lean-list expiration language is superseded.
 | Related object | Relationship | Cardinality | Direction | Lifecycle consequence |
 | --- | --- | --- | --- | --- |
 | Table | Belongs to | 1 | Invitation → Table | Sent only after staff approve the table |
-| Guest | Addressed to | 1 | Invitation → Guest | Replacement sends a new invitation |
+| WaitlistSignup | Addressed to | 1 for a launch invite | Invitation → Signup | `waitlist_id` is set when staff invite, including a replacement. The row can exist before a Guest. |
+| Guest | Set when they claim | 0..1 until claim, then 1 | Invitation → Guest | `profile_id` is filled at sign-in. A seat still requires that Guest. |
 | Seat | May become | 0..1 | Invitation → Seat | Seat exists when paid |
-| WaitlistSignup | May be sourced from | 0..1 | Signup → Invitation | Replacement suggestion |
 
 ## Actions
 
@@ -68,5 +68,5 @@ Guests should hear “you're invited to this table,” not “your reservation e
 ## Open questions
 
 - Does “unanswered” mean no click, no account, or no payment?
-- Is the invitation a first-class row in the app today, or only implied by notifications and holds?
+- The invitation is a row. `waitlist_id` is who was asked. `profile_id` is filled when they sign in. There is no expiry column.
 - What does the guest receive (email/SMS) as the invitation artifact?
