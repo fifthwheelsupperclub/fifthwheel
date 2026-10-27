@@ -1,8 +1,10 @@
 export const siteUrl = "https://fifthwheel.community";
 
-// Product app host. Waitlist POSTs still go to the live 5thwheel.app API
-// until admin.fifthwheel.community is deployed.
-export const productionAppUrl = "https://admin.fifthwheel.community";
+// Guest app on the product Render service. Email, Stripe return, and the waitlist POST use this host.
+export const productionAppUrl = "https://app.fifthwheel.community";
+
+// Staff console, same Render service.
+export const adminAppUrl = "https://admin.fifthwheel.community";
 
 export const organization = {
   name: "Fifth Wheel",

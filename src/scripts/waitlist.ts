@@ -1,7 +1,9 @@
-// Posts to the product app. That route writes waitlist rows in Supabase.
+import { productionAppUrl } from "../data/site";
+
+// Posts to the guest app. That route writes waitlist rows in Supabase.
 const ENDPOINT =
   import.meta.env.PUBLIC_WAITLIST_URL ??
-  "https://admin.fifthwheel.community/api/waitlist";
+  `${productionAppUrl}/api/waitlist`;
 const STATUS_ID = "formStatus";
 const MINIMUM_AGE = 21;
 

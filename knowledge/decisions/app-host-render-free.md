@@ -14,7 +14,7 @@ reversibility: reversible
 
 ## Context
 
-The product app is Next.js (server actions, Stripe webhook, magic-link auth). Marketing stays on GitHub Pages at `fifthwheel.community`. The app hostname is `admin.fifthwheel.community`. Paid always-on hosting was considered so Stripe webhooks would not hit a sleeping instance. Pre-MVP volume does not justify that cost.
+The product app is Next.js (server actions, Stripe webhook, magic-link auth). Marketing stays on GitHub Pages at `fifthwheel.community`. The product app is one Render service with two hostnames: guests and machine callbacks use `app.fifthwheel.community`, and staff use `admin.fifthwheel.community`. Paid always-on hosting was considered so Stripe webhooks would not hit a sleeping instance. Pre-MVP volume does not justify that cost.
 
 Notifications already send in the same request (`notifyNow` / `flush()`). `/api/cron/notifications` is a leftover drain. Stripe retries failed webhooks. Identity verification heals on page load.
 

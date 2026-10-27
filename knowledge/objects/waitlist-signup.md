@@ -50,7 +50,7 @@ Observed on the marketing form (`src/components/Waitlist.astro`):
 
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
-| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://admin.fifthwheel.community/api/waitlist`. Birthdate and match range are stored on `waitlist`. A repeat email updates those answers and does not clear the claim link or the welcome stamp. |
+| Submit form | Visitor | Valid fields | Signup stored | Posts to `https://app.fifthwheel.community/api/waitlist`. Birthdate and match range are stored on `waitlist`. A repeat email updates those answers and does not clear the claim link or the welcome stamp. |
 | Suggest as replacement | App | Guest removed; composition-safe | Staff sees Yes/No prompt | Do not suggest an invalid replacement |
 
 ## States and transitions
