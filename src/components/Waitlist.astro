@@ -25,6 +25,16 @@
             />
           </div>
           <div class="field">
+            <label for="f-last-name">Last name</label>
+            <input
+              id="f-last-name"
+              name="last_name"
+              type="text"
+              autocomplete="family-name"
+              required
+            />
+          </div>
+          <div class="field full">
             <label for="f-email">Email</label>
             <input
               id="f-email"
@@ -35,20 +45,59 @@
             />
           </div>
 
-          <div class="field full">
-            <label for="f-birthdate">Date of birth</label>
-            <input
-              id="f-birthdate"
-              name="birthdate"
-              type="date"
-              autocomplete="bday"
-              required
-              aria-describedby="birthdate-hint"
-            />
+          <fieldset class="field full" aria-describedby="birthdate-hint">
+            <legend>Date of birth</legend>
+            <div class="birthdate-row">
+              <div class="field">
+                <label for="f-birth-month">Month</label>
+                <select
+                  id="f-birth-month"
+                  name="birth_month"
+                  autocomplete="bday-month"
+                  required
+                >
+                  <option value="">Month</option>
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-birth-day">Day</label>
+                <select
+                  id="f-birth-day"
+                  name="birth_day"
+                  autocomplete="bday-day"
+                  required
+                >
+                  <option value="">Day</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-birth-year">Year</label>
+                <select
+                  id="f-birth-year"
+                  name="birth_year"
+                  autocomplete="bday-year"
+                  required
+                >
+                  <option value="">Year</option>
+                </select>
+              </div>
+            </div>
             <p class="hint" id="birthdate-hint">
               Confirms you are 21 or older. Never shown to the table.
             </p>
-          </div>
+          </fieldset>
 
           <fieldset class="field full">
             <legend>You are</legend>

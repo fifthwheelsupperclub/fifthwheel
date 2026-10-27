@@ -26,8 +26,9 @@ Observed on the marketing form (`src/components/Waitlist.astro`):
 | Attribute | Meaning | Required | Sensitive | Source |
 | --- | --- | --- | --- | --- |
 | First name | | yes on form | yes | `first_name` |
+| Last name | | yes on form | yes | `last_name`. Stored on the waitlist row. Not copied onto Guest. |
 | Email | | yes on form | yes | `email` |
-| Date of birth | Age fact; years derived on the date a rule runs | yes on form | yes | `birthdate` |
+| Date of birth | Age fact; years derived on the date a rule runs | yes on form | yes | Month, day, and year selects; stored as `birthdate`. Age and star sign are derived onto Guest, not stored on this row. |
 | Identity | Woman / Man / Non-binary | yes on form | yes | `identity` |
 | Seat you with | | form | yes | `open_to` |
 | Match age min | Youngest age they want to meet | yes on form | yes | `match_age_min` |

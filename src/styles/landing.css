@@ -776,6 +776,17 @@ fieldset.field {
   grid-template-columns: 1fr 1fr;
   gap: 22px 28px;
 }
+.birthdate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: 12px 16px;
+}
+.birthdate-row .field {
+  min-width: 0;
+}
+.birthdate-row select {
+  padding-right: 2rem;
+}
 .field input[type="text"],
 .field input[type="email"],
 .field input[type="date"],

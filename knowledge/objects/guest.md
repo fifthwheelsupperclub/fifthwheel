@@ -25,7 +25,9 @@ A person Fifth Wheel may waitlist, invite, seat, or show on a ballot. Distinguis
 | --- | --- | --- | --- | --- |
 | Name | What to call them | Assumed for invite/seat | yes | Waitlist and onboarding (`first_name` on the marketing form) |
 | Email | How to reach them | Assumed for invite | yes | Waitlist, login |
-| Date of birth | Age fact; years derived on the event date, or today when there is none | Assumed for validation | yes | Waitlist `birthdate`. Existing app integer ages stay historical. |
+| Date of birth | Age fact; years derived on the event date, or today when there is none | Assumed for validation | yes | Waitlist `birthdate`. Existing app integer ages stay historical unless a birthdate is present. |
+| Age | Whole years from date of birth | Derived when birthdate exists | yes | Copied onto `profiles.age` from `birthdate` as of today. Matching SQL still reads this integer. |
+| Star sign | Tropical sun sign from month and day | Derived when birthdate exists | yes | `profiles.star_sign`. Staff and the guest’s own profile. Not shown to other guests. No birth time, so cusp days use the listed inclusive starts. |
 | Match age min | Youngest age they want to meet | yes on form | yes | `match_age_min` |
 | Match age max | Oldest age they want to meet | yes on form | yes | `match_age_max` |
 | Identity | Woman / Man / Non-binary on the marketing form | Observed on waitlist | yes | `identity` |

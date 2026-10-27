@@ -135,6 +135,63 @@ function parseWholeAge(value: string): number | null {
   return Number(value);
 }
 
+const birthMonth = requireAs(
+  document.getElementById("f-birth-month"),
+  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
+);
+const birthDay = requireAs(
+  document.getElementById("f-birth-day"),
+  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
+);
+const birthYear = requireAs(
+  document.getElementById("f-birth-year"),
+  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
+);
+
+function daysInMonth(year: number | null, month: number | null): number {
+  if (month == null) return 31;
+  const yearForLength = year ?? 2024;
+  return new Date(yearForLength, month, 0).getDate();
+}
+
+function fillBirthYears(): void {
+  const now = new Date().getFullYear();
+  const oldest = now - 120;
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Year";
+  birthYear.replaceChildren(placeholder);
+  for (let year = now; year >= oldest; year -= 1) {
+    const option = document.createElement("option");
+    option.value = String(year);
+    option.textContent = String(year);
+    birthYear.append(option);
+  }
+}
+
+function rebuildBirthDays(): void {
+  const selected = birthDay.value;
+  const month = birthMonth.value ? Number(birthMonth.value) : null;
+  const year = birthYear.value ? Number(birthYear.value) : null;
+  const max = daysInMonth(year, month);
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Day";
+  birthDay.replaceChildren(placeholder);
+  for (let day = 1; day <= max; day += 1) {
+    const option = document.createElement("option");
+    option.value = String(day).padStart(2, "0");
+    option.textContent = String(day);
+    birthDay.append(option);
+  }
+  birthDay.value = selected && Number(selected) <= max ? selected : "";
+}
+
+fillBirthYears();
+rebuildBirthDays();
+birthMonth.addEventListener("change", rebuildBirthDays);
+birthYear.addEventListener("change", rebuildBirthDays);
+
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -222,8 +279,11 @@ form.addEventListener("submit", (event) => {
   const data = new FormData(form);
   const email = String(data.get("email") ?? "").trim();
   const name = String(data.get("first_name") ?? "").trim();
+  const lastName = String(data.get("last_name") ?? "").trim();
   const openTo = data.getAll("open_to").map(String);
-  const birthdateValue = String(data.get("birthdate") ?? "").trim();
+  const birthMonthValue = String(data.get("birth_month") ?? "").trim();
+  const birthDayValue = String(data.get("birth_day") ?? "").trim();
+  const birthYearValue = String(data.get("birth_year") ?? "").trim();
   const matchMinValue = String(data.get("match_age_min") ?? "").trim();
   const matchMaxValue = String(data.get("match_age_max") ?? "").trim();
 
@@ -231,27 +291,49 @@ form.addEventListener("submit", (event) => {
     failField("first_name", "Add your first name so we know who we’re seating.");
     return;
   }
+  if (!lastName) {
+    failField("last_name", "Add your last name so we know who we’re seating.");
+    return;
+  }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     failField("email", "That email address looks incomplete.");
     return;
   }
 
-  const birthdate = parseIsoDate(birthdateValue);
   const today = startOfLocalDay(new Date());
-  if (!birthdateValue) {
-    failField("birthdate", "Add your date of birth so we know you’re 21 or older.");
+  if (!birthMonthValue) {
+    failField(
+      "birth_month",
+      "Add your date of birth so we know you’re 21 or older.",
+    );
     return;
   }
+  if (!birthDayValue) {
+    failField(
+      "birth_day",
+      "Add your date of birth so we know you’re 21 or older.",
+    );
+    return;
+  }
+  if (!birthYearValue) {
+    failField(
+      "birth_year",
+      "Add your date of birth so we know you’re 21 or older.",
+    );
+    return;
+  }
+  const birthdateValue = `${birthYearValue}-${birthMonthValue}-${birthDayValue}`;
+  const birthdate = parseIsoDate(birthdateValue);
   if (!birthdate) {
-    failField("birthdate", "That date isn’t a valid birthday.");
+    failField("birth_day", "That date isn’t a valid birthday.");
     return;
   }
   if (birthdate.getTime() > today.getTime()) {
-    failField("birthdate", "Date of birth can’t be in the future.");
+    failField("birth_year", "Date of birth can’t be in the future.");
     return;
   }
   if (ageOn(birthdate, today) < MINIMUM_AGE) {
-    failField("birthdate", "Fifth Wheel is for adults 21 and over.");
+    failField("birth_year", "Fifth Wheel is for adults 21 and over.");
     return;
   }
 
@@ -315,6 +397,7 @@ form.addEventListener("submit", (event) => {
   // Empty nights stay "Not specified". `_gotcha` is the honeypot.
   const payload = {
     first_name: name,
+    last_name: lastName,
     email,
     birthdate: birthdateValue,
     match_age_min: matchMin,
