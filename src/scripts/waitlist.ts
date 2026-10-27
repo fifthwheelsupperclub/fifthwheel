@@ -6,6 +6,11 @@ const ENDPOINT =
   `${productionAppUrl}/api/waitlist`;
 const STATUS_ID = "formStatus";
 const MINIMUM_AGE = 21;
+const SUBMIT_TIMEOUT_MS = 15_000;
+const FAILURE_MESSAGE =
+  "That didn’t go through. Try again, or email hello@fifthwheel.community and we’ll add you by hand.";
+const TIMEOUT_MESSAGE =
+  "That’s taking too long. Try again, or email hello@fifthwheel.community and we’ll add you by hand.";
 
 function requireAs<T extends HTMLElement>(
   el: unknown,
@@ -200,11 +205,15 @@ function emailWasAccepted(body: unknown): boolean {
 }
 
 function trackWaitlistLead(): void {
-  const fbq = (
-    window as Window & { fbq?: (...args: unknown[]) => void }
-  ).fbq;
-  if (typeof fbq === "function") {
-    fbq("track", "Lead");
+  const win = window as Window & {
+    fbq?: (...args: unknown[]) => void;
+    gtag?: (...args: unknown[]) => void;
+  };
+  if (typeof win.fbq === "function") {
+    win.fbq("track", "Lead");
+  }
+  if (typeof win.gtag === "function") {
+    win.gtag("event", "generate_lead");
   }
 }
 
@@ -399,6 +408,11 @@ form.addEventListener("submit", (event) => {
   btn.textContent = "Sending…";
   setStatus(statusEl, "");
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, SUBMIT_TIMEOUT_MS);
+
   fetch(ENDPOINT, {
     method: "POST",
     headers: {
@@ -406,13 +420,15 @@ form.addEventListener("submit", (event) => {
       Accept: "application/json",
     },
     body: JSON.stringify(payload),
+    signal: controller.signal,
   })
     .then(async (res) => {
       if (!res.ok) throw new Error("bad response");
       let body: unknown = null;
       try {
         body = await res.json();
-      } catch {
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
         body = null;
       }
       revealThanks(emailWasAccepted(body));
@@ -425,8 +441,11 @@ form.addEventListener("submit", (event) => {
       btn.textContent = "Join the waitlist";
       setStatus(
         statusEl,
-        "That didn’t go through. Try again, or email hello@fifthwheel.community and we’ll add you by hand.",
+        controller.signal.aborted ? TIMEOUT_MESSAGE : FAILURE_MESSAGE,
         "err",
       );
+    })
+    .finally(() => {
+      window.clearTimeout(timeoutId);
     });
 });
