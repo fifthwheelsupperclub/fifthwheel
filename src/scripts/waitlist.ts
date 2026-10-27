@@ -37,10 +37,6 @@ const thanksPanel = requireAs(
   document.getElementById("thanksPanel"),
   (value): value is HTMLElement => value instanceof HTMLElement,
 );
-const heroEmail = requireAs(
-  document.getElementById("hero-email"),
-  (value): value is HTMLInputElement => value instanceof HTMLInputElement,
-);
 const jump = requireAs(
   document.querySelector("[data-jump]"),
   (value): value is HTMLElement => value instanceof HTMLElement,
@@ -244,33 +240,18 @@ function revealThanks(emailSent: boolean): void {
   window.setTimeout(finish, 320);
 }
 
-// Hero field is a hand-off, not a second form: copy the value into the real
-// email input, scroll to #waitlist, then focus name (or email if the field was empty).
+// Hero button is a jump to the waitlist form, the only place an email is collected.
 jump.addEventListener("click", () => {
-  const value = heroEmail.value.trim();
-  if (value) {
-    const emailField = document.getElementById("f-email");
-    if (emailField instanceof HTMLInputElement) {
-      emailField.value = value;
-    }
-  }
   document.getElementById("waitlist")?.scrollIntoView({
     behavior: "smooth",
     block: "start",
   });
   window.setTimeout(() => {
-    const target = document.getElementById(value ? "f-name" : "f-email");
+    const target = document.getElementById("f-email");
     if (target instanceof HTMLElement) {
       target.focus({ preventScroll: true });
     }
   }, 500);
-});
-
-heroEmail.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    jump.click();
-  }
 });
 
 form.addEventListener("submit", (event) => {

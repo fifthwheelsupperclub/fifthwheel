@@ -151,26 +151,6 @@ a {
   gap: 8px;
   flex-wrap: wrap;
 }
-.capture input[type="email"] {
-  flex: 1 1 220px;
-  min-width: 0;
-  background: var(--linen-06);
-  border: 1px solid var(--brass-35);
-  border-radius: var(--radius-field);
-  color: var(--linen);
-  font-family: var(--body);
-  font-size: 15px;
-  font-weight: 300;
-  padding: 13px 14px;
-}
-.capture input[type="email"]::placeholder {
-  color: var(--linen-45);
-}
-.capture input[type="email"]:focus {
-  border-color: var(--brass);
-  background: var(--linen-10);
-  outline: none;
-}
 .btn {
   font-family: var(--body);
   font-size: 14px;
