@@ -1,5 +1,5 @@
 ---
-import { withBase } from "../data/site";
+import { organization, organizationAddress, withBase } from "../data/site";
 ---
 <!-- Legal-page footer: Home, Terms, Privacy, email. -->
 <footer>
@@ -11,7 +11,7 @@ import { withBase } from "../data/site";
       <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>
     </nav>
     <p>
-      Fifth Wheel Supper Club, LLC &middot; Atlanta, Georgia &middot; Guests
+      {organization.legalName} &middot; {organizationAddress} &middot; Guests
       must be 21 or older.
     </p>
   </div>

@@ -34,8 +34,10 @@ const orgSchema = {
   email: organization.email,
   address: {
     "@type": "PostalAddress",
+    streetAddress: organization.streetAddress,
     addressLocality: organization.city,
     addressRegion: organization.region,
+    postalCode: organization.postalCode,
     addressCountry: organization.country,
   },
   logo: absoluteUrl("/fifth-wheel-app-icon.svg"),
@@ -48,6 +50,17 @@ const schemas = [orgSchema, ...jsonLd];
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Google tag (gtag.js) -->
+    <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-6RKWNDBCQ6"
+    ></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-6RKWNDBCQ6");
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />

@@ -1,4 +1,5 @@
 ---
+import { organizationAddress } from "../data/site";
 ---
 <div class="title">
         <h1>Privacy Policy</h1>
@@ -6,7 +7,7 @@
           Fifth Wheel Supper Club, LLC d/b/a Fifth Wheel &middot; Atlanta,
           Georgia
         </p>
-        <p class="updated">Last updated 5 September 2026</p>
+        <p class="updated">Last updated 27 October 2026</p>
         <p class="lede">
           This policy explains what we collect, why, who else sees it, how long
           we keep it, and what you can ask us to do with it. It applies to our
@@ -106,11 +107,11 @@
                 <td>Technical</td>
                 <td>
                   Basic request logs and a session cookie that keeps you signed
-                  in. Our landing page also loads the Meta Pixel, which records
-                  a page view on load and a Lead when a waitlist submission is
-                  stored. It does not receive your name, email, date of birth,
-                  identity, who you want to sit with, or anything else you enter
-                  on the form.
+                  in. The site also loads the Meta Pixel, which records a page
+                  view on load and a Lead when a waitlist submission is stored,
+                  and Google Analytics, which records page views. Neither
+                  receives your name, email, date of birth, identity, who you
+                  want to sit with, or anything else you enter on the form.
                 </td>
               </tr>
             </tbody>
@@ -249,6 +250,14 @@
                 <td>
                   Page views on load, and a Lead event when a waitlist row is
                   stored. No form fields are sent.
+                </td>
+              </tr>
+              <tr>
+                <td>Google</td>
+                <td>
+                  Site measurement through Google Analytics. Page views on the
+                  marketing site, privacy page, and terms page. No form fields
+                  are sent.
                 </td>
               </tr>
             </tbody>
@@ -419,8 +428,7 @@
         <section>
           <h2><span class="num">Contact</span>Questions about your privacy</h2>
           <p>
-            Fifth Wheel Supper Club, LLC d/b/a Fifth Wheel &middot; Atlanta,
-            Georgia<br />
+            Fifth Wheel Supper Club, LLC d/b/a Fifth Wheel &middot; {organizationAddress}<br />
             <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a> &middot;
             <a href="https://5thwheel.app">5thwheel.app</a>
           </p>

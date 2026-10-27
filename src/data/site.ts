@@ -10,10 +10,14 @@ export const organization = {
   name: "Fifth Wheel",
   legalName: "Fifth Wheel Supper Club, LLC",
   email: "hello@fifthwheel.community",
+  streetAddress: "1915 Commons Cir",
   city: "Atlanta",
   region: "GA",
+  postalCode: "30341",
   country: "US",
 };
+
+export const organizationAddress = `${organization.streetAddress}, ${organization.city}, ${organization.region} ${organization.postalCode}, USA`;
 
 export const landingMeta = {
   title: "Fifth Wheel — One table. Five people.",

@@ -1,5 +1,5 @@
 ---
-import { adminAppUrl, withBase } from "../data/site";
+import { adminAppUrl, organization, organizationAddress, withBase } from "../data/site";
 ---
 <!-- Waitlist, legal, staff console, and contact. -->
 <footer>
@@ -22,7 +22,7 @@ import { adminAppUrl, withBase } from "../data/site";
       </nav>
     </div>
     <p class="foot-fine">
-      Fifth Wheel Supper Club, LLC · Atlanta, Georgia · Guests must be 21 or
+      {organization.legalName} · {organizationAddress} · Guests must be 21 or
       older. Fifth Wheel arranges the table; restaurants and bars serve their
       own food and drink.
     </p>
