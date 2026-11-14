@@ -3,7 +3,7 @@
 export type OwnTableRequestDTO = Readonly<{
   requestId: string;
   tableId: string;
-  state: "pending" | "withdrawn" | "declined";
+  state: "pending" | "withdrawn" | "declined" | "closed_by_table";
   declineReason: string | null;
   createdAt: string;
   updatedAt: string;

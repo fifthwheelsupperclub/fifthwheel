@@ -89,6 +89,7 @@ import { Route as ApiAdminSupplyWeeklyCloneOperationsRouteImport } from './route
 import { Route as ApiAdminSupplyWeeklyClonePreviewRouteImport } from './routes/api/admin/supply/weekly-clone.preview'
 import { Route as ApiAdminTableInvitationsInvitationIdReconcileRouteImport } from './routes/api/admin/table-invitations.$invitationId.reconcile'
 import { Route as ApiAdminTableInvitationsInvitationIdRetryRouteImport } from './routes/api/admin/table-invitations.$invitationId.retry'
+import { Route as ApiAdminTablesTableIdCancelRouteImport } from './routes/api/admin/tables.$tableId.cancel'
 import { Route as ApiCurationTablesTableIdRosterRouteImport } from './routes/api/curation/tables.$tableId.roster'
 import { Route as ApiCurationTablesTableIdRosterProposalRouteImport } from './routes/api/curation/tables.$tableId.roster-proposal'
 import { Route as ApiMeRequestsRequestIdWithdrawRouteImport } from './routes/api/me/requests.$requestId.withdraw'
@@ -533,6 +534,12 @@ const ApiAdminTableInvitationsInvitationIdRetryRoute =
     path: '/$invitationId/retry',
     getParentRoute: () => ApiAdminTableInvitationsRoute,
   } as any)
+const ApiAdminTablesTableIdCancelRoute =
+  ApiAdminTablesTableIdCancelRouteImport.update({
+    id: '/api/admin/tables/$tableId/cancel',
+    path: '/api/admin/tables/$tableId/cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCurationTablesTableIdRosterRoute =
   ApiCurationTablesTableIdRosterRouteImport.update({
     id: '/api/curation/tables/$tableId/roster',
@@ -717,6 +724,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/supply/weekly-clone/preview': typeof ApiAdminSupplyWeeklyClonePreviewRoute
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
+  '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
@@ -811,6 +819,7 @@ export interface FileRoutesByTo {
   '/api/admin/supply/weekly-clone/preview': typeof ApiAdminSupplyWeeklyClonePreviewRoute
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
+  '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
@@ -911,6 +920,7 @@ export interface FileRoutesById {
   '/api/admin/supply/weekly-clone/preview': typeof ApiAdminSupplyWeeklyClonePreviewRoute
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
+  '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
@@ -1012,6 +1022,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/weekly-clone/preview'
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
+    | '/api/admin/tables/$tableId/cancel'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
     | '/api/me/requests/$requestId/withdraw'
@@ -1106,6 +1117,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/weekly-clone/preview'
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
+    | '/api/admin/tables/$tableId/cancel'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
     | '/api/me/requests/$requestId/withdraw'
@@ -1205,6 +1217,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/weekly-clone/preview'
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
+    | '/api/admin/tables/$tableId/cancel'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
     | '/api/me/requests/$requestId/withdraw'
@@ -1274,6 +1287,7 @@ export interface RootRouteChildren {
   ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute: typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute
   ApiAdminRefundOperationsOperationIdReconcileRoute: typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   ApiAdminRefundOperationsOperationIdRetryRoute: typeof ApiAdminRefundOperationsOperationIdRetryRoute
+  ApiAdminTablesTableIdCancelRoute: typeof ApiAdminTablesTableIdCancelRoute
   ApiCurationTablesTableIdRosterRoute: typeof ApiCurationTablesTableIdRosterRoute
   ApiCurationTablesTableIdRosterProposalRoute: typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
   ApiMeSeatsSeatIdCancellationRequestsRoute: typeof ApiMeSeatsSeatIdCancellationRequestsRoute
@@ -1840,6 +1854,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/table-invitations/$invitationId/retry'
       preLoaderRoute: typeof ApiAdminTableInvitationsInvitationIdRetryRouteImport
       parentRoute: typeof ApiAdminTableInvitationsRoute
+    }
+    '/api/admin/tables/$tableId/cancel': {
+      id: '/api/admin/tables/$tableId/cancel'
+      path: '/api/admin/tables/$tableId/cancel'
+      fullPath: '/api/admin/tables/$tableId/cancel'
+      preLoaderRoute: typeof ApiAdminTablesTableIdCancelRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/curation/tables/$tableId/roster': {
       id: '/api/curation/tables/$tableId/roster'
@@ -2459,6 +2480,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiAdminRefundOperationsOperationIdReconcileRoute,
   ApiAdminRefundOperationsOperationIdRetryRoute:
     ApiAdminRefundOperationsOperationIdRetryRoute,
+  ApiAdminTablesTableIdCancelRoute: ApiAdminTablesTableIdCancelRoute,
   ApiCurationTablesTableIdRosterRoute: ApiCurationTablesTableIdRosterRoute,
   ApiCurationTablesTableIdRosterProposalRoute:
     ApiCurationTablesTableIdRosterProposalRouteWithChildren,

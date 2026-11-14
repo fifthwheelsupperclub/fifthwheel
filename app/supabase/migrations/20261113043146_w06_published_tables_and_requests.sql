@@ -149,6 +149,7 @@ begin
     from public.app_supply_table_heads h
     join public.app_supply_table_revisions r on r.revision_id = h.published_revision_id and r.state = 'published'
     where h.lifecycle = 'published' and h.published_revision_id is not null
+      and not exists(select 1 from public.app_table_runtime rt where rt.table_id = h.table_id and rt.state = 'cancelled')
       and ((r.content->>'localDate')::date + (r.content->>'startLocalTime')::time) at time zone 'America/New_York' > now()
       and (v_from is null or (r.content->>'localDate')::date >= v_from)
       and (v_to is null or (r.content->>'localDate')::date <= v_to)
@@ -189,6 +190,7 @@ begin
   from public.app_supply_table_heads h join public.app_supply_table_revisions r
     on r.revision_id = h.published_revision_id and r.state = 'published'
   where h.table_id = p_table_id and h.lifecycle = 'published'
+    and not exists(select 1 from public.app_table_runtime rt where rt.table_id = h.table_id and rt.state = 'cancelled')
     and ((r.content->>'localDate')::date + (r.content->>'startLocalTime')::time) at time zone 'America/New_York' > now();
   if not found then return null; end if;
   return jsonb_build_object('view','preview','table',jsonb_build_object(
@@ -205,7 +207,10 @@ begin
     into v_content, v_start
   from public.app_supply_table_heads h join public.app_supply_table_revisions r
     on r.revision_id = h.published_revision_id and r.state = 'published'
-  where h.table_id = p_table_id and h.lifecycle = 'published';
+  where h.table_id = p_table_id and h.lifecycle = 'published'
+    -- A cancelled Table stays visible only to members who already have a request for it.
+    and (not exists(select 1 from public.app_table_runtime rt where rt.table_id = h.table_id and rt.state = 'cancelled')
+      or exists(select 1 from public.app_table_requests q0 where q0.table_id = h.table_id and q0.auth_user_id = p_auth_user_id));
   if not found then raise exception using errcode = 'P0002', message = 'not_found'; end if;
   if v_start <= now() then raise exception using errcode = 'P0001', message = 'not_future'; end if;
   select app_private.table_request_dto(q.request_id) into v_request
@@ -242,7 +247,8 @@ begin
     into v_content, v_start
   from public.app_supply_table_heads h join public.app_supply_table_revisions r
     on r.revision_id = h.published_revision_id and r.state = 'published'
-  where h.table_id = p_table_id and h.lifecycle = 'published' for share of h;
+  where h.table_id = p_table_id and h.lifecycle = 'published'
+    and not exists(select 1 from public.app_table_runtime rt where rt.table_id = h.table_id and rt.state = 'cancelled') for share of h;
   if not found then raise exception using errcode = 'P0002', message = 'not_found'; end if;
   if v_start <= now() then raise exception using errcode = 'P0001', message = 'not_future'; end if;
   select * into v_request from public.app_table_requests q
