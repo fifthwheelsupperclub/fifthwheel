@@ -9,6 +9,7 @@ import type {
   ReconcileTableInvitationDeliveryResultDTO, RetryTableInvitationDeliveryRequest, RetryTableInvitationDeliveryResultDTO, TableInvitationDeliveryState,
   TableInvitationErrorCode, TableInvitationResponse, TableInvitationState,
 } from "../table-invitations.contract.ts";
+import { RemoveGuestAction } from "./ops-workspaces.tsx";
 import "./table-invitation-workspaces.css";
 
 type InvitationPageState = "loading" | "ready" | "unauthenticated" | "forbidden" | "not_found" | "error";
@@ -294,6 +295,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
               : item.delivery.state === "unknown" ? <><p className="admin-invitation-recovery-note"><CircleAlert aria-hidden="true" />We could not confirm the email status. Check this existing attempt before trying again; this check will not send another email.</p><button className="button button-outline admin-invitation-retry" type="button" onClick={() => void reconcile(item)} disabled={reconcileId === item.invitationId}>{reconcileId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{reconcileId === item.invitationId ? "Checking email…" : "Check email status"}</button></>
               : null}
           {item.delivery.state === "failed" && <p className="admin-invitation-recovery-note"><Mail aria-hidden="true" />Retry queues a new delivery attempt. It does not send email inline or change the invitation.</p>}
+          {item.invitationState === "active" && <RemoveGuestAction invitationId={item.invitationId} guestName={item.guest.displayName} onDone={() => void load()} />}
         </article>;
       })}</div>}
       {state === "ready" && cursor && <div className="table-load-more"><button className="button button-outline" type="button" disabled={loadingMore} onClick={() => { setLoadingMore(true); void load(cursor, true); }}>{loadingMore ? "Loading more…" : "Load more"}<ArrowRight aria-hidden="true" /></button></div>}

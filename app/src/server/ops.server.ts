@@ -29,6 +29,11 @@ export const opsSpecs = {
     args: (p, b) => isUuid(p.tableId) && isUuid(b.seatId) && Object.keys(b).length === 1 ? { p_table_id: p.tableId, p_seat_id: b.seatId } : null },
   flagCancellation: { method: "POST", roles: ["admin", "host"], rpc: "flag_cancellation_request",
     args: (p, b) => isUuid(p.requestId) && Object.keys(b).length === 0 ? { p_request_id: p.requestId } : null },
+  replacementSuggestion: { method: "GET", roles: ["admin"], rpc: "suggest_replacement", args: (p) => isUuid(p.invitationId) ? { p_invitation_id: p.invitationId } : null },
+  removeAndReplace: { method: "POST", roles: ["admin"], rpc: "remove_and_replace",
+    args: (p, b) => isUuid(p.invitationId) && isUuid(b.operationId) && Number.isSafeInteger(b.expectedRevision) && Number.isSafeInteger(b.refundCents)
+      && (b.replaceRequestId === null || isUuid(b.replaceRequestId)) && Object.keys(b).length === 4
+      ? { p_invitation_id: p.invitationId, p_operation_id: b.operationId, p_expected_revision: b.expectedRevision, p_refund_cents: b.refundCents, p_replace_request_id: b.replaceRequestId } : null },
   staffAssignments: { method: "GET", roles: ["admin"], rpc: "read_staff_assignments", args: () => ({}) },
   hostAssignment: { method: "POST", roles: ["admin"], rpc: "set_host_assignment",
     args: (_p, b) => isUuid(b.tableId) && isUuid(b.userId) && typeof b.assigned === "boolean" && Object.keys(b).length === 3 ? { p_table_id: b.tableId, p_user_id: b.userId, p_assigned: b.assigned } : null },
@@ -50,7 +55,8 @@ export class OpsRpcError extends Error {}
 
 const headers = { "cache-control": "private, no-store", "referrer-policy": "no-referrer", vary: "Cookie, Origin" };
 const conflicts = new Set(["table_not_proceeding", "table_not_proceedable", "decision_not_open", "group_invalid", "seat_not_checkin_eligible",
-  "decision_finalized", "not_a_host", "not_a_restaurant_user", "operation_conflict"]);
+  "decision_finalized", "not_a_host", "not_a_restaurant_user", "operation_conflict", "revision_conflict", "invitation_not_removable", "table_not_active",
+  "refund_amount_exceeds_balance"]);
 const codes = { unauthenticated: 401, forbidden: 403, not_found: 404, invalid_input: 400, conflict: 409, temporarily_unavailable: 503 } as const;
 const messages: Record<keyof typeof codes, string> = { unauthenticated: "Sign in to continue.", forbidden: "You do not have access to this.",
   not_found: "That could not be found.", invalid_input: "Check the details and try again.", conflict: "That action is not available right now.",

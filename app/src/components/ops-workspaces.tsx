@@ -154,3 +154,66 @@ export function RestaurantWorkspace() {
           {s.hostContacts.length > 0 && <p className="ops-contact-line">Host: {s.hostContacts.map((c) => `${c.displayName} · ${c.businessContact}`).join("; ")}</p>}</div></li>)}</ul>}
   </Shell>}</Status>;
 }
+
+// ---- Admin: remove a guest, optionally replace ----------------------------------------------------------------------
+type Suggestion = { expectedRevision: number; remainingValid: boolean; candidate: { requestId: string; guestId: string; displayName: string; requestCreatedAt: string } | null };
+type Removal = { removal: { seatCancelled: boolean; refundCents: number }; replacement: { state: "sent" | "none" | "stale" }; roster: { revision: number; valid: boolean; needsReview: boolean } };
+const removalErrors: Record<string, string> = { revision_conflict: "The roster changed. Close this and reopen it.", invitation_not_removable: "This guest was already removed.",
+  table_not_active: "This Table is cancelled or completed.", refund_amount_exceeds_balance: "That refund is more than this guest has paid." };
+
+/** Removal always commits. The replacement is revalidated on the server at the moment of "Yes". */
+export function RemoveGuestAction({ invitationId, guestName, onDone }: Readonly<{ invitationId: string; guestName: string; onDone: () => void }>) {
+  const [open, setOpen] = useState(false);
+  const [suggestion, setSuggestion] = useState<Load<Suggestion>>({ state: "loading" });
+  const [refund, setRefund] = useState("0");
+  const [working, setWorking] = useState(false);
+  const [message, setMessage] = useState("");
+  const [outcome, setOutcome] = useState<Removal | null>(null);
+  const [operationId, setOperationId] = useState("");
+  async function start() {
+    setOpen(true); setOutcome(null); setMessage(""); setRefund("0"); setOperationId(crypto.randomUUID()); setSuggestion({ state: "loading" });
+    const result = await call<Suggestion>(`/api/admin/invitations/${encodeURIComponent(invitationId)}/replacement-suggestion`);
+    setSuggestion(result.ok ? { state: "ready", data: result.data } : { state: "error", status: result.status, message: result.message });
+  }
+  async function remove(replaceRequestId: string | null) {
+    if (suggestion.state !== "ready") return;
+    const cents = Math.round(Number(refund) * 100);
+    if (!Number.isFinite(cents) || cents < 0 || cents > 2500) { setMessage("Enter a refund between $0 and $25."); return; }
+    setWorking(true); setMessage("");
+    const result = await call<Removal>(`/api/admin/invitations/${encodeURIComponent(invitationId)}/remove`,
+      { operationId, expectedRevision: suggestion.data.expectedRevision, refundCents: cents, replaceRequestId });
+    setWorking(false);
+    if (result.ok) setOutcome(result.data); else setMessage(removalErrors[result.reason ?? ""] ?? result.message);
+  }
+  function close() { setOpen(false); if (outcome) onDone(); }
+  const candidate = suggestion.state === "ready" ? suggestion.data.candidate : null;
+  return <>
+    <button className="button button-outline ops-remove" type="button" onClick={() => void start()}>Remove from Table…</button>
+    {open && <div className="ops-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) close(); }}>
+      <section className="ops-modal" role="dialog" aria-modal="true" aria-labelledby={`remove-${invitationId}`}>
+        <p className="eyebrow">REMOVE FROM TABLE</p>
+        {outcome ? <>
+          <h2 id={`remove-${invitationId}`}>{guestName} was removed</h2>
+          <p>{outcome.removal.seatCancelled ? (outcome.removal.refundCents > 0 ? `Their Seat was cancelled and a ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(outcome.removal.refundCents / 100)} refund is owed; send it from Refunds.` : "Their Seat was cancelled with no refund.") : "Their invitation was revoked."}</p>
+          <p>{outcome.replacement.state === "sent" ? "One replacement invitation was queued." : outcome.replacement.state === "stale" ? "The suggested guest was no longer eligible, so no invitation was sent." : "No replacement invitation was sent."}</p>
+          {outcome.roster.needsReview && <p className="ops-alert" role="status"><AlertCircle aria-hidden="true" />The remaining group no longer meets the roster rules. Review this Table before it starts; a Table with fewer than three valid paid guests cannot proceed.</p>}
+          <div className="ops-modal-actions"><a className="button button-outline" href="/admin/refunds">Open Refunds</a><button className="button button-primary" type="button" onClick={close}>Close</button></div>
+        </> : <>
+          <h2 id={`remove-${invitationId}`}>Remove {guestName}?</h2>
+          {suggestion.state === "loading" && <p role="status"><LoaderCircle className="ops-spin" aria-hidden="true" /> Checking for a replacement…</p>}
+          {suggestion.state === "error" && <p role="alert" className="ops-alert"><AlertCircle aria-hidden="true" />{suggestion.message}</p>}
+          {suggestion.state === "ready" && <>
+            <p>Their invitation is revoked and any unfinished checkout is released. If they already paid, their Seat is cancelled and the refund below becomes owed.</p>
+            <label className="ops-field">Refund if they have paid ($0–$25)<input inputMode="decimal" value={refund} onChange={(event) => setRefund(event.currentTarget.value)} disabled={working} /></label>
+            {candidate ? <p><strong>Replace with {candidate.displayName} from the waitlist?</strong> They have asked for this Table, are approved and keep the group valid. Choosing Yes checks that again before anything is sent.</p>
+              : <p>No eligible replacement is available. Removing still goes ahead.</p>}
+            {message && <p role="alert" className="ops-alert"><AlertCircle aria-hidden="true" />{message}</p>}
+            <div className="ops-modal-actions">
+              <button className="button button-outline" type="button" disabled={working} onClick={() => setOpen(false)}>Keep guest</button>
+              {candidate && <button className="button button-primary" type="button" disabled={working} onClick={() => void remove(candidate.requestId)}>{working ? "Removing…" : "Yes, remove and invite"}</button>}
+              <button className={`button ${candidate ? "button-outline" : "button-primary"}`} type="button" disabled={working} onClick={() => void remove(null)}>{candidate ? "No, remove only" : working ? "Removing…" : "Remove"}</button>
+            </div></>}
+        </>}
+      </section></div>}
+  </>;
+}

@@ -57,3 +57,21 @@ test("restaurant workspace takes an optional venue id and rejects junk", async (
   assert.equal((await s.handle("restaurantWorkspace", get(`/r?venueId=${id(9)}`))).status, 200);
   assert.equal((await s.handle("restaurantWorkspace", get("/r?venueId=junk"))).status, 400);
 });
+
+test("removal and replacement: admin only, exact body, null replacement allowed, conflicts surfaced", async () => {
+  const body = { operationId: id(3), expectedRevision: 2, refundCents: 1500, replaceRequestId: id(5) };
+  const admin = setup(who("admin"));
+  assert.equal((await admin.handle("removeAndReplace", post(body), { invitationId: id(7) })).status, 200);
+  assert.deepEqual(admin.calls[0], ["remove_and_replace", { p_actor: id(1), p_invitation_id: id(7), p_operation_id: id(3), p_expected_revision: 2, p_refund_cents: 1500, p_replace_request_id: id(5) }]);
+  assert.equal((await admin.handle("removeAndReplace", post({ ...body, replaceRequestId: null }), { invitationId: id(7) })).status, 200);
+  assert.equal((await admin.handle("removeAndReplace", post({ operationId: id(3), expectedRevision: 2, refundCents: 0 }), { invitationId: id(7) })).status, 400);
+  assert.equal((await admin.handle("removeAndReplace", post({ ...body, refundCents: "5" }), { invitationId: id(7) })).status, 400);
+  assert.equal((await admin.handle("replacementSuggestion", get("/s"), { invitationId: id(7) })).status, 200);
+  const host = setup(who("host"));
+  assert.equal((await host.handle("removeAndReplace", post(body), { invitationId: id(7) })).status, 403);
+  assert.equal((await host.handle("replacementSuggestion", get("/s"), { invitationId: id(7) })).status, 403);
+  assert.equal(host.calls.length, 0);
+  const conflict = await setup(who("admin"), async () => { throw new OpsRpcError("revision_conflict"); }).handle("removeAndReplace", post(body), { invitationId: id(7) });
+  assert.equal(conflict.status, 409);
+  assert.equal((await conflict.json()).error.reason, "revision_conflict");
+});

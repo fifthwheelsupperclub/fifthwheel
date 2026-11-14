@@ -91,6 +91,8 @@ import { Route as ApiAdminCancellationsRequestIdDecisionRouteImport } from './ro
 import { Route as ApiAdminIdentityReviewsGuestIdDecisionRouteImport } from './routes/api/admin/identity-reviews.$guestId.decision'
 import { Route as ApiAdminInvitationDeliveriesDeliveryIdAttemptsRouteImport } from './routes/api/admin/invitation-deliveries/$deliveryId/attempts'
 import { Route as ApiAdminInvitationDeliveriesDeliveryIdReconcileRouteImport } from './routes/api/admin/invitation-deliveries/$deliveryId/reconcile'
+import { Route as ApiAdminInvitationsInvitationIdRemoveRouteImport } from './routes/api/admin/invitations.$invitationId.remove'
+import { Route as ApiAdminInvitationsInvitationIdReplacementSuggestionRouteImport } from './routes/api/admin/invitations.$invitationId.replacement-suggestion'
 import { Route as ApiAdminRefundOperationsOperationIdReconcileRouteImport } from './routes/api/admin/refund-operations.$operationId.reconcile'
 import { Route as ApiAdminRefundOperationsOperationIdRetryRouteImport } from './routes/api/admin/refund-operations.$operationId.retry'
 import { Route as ApiAdminRefundsObligationIdDispatchRouteImport } from './routes/api/admin/refunds.$obligationId.dispatch'
@@ -554,6 +556,18 @@ const ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute =
     path: '/api/admin/invitation-deliveries/$deliveryId/reconcile',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminInvitationsInvitationIdRemoveRoute =
+  ApiAdminInvitationsInvitationIdRemoveRouteImport.update({
+    id: '/api/admin/invitations/$invitationId/remove',
+    path: '/api/admin/invitations/$invitationId/remove',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminInvitationsInvitationIdReplacementSuggestionRoute =
+  ApiAdminInvitationsInvitationIdReplacementSuggestionRouteImport.update({
+    id: '/api/admin/invitations/$invitationId/replacement-suggestion',
+    path: '/api/admin/invitations/$invitationId/replacement-suggestion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminRefundOperationsOperationIdReconcileRoute =
   ApiAdminRefundOperationsOperationIdReconcileRouteImport.update({
     id: '/api/admin/refund-operations/$operationId/reconcile',
@@ -818,6 +832,8 @@ export interface FileRoutesByFullPath {
   '/api/admin/identity-reviews/$guestId/decision': typeof ApiAdminIdentityReviewsGuestIdDecisionRoute
   '/api/admin/invitation-deliveries/$deliveryId/attempts': typeof ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute
   '/api/admin/invitation-deliveries/$deliveryId/reconcile': typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute
+  '/api/admin/invitations/$invitationId/remove': typeof ApiAdminInvitationsInvitationIdRemoveRoute
+  '/api/admin/invitations/$invitationId/replacement-suggestion': typeof ApiAdminInvitationsInvitationIdReplacementSuggestionRoute
   '/api/admin/refund-operations/$operationId/reconcile': typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   '/api/admin/refund-operations/$operationId/retry': typeof ApiAdminRefundOperationsOperationIdRetryRoute
   '/api/admin/refunds/$obligationId/dispatch': typeof ApiAdminRefundsObligationIdDispatchRoute
@@ -927,6 +943,8 @@ export interface FileRoutesByTo {
   '/api/admin/identity-reviews/$guestId/decision': typeof ApiAdminIdentityReviewsGuestIdDecisionRoute
   '/api/admin/invitation-deliveries/$deliveryId/attempts': typeof ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute
   '/api/admin/invitation-deliveries/$deliveryId/reconcile': typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute
+  '/api/admin/invitations/$invitationId/remove': typeof ApiAdminInvitationsInvitationIdRemoveRoute
+  '/api/admin/invitations/$invitationId/replacement-suggestion': typeof ApiAdminInvitationsInvitationIdReplacementSuggestionRoute
   '/api/admin/refund-operations/$operationId/reconcile': typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   '/api/admin/refund-operations/$operationId/retry': typeof ApiAdminRefundOperationsOperationIdRetryRoute
   '/api/admin/refunds/$obligationId/dispatch': typeof ApiAdminRefundsObligationIdDispatchRoute
@@ -1042,6 +1060,8 @@ export interface FileRoutesById {
   '/api/admin/identity-reviews/$guestId/decision': typeof ApiAdminIdentityReviewsGuestIdDecisionRoute
   '/api/admin/invitation-deliveries/$deliveryId/attempts': typeof ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute
   '/api/admin/invitation-deliveries/$deliveryId/reconcile': typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute
+  '/api/admin/invitations/$invitationId/remove': typeof ApiAdminInvitationsInvitationIdRemoveRoute
+  '/api/admin/invitations/$invitationId/replacement-suggestion': typeof ApiAdminInvitationsInvitationIdReplacementSuggestionRoute
   '/api/admin/refund-operations/$operationId/reconcile': typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   '/api/admin/refund-operations/$operationId/retry': typeof ApiAdminRefundOperationsOperationIdRetryRoute
   '/api/admin/refunds/$obligationId/dispatch': typeof ApiAdminRefundsObligationIdDispatchRoute
@@ -1158,6 +1178,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews/$guestId/decision'
     | '/api/admin/invitation-deliveries/$deliveryId/attempts'
     | '/api/admin/invitation-deliveries/$deliveryId/reconcile'
+    | '/api/admin/invitations/$invitationId/remove'
+    | '/api/admin/invitations/$invitationId/replacement-suggestion'
     | '/api/admin/refund-operations/$operationId/reconcile'
     | '/api/admin/refund-operations/$operationId/retry'
     | '/api/admin/refunds/$obligationId/dispatch'
@@ -1267,6 +1289,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews/$guestId/decision'
     | '/api/admin/invitation-deliveries/$deliveryId/attempts'
     | '/api/admin/invitation-deliveries/$deliveryId/reconcile'
+    | '/api/admin/invitations/$invitationId/remove'
+    | '/api/admin/invitations/$invitationId/replacement-suggestion'
     | '/api/admin/refund-operations/$operationId/reconcile'
     | '/api/admin/refund-operations/$operationId/retry'
     | '/api/admin/refunds/$obligationId/dispatch'
@@ -1381,6 +1405,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews/$guestId/decision'
     | '/api/admin/invitation-deliveries/$deliveryId/attempts'
     | '/api/admin/invitation-deliveries/$deliveryId/reconcile'
+    | '/api/admin/invitations/$invitationId/remove'
+    | '/api/admin/invitations/$invitationId/replacement-suggestion'
     | '/api/admin/refund-operations/$operationId/reconcile'
     | '/api/admin/refund-operations/$operationId/retry'
     | '/api/admin/refunds/$obligationId/dispatch'
@@ -1468,6 +1494,8 @@ export interface RootRouteChildren {
   HostTablesTableIdRosterRoute: typeof HostTablesTableIdRosterRoute
   ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute: typeof ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute
   ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute: typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute
+  ApiAdminInvitationsInvitationIdRemoveRoute: typeof ApiAdminInvitationsInvitationIdRemoveRoute
+  ApiAdminInvitationsInvitationIdReplacementSuggestionRoute: typeof ApiAdminInvitationsInvitationIdReplacementSuggestionRoute
   ApiAdminRefundOperationsOperationIdReconcileRoute: typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   ApiAdminRefundOperationsOperationIdRetryRoute: typeof ApiAdminRefundOperationsOperationIdRetryRoute
   ApiAdminTablesTableIdCancelRoute: typeof ApiAdminTablesTableIdCancelRoute
@@ -2054,6 +2082,20 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/invitation-deliveries/$deliveryId/reconcile'
       fullPath: '/api/admin/invitation-deliveries/$deliveryId/reconcile'
       preLoaderRoute: typeof ApiAdminInvitationDeliveriesDeliveryIdReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/invitations/$invitationId/remove': {
+      id: '/api/admin/invitations/$invitationId/remove'
+      path: '/api/admin/invitations/$invitationId/remove'
+      fullPath: '/api/admin/invitations/$invitationId/remove'
+      preLoaderRoute: typeof ApiAdminInvitationsInvitationIdRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/invitations/$invitationId/replacement-suggestion': {
+      id: '/api/admin/invitations/$invitationId/replacement-suggestion'
+      path: '/api/admin/invitations/$invitationId/replacement-suggestion'
+      fullPath: '/api/admin/invitations/$invitationId/replacement-suggestion'
+      preLoaderRoute: typeof ApiAdminInvitationsInvitationIdReplacementSuggestionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/refund-operations/$operationId/reconcile': {
@@ -2786,6 +2828,10 @@ const rootRouteChildren: RootRouteChildren = {
     ApiAdminInvitationDeliveriesDeliveryIdAttemptsRoute,
   ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute:
     ApiAdminInvitationDeliveriesDeliveryIdReconcileRoute,
+  ApiAdminInvitationsInvitationIdRemoveRoute:
+    ApiAdminInvitationsInvitationIdRemoveRoute,
+  ApiAdminInvitationsInvitationIdReplacementSuggestionRoute:
+    ApiAdminInvitationsInvitationIdReplacementSuggestionRoute,
   ApiAdminRefundOperationsOperationIdReconcileRoute:
     ApiAdminRefundOperationsOperationIdReconcileRoute,
   ApiAdminRefundOperationsOperationIdRetryRoute:
