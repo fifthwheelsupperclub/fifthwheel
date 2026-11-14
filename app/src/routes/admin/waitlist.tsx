@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffSidebar } from "../../components/staff-nav";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { SignOutButton } from "../../components/sign-out-button.tsx";
 import {
@@ -290,25 +291,7 @@ function AdminWaitlistPage() {
       <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar" aria-label="Admin navigation">
-        <p className="sidebar-caption">WORKSPACE</p>
-        <a className="member-nav-link" href="/admin">Overview</a>
-        <p className="group-label">PEOPLE</p>
-        <a className="member-nav-link active" aria-current="page" href="/admin/waitlist"><UsersRound aria-hidden="true" />Waitlist</a>
-        <a className="member-nav-link" href="/admin/identity-review"><FileCheck2 aria-hidden="true" />Identity review</a>
-        <a className="member-nav-link" href="/admin/seat-requests"><UsersRound aria-hidden="true" />Seat requests</a>
-        <p className="group-label">TABLES</p>
-        <a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
-        <p className="group-label">MONEY</p>
-        <a className="member-nav-link" href="/admin/cancellations">Cancellations</a>
-        <a className="member-nav-link" href="/admin/refunds">Refunds</a>
-        <p className="group-label">OPERATIONS</p>
-        <a className="member-nav-link" href="/admin/notices">Communications</a>
-        <a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a>
-        <a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
-        
-        <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />App access and Table invitations are separate.</div>
-      </aside>
+      <StaffSidebar active="waitlist" foot="App access and table invitations are separate." />
 
       <section className="product-content" aria-labelledby="waitlist-heading">
         <div className="product-breadcrumb">People <span>/</span> Waitlist</div>

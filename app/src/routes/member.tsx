@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GuestSidebar } from "../components/guest-nav";
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleAlert, ClipboardList, House, Table2, Ticket, UserRound } from "lucide-react";
 import { SignOutButton } from "../components/sign-out-button.tsx";
@@ -54,14 +55,7 @@ function MemberHomePage() {
       <div className="product-topbar-actions"><span className="product-workspace-label">MEMBER WORKSPACE</span><a className="account-action" href="/account/profile"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar member-product-sidebar" aria-label="Member navigation">
-        <p className="sidebar-caption">YOUR EVENINGS</p>
-        <a className="member-nav-link active" aria-current="page" href="/member"><House aria-hidden="true" />Home</a>
-        <a className="member-nav-link" href="/tables"><Table2 aria-hidden="true" />Tables</a>
-        <a className="member-nav-link" href="/requests"><ClipboardList aria-hidden="true" />Requests</a>
-        <a className="member-nav-link" href="/my-seats"><Ticket aria-hidden="true" />My Seats</a>
-        <div className="product-sidebar-foot">Your admission is separate from Table invitations and payment.</div>
-      </aside>
+      <GuestSidebar active="home" foot="Your admission is separate from Table invitations and payment." />
 
       <section className="product-content member-home-content" aria-labelledby="member-home-heading">
         <div className="product-breadcrumb">Member <span>/</span> Home</div>

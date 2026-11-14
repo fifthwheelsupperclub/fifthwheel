@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { StaffSidebar } from "./staff-nav";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, CircleAlert, Clock3, FileCheck2, LoaderCircle, RefreshCw, ShieldCheck, Table2, UserRoundCheck, UsersRound } from "lucide-react";
 import type { IdentityReviewDecisionResultDTO, IdentityReviewDetailDTO, IdentityReviewQueueItem, ProfileFileSummary, W04Error } from "../profile.contract.ts";
@@ -326,16 +327,7 @@ function AdminReviewShell(props: Readonly<{ active: "queue" | "detail"; children
       <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar" aria-label="Admin navigation">
-        <p className="sidebar-caption">WORKSPACE</p><a className="member-nav-link" href="/admin">Overview</a>
-        <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><UserRoundCheck aria-hidden="true" />Waitlist</a>
-        <a className={"member-nav-link " + (props.active === "queue" || props.active === "detail" ? "active" : "")} href="/admin/identity-review" aria-current={props.active === "queue" ? "page" : undefined}><FileCheck2 aria-hidden="true" />Identity review</a>
-        <a className="member-nav-link" href="/admin/seat-requests"><UsersRound aria-hidden="true" />Seat requests</a>
-        <p className="group-label">TABLES</p><a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
-        <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a>
-        <p className="group-label">OPERATIONS</p><a className="member-nav-link" href="/admin/notices">Communications</a><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
-        <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />Identity evidence is restricted to current submitted reviews.</div>
-      </aside>
+      <StaffSidebar role="admin" active="identity-review" foot="Identity evidence is restricted to current submitted reviews." />
       <section className="product-content identity-review-content">{props.children}</section>
     </div>
   </main>;

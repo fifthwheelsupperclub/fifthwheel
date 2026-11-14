@@ -1,4 +1,5 @@
 import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { GuestSidebar } from "./guest-nav";
 import {
   ArrowRight,
   BadgeCheck,
@@ -599,14 +600,7 @@ export function ProfileWorkspace() {
       <div className="product-topbar-actions"><a className="account-action account-action-active" href="/account/profile" aria-current="page"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar member-product-sidebar" aria-label="Member navigation">
-        <p className="sidebar-caption">YOUR EVENINGS</p>
-        <a className="member-nav-link" href="/member"><House aria-hidden="true" />Home</a>
-        <a className="member-nav-link" href="/tables"><Table2 aria-hidden="true" />Tables</a>
-        <a className="member-nav-link" href="/requests"><ClipboardList aria-hidden="true" />Requests</a>
-        <a className="member-nav-link" href="/my-seats"><BadgeCheck aria-hidden="true" />My Seats</a>
-        <div className="product-sidebar-foot">Your profile stays private and is visible only to you and the authorized review team.</div>
-      </aside>
+      <GuestSidebar foot="Your profile stays private and is visible only to you and the authorized review team." />
       <section className="product-content profile-content" aria-labelledby="profile-heading">
         <div className="product-breadcrumb">Member <span>/</span> Account <span>/</span> Profile</div>
         {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading your profile</h2><p>Your saved details and review status are being checked.</p></section>}

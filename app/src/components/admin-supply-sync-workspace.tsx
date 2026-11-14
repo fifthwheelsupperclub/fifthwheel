@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StaffSidebar } from "./staff-nav";
 import { ArrowRight, Ban, Check, CircleAlert, Clock3, Database, FileWarning, LoaderCircle, RefreshCw, ShieldCheck, Table2, WifiOff } from "lucide-react";
 import type { SupplyProviderState, SupplySyncAdminSummaryDTO, SupplySyncConflict, SupplySyncError, SupplySyncResponse, SupplySyncRunDTO } from "../supply.contract.ts";
 import { SignOutButton } from "./sign-out-button.tsx";
@@ -203,16 +204,7 @@ export function AdminSupplySyncWorkspace() {
       <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar" aria-label="Admin navigation">
-        <p className="sidebar-caption">WORKSPACE</p><a className="member-nav-link" href="/admin">Overview</a>
-        <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><span className="supply-nav-number">01</span>Waitlist</a>
-        <a className="member-nav-link" href="/admin/identity-review"><span className="supply-nav-number">02</span>Identity review</a>
-        <a className="member-nav-link" href="/admin/seat-requests"><span className="supply-nav-number">03</span>Seat requests</a>
-        <p className="group-label">TABLES</p><a className="member-nav-link active" href="/admin/tables" aria-current="page"><Table2 aria-hidden="true" />Tables</a>
-        <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a>
-        <p className="group-label">OPERATIONS</p><a className="member-nav-link" href="/admin/notices">Communications</a><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
-        <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />Supply changes never alter invitations, Seats or payment state.</div>
-      </aside>
+      <StaffSidebar active="tables" foot="Supply changes never alter invitations, seats or payment state." />
 
       <section className="product-content supply-content" aria-labelledby="supply-title">
         <div className="product-breadcrumb">Tables <span>/</span> Supply sync</div>

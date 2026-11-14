@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { INVITATION_STATE_HEADING, INVITATION_STATE_PILL, REQUEST_STATE_LABEL, type RequestState } from "../copy/states.ts";
+import { GuestSidebar } from "./guest-nav";
 import {
   ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CircleAlert, ClipboardList, Clock3,
   House, Mail, MapPin, Share2, Table2, Ticket, UserRound, Utensils, X,
@@ -7,7 +9,6 @@ import { SignOutButton } from "./sign-out-button.tsx";
 import type { TableInvitationDeliveryState, TableInvitationHistorySummaryDTO } from "../table-invitations.contract.ts";
 import "./member-tables-workspace.css";
 
-type RequestState = "pending" | "withdrawn" | "declined" | "closed_by_table";
 type TableInvitationSummary = TableInvitationHistorySummaryDTO;
 type TableStop = Readonly<{ role: string; venueName: string; venueAddress: string; minutesFromStart: number; publicNotes: string }>;
 type TableData = Readonly<{
@@ -220,14 +221,7 @@ export function MemberWorkspaceShell({ active, children }: { active: "tables" | 
       <div className="product-topbar-actions"><span className="product-workspace-label">MEMBER WORKSPACE</span><a className="account-action" href="/account/profile"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar member-product-sidebar" aria-label="Member navigation">
-        <p className="sidebar-caption">YOUR EVENINGS</p>
-        <a className="member-nav-link" href="/member"><House aria-hidden="true" />Home</a>
-        <a className={`member-nav-link ${active === "tables" ? "active" : ""}`} href="/tables" aria-current={active === "tables" ? "page" : undefined}><Table2 aria-hidden="true" />Tables</a>
-        <a className={`member-nav-link ${active === "requests" ? "active" : ""}`} href="/requests" aria-current={active === "requests" ? "page" : undefined}><ClipboardList aria-hidden="true" />Requests</a>
-        <a className={`member-nav-link ${active === "seats" ? "active" : ""}`} href="/my-seats" aria-current={active === "seats" ? "page" : undefined}><Ticket aria-hidden="true" />My Seats</a>
-        <div className="product-sidebar-foot">{active === "seats" ? "A Seat appears here only after verified payment." : "A request is a step toward a Table, not an invitation or a confirmed Seat."}</div>
-      </aside>
+      <GuestSidebar active={active === "seats" ? "seats" : active === "requests" ? "requests" : active === "tables" ? "tables" : undefined} foot={active === "seats" ? "A Seat appears here only after verified payment." : "A request is a step toward a Table, not an invitation or a confirmed Seat."} />
       <div className="product-content member-tables-content">{children}</div>
     </div>
   </main>;
@@ -564,9 +558,9 @@ export function MemberRequestsWorkspace() {
     {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="When you ask the team to consider you for a Table, it will appear here. Requests do not reserve or charge for a Seat." action={<a className="button button-primary" href="/tables">Browse Tables<ArrowRight aria-hidden="true" /></a>} />}
     {state === "ready" && items.length > 0 && <div className="request-history-list">{items.map((item) => <article className="request-history-card" key={item.requestId}>
       <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><p className="eyebrow">{item.tableInvitation?.state === "active" ? "SEAT REQUEST · STILL PENDING" : item.state === "pending" ? "AWAITING REVIEW" : item.state === "withdrawn" ? "WITHDRAWN" : item.state === "closed_by_table" ? "TABLE CANCELLED" : "REQUEST UPDATE"}</p><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
-      <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{item.state === "pending" ? "SEAT REQUEST · PENDING" : item.state === "closed_by_table" ? "Table cancelled" : titleCase(item.state)}</span><p>Requested {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(item.createdAt))}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
+      <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(item.createdAt))}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
       {item.tableInvitation && <section className={`request-offer-card offer-${item.tableInvitation.state}`} aria-label="Table invitation status">
-        <div className="request-offer-heading"><span className="request-offer-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">TABLE INVITATION</p><strong>{item.tableInvitation.state === "active" ? "Your invitation is open" : item.tableInvitation.state === "revoked" ? "Invitation revoked" : "Invitation closed"}</strong></div><span className={`status-pill ${item.tableInvitation.state === "active" ? "status-pill-success" : "status-pill-neutral"}`}>{titleCase(item.tableInvitation.state)}</span></div>
+        <div className="request-offer-heading"><span className="request-offer-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">TABLE INVITATION</p><strong>{INVITATION_STATE_HEADING[item.tableInvitation.state]}</strong></div><span className={`status-pill ${item.tableInvitation.state === "active" ? "status-pill-success" : "status-pill-neutral"}`}>{INVITATION_STATE_PILL[item.tableInvitation.state]}</span></div>
         {item.tableInvitation.state === "active" && <p className="request-offer-boundary">This is a separate offer. Your Seat request remains in history, and this invitation does not confirm a paid Seat.</p>}
         <div className="request-offer-delivery"><Mail aria-hidden="true" /><span><strong>{invitationDeliveryMessage(item.tableInvitation.deliveryState).label}</strong><small>{invitationDeliveryMessage(item.tableInvitation.deliveryState).detail}</small></span></div>
         <a className="request-offer-link" href={`/invitations/${encodeURIComponent(item.tableInvitation.invitationId)}`}>Review Table invitation<ArrowRight aria-hidden="true" /></a>

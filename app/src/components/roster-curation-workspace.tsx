@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StaffSidebar } from "./staff-nav";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -187,21 +188,7 @@ function StaffShell({ actor, active, children }: { actor: Actor; active: "queue"
       <div className="product-topbar-actions"><span className="product-workspace-label">{admin ? "ADMIN WORKSPACE" : "HOST WORKSPACE"}</span><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <aside className="product-sidebar" aria-label={`${admin ? "Admin" : "Host"} navigation`}>
-        <span className="sidebar-caption">WORKSPACE</span>
-        {admin ? <>
-          <Link className={`member-nav-link ${active === "queue" ? "active" : ""}`} to="/admin/seat-requests"><UsersRound aria-hidden="true" />Seat requests</Link>
-          <a className="member-nav-link" href="/admin/waitlist"><UsersRound aria-hidden="true" />Waitlist</a>
-          <a className="member-nav-link" href="/admin/identity-review"><ShieldCheck aria-hidden="true" />Identity review</a>
-          <a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
-          <a className="member-nav-link" href="/admin/table-decisions">Table decisions</a>
-          <a className="member-nav-link" href="/admin/staff-assignments">Staff assignments</a>
-          <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a>
-        </> : <>
-          <a className={`member-nav-link ${active === "queue" ? "active" : ""}`} href="/host/assigned-tables"><Table2 aria-hidden="true" />Assigned Tables</a>
-        </>}
-        <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" /><span>{admin ? "Sensitive review actions are recorded." : "Host access is limited to assigned Tables."}</span></div>
-      </aside>
+      <StaffSidebar role={admin ? "admin" : "host"} active={admin ? "seat-requests" : "host-tables"} foot={admin ? "Sensitive review actions are recorded." : "Host access is limited to assigned tables."} />
       <section className="product-content">{children}</section>
     </div>
   </main>;

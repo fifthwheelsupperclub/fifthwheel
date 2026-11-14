@@ -764,18 +764,20 @@ A simulated review by four perspectives. **CD** = content designer, **UXR** = UX
 
 ### F2. Open decisions (do not implement these as copy alone)
 
+Decided 2026-11-14: D-1, D-2, D-5, D-6, D-7, D-10 and D-21, all as recommended. They're recorded in `knowledge/glossary/terms.md` and `knowledge/decisions/waitlist-replacement-prompt.md`. The rest are still open.
+
 | ID | Question | Recommendation | Owner |
 |---|---|---|---|
-| D-1 | Guest-facing noun for the person | "you"; staff UI "guest"; drop "member" as a label | Product lead |
-| D-2 | Stop calling app access an "invitation"? | Yes: "access" / "You're in" | Product + Luke |
+| D-1 | Guest-facing noun for the person | **Decided 2026-11-14 as recommended.** "you"; staff UI "guest"; drop "member" as a label | Product lead |
+| D-2 | Stop calling app access an "invitation"? | **Decided 2026-11-14 as recommended.** Yes: "access" / "You're in" | Product + Luke |
 | D-3 | Separate the three meanings of "request" | "Request" nav = seat requests only; "Ask to cancel" for cancellation; drop "application" | Echo (confirm) |
 | D-4 | Guest-facing labels for declined requests and revoked or closed invitations; is there a decline notice? | "Not selected"; "No longer available". Add notice or say "check Requests" | Product |
-| D-5 | Hide email delivery status from guests | Yes | Product |
-| D-6 | Lowercase table and seat | Yes, in one pass | Product / brand |
-| D-7 | Product name in prose: "Fifth Wheel" (current UI) vs "Fifthwheel" (repo, this brief) | Keep "Fifth Wheel". Confirm. | Product / brand |
+| D-5 | Hide email delivery status from guests | **Decided 2026-11-14 as recommended.** Yes | Product |
+| D-6 | Lowercase table and seat | **Decided 2026-11-14 as recommended.** Yes, in one pass | Product / brand |
+| D-7 | Product name in prose: "Fifth Wheel" (current UI) vs "Fifthwheel" (repo, this brief) | **Decided 2026-11-14 as recommended.** Keep "Fifth Wheel". Confirm. | Product / brand |
 | D-8 | Can an expired or failed checkout still have a pending charge? Determines whether "You haven't been charged" is true | Engineering to confirm from the checkout contract | Engineering + Ledger |
 | D-9 | Is the two-step *Accept* → *Publish* for tables needed, or can it be one "Publish"? | Keep if it's used. Rename "Approved (not live)" / "Live" | Product + ops |
-| D-10 | Guest refund states: 6 → 4 | Yes (§C4) | Ledger + product |
+| D-10 | Guest refund states: 6 → 4 | **Decided 2026-11-14 as recommended.** Yes (§C4) | Ledger + product |
 | D-11 | Who's the named owner for Airtable setup, worker outages, the vote finalizer, and role provisioning? Copy currently says "operations owner", "engineering", "the scheduler" | Name a role or contact in the copy | Ops |
 | D-12 | Member home shows a static "Complete your profile" and never lists tables. Fix the behavior, or simplify the page? | Make it state-aware (profile state, upcoming seat, open invitation) | Product + engineering |
 | D-13 | Who sees the one-line intro and the phone number? | State it in the field help | Product + privacy |
@@ -784,7 +786,7 @@ A simulated review by four perspectives. **CD** = content designer, **UXR** = UX
 | D-16 | Production Tables screen says writes are disabled outside local fixtures. Is that the shipped state? | If so, it's a product gap. Fix before the copy matters. | Engineering |
 | D-17 | Is `recommendationRank` request order or a suggestion score? | Label to match: "#n" (order) or "Suggested #n" | Engineering |
 | D-18 | Cancel-Table dialog says "Guests are not emailed automatically", but the W10 trigger (`20261115150000_w10_notices.sql:58–73`) queues a cancellation email for paid guests | Likely a stale statement from before W10. Engineering to confirm the trigger is live, then update the dialog. | Engineering |
-| D-21 | "Waitlist" means both website signups (no access yet) and the replacement pool (pending seat requests for a table) | Keep "waitlist" for website signups only. Call the replacement pool "people who requested this table". Update `decisions/waitlist-replacement-prompt.md` wording. | Luke + Liza |
+| D-21 | "Waitlist" means both website signups (no access yet) and the replacement pool (pending seat requests for a table) | **Decided 2026-11-14 as recommended.** Keep "waitlist" for website signups only. Call the replacement pool "people who requested this table". Update `decisions/waitlist-replacement-prompt.md` wording. | Luke + Liza |
 | D-19 | Time from "Send refund" click to the Stripe call | If it's minutes, the "sent shortly" wording is fine | Engineering |
 | D-20 | What is the "surprise game"? | Content owner to supply one line | Content / product |
 

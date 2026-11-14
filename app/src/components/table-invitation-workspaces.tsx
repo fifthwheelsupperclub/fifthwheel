@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { StaffSidebar } from "./staff-nav";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, LoaderCircle, Mail, MapPin, RefreshCw, ShieldCheck, Table2, Ticket, UserRound, UsersRound } from "lucide-react";
 import { MemberWorkspaceShell } from "./member-tables-workspace.tsx";
@@ -270,12 +271,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
 
   return <main className="product-page table-invitation-admin-page">
     <header className="product-topbar"><a className="brand" href="/admin/table-invitations" aria-label="Fifth Wheel admin Table invitation delivery"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header>
-    <div className="product-layout"><aside className="product-sidebar" aria-label="Admin navigation"><span className="sidebar-caption">WORKSPACE</span>
-      <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><UsersRound aria-hidden="true" />Waitlist</a><a className="member-nav-link" href="/admin/identity-review"><ShieldCheck aria-hidden="true" />Identity review</a><a className="member-nav-link" href="/admin/seat-requests"><UsersRound aria-hidden="true" />Seat requests</a>
-      <p className="group-label">TABLE OPERATIONS</p><a className="member-nav-link active" aria-current="page" href="/admin/table-invitations"><Ticket aria-hidden="true" />Table invitation delivery</a><a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
-      <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a>
-      <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" /><span>Retry queues delivery work; it never changes offer approval or payment state.</span></div>
-    </aside><section className="product-content">
+    <div className="product-layout"><StaffSidebar active="invitations" foot="Retry queues delivery work; it never changes offer approval or payment state." /><section className="product-content">
       <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
       <div className="page-heading-row table-invitation-admin-heading"><div><p className="eyebrow">OPERATIONS · EMAIL STATUS</p><h1>Table invitations</h1><p className="page-intro">Check email attempts for approved Table invitations. An email service accepting a message does not confirm it reached the inbox. This page queues retries; it does not send email itself.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}

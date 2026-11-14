@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { StaffSidebar, type StaffNavKey } from "./staff-nav";
 import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
 import { SignOutButton } from "./sign-out-button.tsx";
 import "./ops-workspaces.css";
@@ -32,15 +33,7 @@ function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>
   const admin = area.startsWith("admin");
   return <main className="product-page ops-workspace"><header className="product-topbar"><a className="brand" href="/" aria-label="Fifth Wheel"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
     <div className="product-topbar-actions"><span className="product-workspace-label">{admin ? "ADMIN WORKSPACE" : area === "host" ? "HOST WORKSPACE" : "RESTAURANT WORKSPACE"}</span><SignOutButton /></div></header>
-    <div className="product-layout"><aside className="product-sidebar" aria-label="Navigation"><span className="sidebar-caption">WORKSPACE</span>
-      {admin ? <><a className={`member-nav-link ${area === "admin-overview" ? "active" : ""}`} href="/admin">Overview</a>
-        <a className={`member-nav-link ${area === "admin-decisions" ? "active" : ""}`} href="/admin/table-decisions">Table decisions</a>
-        <a className={`member-nav-link ${area === "admin-staff" ? "active" : ""}`} href="/admin/staff-assignments">Staff assignments</a>
-        <a className={`member-nav-link ${area === "admin-notices" ? "active" : ""}`} href="/admin/notices">Email problems</a>
-        <a className={`member-nav-link ${area === "admin-feedback" ? "active" : ""}`} href="/admin/conduct-reports">Reports &amp; ratings</a>
-        <a className="member-nav-link" href="/admin/seat-requests">Seat requests</a><a className="member-nav-link" href="/admin/tables">Tables</a><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a></>
-        : area === "host" ? <a className="member-nav-link active" href="/host/assigned-tables">Assigned Tables</a> : <a className="member-nav-link active" href="/restaurant">Service times</a>}
-    </aside><div className="ops-content">{children}</div></div></main>;
+    <div className="product-layout"><StaffSidebar role={admin ? "admin" : area === "host" ? "host" : "restaurant"} active={{ "admin-overview": "overview", "admin-decisions": "decisions", "admin-staff": "assignments", "admin-notices": "emails", "admin-feedback": "reports", host: "host-tables", restaurant: "restaurant" }[area as string] as StaffNavKey | undefined} /><div className="ops-content">{children}</div></div></main>;
 }
 function Status({ area, load, retry, children }: Readonly<{ area: Area; load: Load<unknown>; retry: () => void; children: ReactNode }>) {
   if (load.state === "loading") return <Shell area={area}><p className="ops-state" role="status"><LoaderCircle className="ops-spin" aria-hidden="true" />Loading…</p></Shell>;

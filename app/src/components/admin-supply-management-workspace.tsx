@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { StaffSidebar } from "./staff-nav";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, Ban, CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Database, FileCheck2, FilePlus2, LoaderCircle, MapPin, RefreshCw, Save, ShieldCheck, Table2, WifiOff } from "lucide-react";
 import type {
@@ -154,18 +155,7 @@ function AdminSupplyShell(props: Readonly<{ children: React.ReactNode; adminNavi
   return <main className="product-page supply-management-page">
     <header className="product-topbar"><a className="brand" href="/admin/tables" aria-label="Fifth Wheel supply workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">SUPPLY WORKSPACE</span><SignOutButton /></div></header>
     <div className="product-layout">
-      <aside className="product-sidebar" aria-label="Supply navigation">
-        <p className="sidebar-caption">WORKSPACE</p>
-        {adminNavigation && <><a className="member-nav-link" href="/admin">Overview</a>
-          <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><span className="supply-nav-number">01</span>Waitlist</a>
-          <a className="member-nav-link" href="/admin/identity-review"><FileCheck2 aria-hidden="true" />Identity review</a><a className="member-nav-link" href="/admin/seat-requests"><span className="supply-nav-number">03</span>Seat requests</a>
-        </>}
-        <p className="group-label">{adminNavigation ? "TABLES" : "ASSIGNED TABLES"}</p><a className="member-nav-link active" aria-current="page" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
-        {adminNavigation && <><p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a>
-          <p className="group-label">OPERATIONS</p><a className="member-nav-link" href="/admin/notices">Communications</a><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
-        </>}
-        <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />Table updates do not change invitations, Seats, or payments.</div>
-      </aside>
+      <StaffSidebar role={adminNavigation ? "admin" : "host"} active="tables" foot="Table updates do not change invitations, seats, or payments." />
       <section className="product-content supply-management-content">{props.children}</section>
     </div>
   </main>;
