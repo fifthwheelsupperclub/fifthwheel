@@ -1,0 +1,13 @@
+# Privacy review — targeted recheck
+
+Date: 2026-11-11. Reviewer: Cipher. Scope: specification-only recheck of the three findings in the original independent privacy review against current `app/docs/refactor/PRD.md`, `architecture.md`, `flow-ui-brief.md`, and `tasks-checklist.md`. No application implementation, live configuration, or runtime privacy tests were inspected or executed in this recheck.
+
+**Verdict: all three original P2 findings are resolved in the specification. No new material privacy regression identified in the revised contracts.** The packet can proceed through its stated local implementation sequence; production privacy readiness remains subject to its explicit implementation and release gates.
+
+| Original finding | Disposition and current evidence |
+| --- | --- |
+| Early eligibility freeze contradicts start+90m | Resolved. Architecture §8 now defines `vote_open_at = scheduled_start + 90 minutes`, prohibits early materialization, serializes check-in/snapshot on the Table lock, and requires database-generated attendance timestamps. B06.1 adds +45m/+60m attendance and on-time/delayed snapshot equivalence fixtures. This matches PRD R07. |
+| 90-day reveal lacks durable results and lifecycle | Resolved. Architecture §3 adds private unique-owner/Table `mutual_results` with counterpart/finalized/expiry/invalidation fields. §7 defines privileged idempotent post-close finalization, atomic completion, lazy recovery, verified finalization before ballot purge, 90-day expiry, and bilateral invalidation after removal/account deletion even after purge. §6 adds `results_unavailable` and suppresses match except when currently valid. PRD R07 and B06.2 carry lifecycle and day-31/day-90/failure/deletion fixtures. |
+| Required images conflict with 30-day deletion | Resolved. Architecture §7 explicitly defines both photo/selfie as temporary review evidence, preserves an approved unchanged version using minimal evidence markers after deletion, and requires fresh evidence for critical edits. PRD A02 and B02.3 explicitly require review+31-day checkout to work after purge. This avoids retaining images merely to satisfy payment completeness. |
+
+These are verified document corrections, not proof the final code satisfies them. The original report remains an accurate record of the earlier revision; its findings should be marked resolved by this recheck rather than deleted. Actual private schema grants/RLS, assignment authorization, signed URL behavior, retention jobs and backup treatment, derived-result invalidation, worker recovery, and adversarial direct API/database privacy tests remain the evidence debt already scheduled in the packet.

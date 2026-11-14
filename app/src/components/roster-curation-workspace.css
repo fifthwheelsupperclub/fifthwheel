@@ -1,0 +1,138 @@
+.roster-workspace .product-sidebar { min-width: 0; }
+.roster-workspace .member-nav-link { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: var(--muted-strong); font-size: 11px; text-decoration: none; }
+.roster-workspace .member-nav-link svg { width: 16px; height: 16px; color: var(--muted); }
+.roster-workspace .member-nav-link:hover { background: #2b2216; color: var(--ivory); }
+.roster-workspace .member-nav-link.active { background: #352819; color: #e2c48e; }
+.roster-workspace .member-nav-link.active svg { color: var(--gold); }
+.roster-heading { align-items: center; }
+.roster-heading .icon-action { flex: 0 0 42px; }
+.roster-queue-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 28px 0 12px; color: var(--muted); font-size: 10px; }
+.roster-queue-meta > span:first-child { display: inline-flex; align-items: center; gap: 7px; color: var(--muted-strong); }
+.roster-queue-meta svg { width: 14px; height: 14px; color: var(--gold); }
+.roster-queue-list { display: grid; gap: 11px; }
+.roster-queue-card { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 19px; border: 1px solid #3a2f20; border-radius: 13px; background: #1d170f; }
+.roster-card-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #55452e; border-radius: 12px; background: #292013; color: var(--gold); }
+.roster-card-icon svg { width: 19px; height: 19px; }
+.roster-card-copy { min-width: 0; }
+.roster-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.roster-card-title h2 { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 400; letter-spacing: -.025em; }
+.roster-card-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 9px; color: var(--muted); font-size: 9px; }
+.roster-card-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.roster-card-meta svg { width: 12px; height: 12px; color: #b89a64; }
+.roster-card-copy > p { margin: 10px 0 0; color: var(--muted-strong); font-size: 10px; }
+.roster-open { min-height: 39px; gap: 8px; border-radius: 9px; font-size: 10px; white-space: nowrap; }
+.roster-open svg, .roster-more svg { width: 15px; height: 15px; }
+.roster-more { margin-top: 14px; }
+.roster-more-applicants { min-height: 37px; margin-top: 12px; border-radius: 9px; gap: 8px; font-size: 10px; }
+.roster-more-applicants svg { width: 15px; height: 15px; }
+.roster-state { display: flex; min-height: 180px; align-items: center; justify-content: center; gap: 10px; color: var(--muted-strong); font-size: 12px; }
+.roster-state svg { width: 18px; height: 18px; color: var(--gold); }
+.roster-workspace-state { display: grid; justify-items: center; max-width: 540px; margin: 50px auto; padding: 37px 28px; border: 1px solid #3b3021; border-radius: 15px; background: #1b150e; text-align: center; }
+.roster-state-icon { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid #725a35; border-radius: 13px; background: #2b2115; color: var(--gold); }
+.roster-state-icon svg { width: 21px; height: 21px; }
+.roster-workspace-state h2 { margin: 16px 0 7px; font-family: var(--display); font-size: 27px; font-weight: 400; }
+.roster-workspace-state p { max-width: 420px; margin: 0 0 18px; color: var(--muted-strong); font-size: 11px; line-height: 1.7; }
+.roster-workspace-state .button { gap: 9px; }
+.roster-workspace-state .button svg { width: 15px; height: 15px; }
+.roster-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; margin: 26px 0 29px; }
+.roster-summary-card { display: grid; min-height: 118px; grid-template-columns: 32px minmax(0, 1fr); align-content: start; align-items: center; column-gap: 10px; row-gap: 6px; padding: 15px; border: 1px solid #392e20; border-radius: 12px; background: #1c160f; }
+.roster-summary-icon { display: grid; width: 31px; height: 31px; grid-row: span 2; place-items: center; border: 1px solid #57452b; border-radius: 9px; color: var(--gold); }
+.roster-summary-icon svg { width: 15px; height: 15px; }
+.roster-summary-card .eyebrow { font-size: 8px; }
+.roster-summary-card strong { grid-column: 2; font-family: var(--display); font-size: 21px; font-weight: 400; line-height: 1.15; }
+.roster-summary-card .roster-revision { overflow: hidden; font-family: Inter, sans-serif; font-size: 14px; text-overflow: ellipsis; }
+.roster-summary-card small { grid-column: 1 / -1; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.roster-section { margin: 0 0 26px; padding: 22px; border: 1px solid #3a2f20; border-radius: 14px; background: #1c160f; }
+.roster-section-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.roster-section-heading h2 { margin: 7px 0 5px; font-family: var(--display); font-size: 27px; font-weight: 400; letter-spacing: -.025em; }
+.roster-section-heading p:not(.eyebrow) { max-width: 560px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.roster-section-heading > .status-pill { margin-top: 6px; }
+.roster-applicants { display: grid; gap: 8px; }
+.roster-applicant { display: grid; min-height: 70px; grid-template-columns: 19px 36px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 12px; border: 1px solid #382d1f; border-radius: 10px; background: #20190f; cursor: pointer; }
+.roster-applicant.selected { border-color: #745a31; background: #292013; }
+.roster-applicant.ineligible { opacity: .78; }
+.roster-applicant input[type=checkbox] { width: 17px; height: 17px; margin: 0; accent-color: var(--gold); }
+.roster-applicant input[type=checkbox]:disabled { cursor: not-allowed; }
+.roster-applicant-avatar { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #604d30; border-radius: 50%; color: #dfc48e; }
+.roster-applicant-avatar svg { width: 16px; height: 16px; }
+.roster-applicant-main { min-width: 0; }
+.roster-applicant-main strong, .roster-applicant-main small { display: block; }
+.roster-applicant-main strong { overflow: hidden; color: var(--ivory); font-size: 11px; font-weight: 600; text-overflow: ellipsis; }
+.roster-applicant-main small { margin-top: 4px; color: var(--muted); font-size: 9px; }
+.roster-reasons { display: block; max-width: 600px; margin-top: 6px; color: #d7aaa2; font-size: 9px; line-height: 1.5; }
+.roster-empty-inline { display: grid; min-height: 125px; justify-items: center; align-content: center; gap: 6px; border: 1px dashed #493a26; border-radius: 11px; text-align: center; }
+.roster-empty-inline > svg { width: 20px; height: 20px; margin-bottom: 2px; color: var(--gold); }
+.roster-empty-inline strong { font-size: 11px; font-weight: 600; }
+.roster-empty-inline span { color: var(--muted); font-size: 9px; }
+.roster-validation { margin-bottom: 14px; padding: 14px; border: 1px solid #4b5a3f; border-radius: 10px; background: #202317; }
+.roster-validation.invalid { border-color: #67424a; background: #281b19; }
+.roster-validation > div { display: grid; grid-template-columns: 25px minmax(0, 1fr); align-items: center; column-gap: 9px; }
+.roster-validation-icon { display: grid; width: 25px; height: 25px; grid-row: span 2; place-items: center; color: #c3d0af; }
+.roster-validation.invalid .roster-validation-icon { color: #dfaaa4; }
+.roster-validation-icon svg { width: 16px; height: 16px; }
+.roster-validation strong { font-size: 10px; font-weight: 600; }
+.roster-validation small { margin-top: 4px; color: var(--muted-strong); font-size: 9px; line-height: 1.5; }
+.roster-validation ul { display: grid; gap: 6px; margin: 12px 0 0 34px; padding-left: 16px; color: #e1b3ab; font-size: 9px; line-height: 1.5; }
+.roster-selected-list { display: grid; gap: 7px; }
+.roster-selected-empty { margin: 0; padding: 12px; border: 1px dashed #493a26; border-radius: 9px; color: var(--muted); font-size: 10px; }
+.roster-selected-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #3b3021; border-radius: 8px; color: var(--ivory); font-size: 10px; }
+.roster-selected-row span:last-child { color: var(--muted); }
+.roster-historical-selection { margin-top: 14px; padding: 14px; border: 1px solid #493a26; border-radius: 10px; background: #211a11; }
+.roster-historical-selection h3 { margin: 7px 0 10px; font-family: var(--display); font-size: 20px; font-weight: 400; }
+.roster-historical-selection ul { display: grid; gap: 7px; margin: 0 0 10px; padding-left: 18px; color: var(--ivory); font-size: 10px; }
+.roster-historical-selection small { color: var(--muted); font-size: 9px; line-height: 1.5; }
+.roster-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 16px; }
+.roster-actions .button { min-height: 39px; gap: 8px; border-radius: 9px; font-size: 10px; }
+.roster-actions .button svg { width: 15px; height: 15px; }
+.roster-actions .icon-action { margin-left: auto; }
+.roster-notice, .roster-approved-note { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; padding: 12px 14px; border: 1px solid #4b5a3f; border-radius: 10px; background: #202317; color: #d4dfc1; font-size: 10px; line-height: 1.6; }
+.roster-notice.bad { border-color: #67424a; background: #281b19; color: #e2c1b9; }
+.roster-notice svg, .roster-approved-note svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; }
+.roster-permission-note { margin: 14px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.roster-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; overflow: auto; padding: 20px; background: #080604bd; }
+.roster-confirm-dialog { width: min(100%, 520px); padding: 25px; border: 1px solid #5a472c; border-radius: 16px; background: #211a11; box-shadow: 0 24px 80px #0008; }
+.roster-confirm-dialog h2 { margin: 12px 0 7px; font-family: var(--display); font-size: 31px; font-weight: 400; letter-spacing: -.03em; }
+.roster-confirm-dialog > p:not(.eyebrow) { color: var(--muted-strong); font-size: 11px; line-height: 1.7; }
+.roster-confirm-list { display: grid; gap: 5px; max-height: 180px; overflow: auto; margin-top: 16px; padding: 11px; border: 1px solid #3b3021; border-radius: 9px; color: var(--ivory); font-size: 10px; }
+.roster-confirm-dialog .roster-actions { justify-content: flex-end; }
+.roster-confirm-dialog .roster-actions .button-primary { gap: 8px; }
+.spin { animation: roster-spin 1s linear infinite; }
+@keyframes roster-spin { to { transform: rotate(360deg); } }
+@media (max-width: 850px) {
+  .roster-workspace .product-layout { grid-template-columns: 180px minmax(0, 1fr); }
+  .roster-summary-grid { grid-template-columns: 1fr 1fr; }
+  .roster-summary-card:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .roster-workspace .product-layout { display: block; min-height: auto; }
+  .roster-workspace .product-sidebar { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 6px; overflow-x: auto; padding: 8px 14px; border-right: 0; border-bottom: 1px solid #302718; }
+  .roster-workspace .product-sidebar > .sidebar-caption, .roster-workspace .product-sidebar-foot { display: none; }
+  .roster-workspace .member-nav-link { flex: 0 0 auto; min-height: 36px; padding: 0 9px; font-size: 10px; white-space: nowrap; }
+  .roster-workspace .product-content { padding: 22px 15px 48px; }
+  .roster-workspace .product-breadcrumb { margin-bottom: 17px; }
+  .roster-heading { align-items: flex-start; gap: 8px; }
+  .roster-heading .icon-action { width: 38px; height: 38px; flex-basis: 38px; margin-top: 9px; }
+  .roster-heading h1 { max-width: calc(100vw - 84px); overflow-wrap: anywhere; font-size: clamp(34px, 10vw, 46px); }
+  .roster-heading .page-intro { max-width: 100%; font-size: 11px; }
+  .roster-queue-card { grid-template-columns: 36px minmax(0, 1fr); gap: 11px; padding: 14px; }
+  .roster-card-icon { width: 36px; height: 36px; }
+  .roster-card-title h2 { font-size: 19px; }
+  .roster-card-title .status-pill { min-height: 24px; font-size: 8px; }
+  .roster-card-meta { gap: 8px 11px; }
+  .roster-open { grid-column: 2; justify-self: start; min-height: 36px; }
+  .roster-summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin: 21px 0; }
+  .roster-summary-card { min-height: 107px; padding: 12px; }
+  .roster-summary-card:last-child { grid-column: 1 / -1; min-height: 92px; }
+  .roster-section { padding: 15px; border-radius: 12px; }
+  .roster-section-heading { display: grid; }
+  .roster-section-heading h2 { font-size: 24px; }
+  .roster-section-heading > .status-pill { justify-self: start; }
+  .roster-applicant { grid-template-columns: 18px 31px minmax(0, 1fr); gap: 8px; padding: 10px; }
+  .roster-applicant-avatar { width: 31px; height: 31px; }
+  .roster-applicant > .status-pill { grid-column: 3; justify-self: start; min-height: 24px; }
+  .roster-applicant-main small { line-height: 1.45; }
+  .roster-actions .button { flex: 1 1 auto; }
+  .roster-actions .icon-action { margin-left: 0; }
+  .roster-confirm-dialog { padding: 20px; }
+  .roster-confirm-dialog .roster-actions { display: grid; grid-template-columns: 1fr; }
+}
