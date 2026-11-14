@@ -63,7 +63,7 @@ Rule applied: a scenario is `accepted` only when the real database or browser pa
 | A19, A20 | ready for verification | Seven-account ballot/reveal DB harness (windows at minute granularity, snapshots, immutability, own-only reveal, removal invalidation, retention) | Second-exact boundaries, concurrent submissions, real-stack run |
 | A21 | ready for verification | Ratings and conduct-report privacy, aggregates suppression, no audit text (DB harness) | Real-stack run |
 | A22 | ready for verification | Role gates covered in unit tests for every operations route and DB checks; earlier real-stack denials (W03, W05, W06) | Re-run W05; direct-API sweep of every new route against a real stack |
-| A23 | not re-verified | Earlier W05 DB evidence stands | W05 browser suite is stale |
+| A23 | not re-verified | Earlier W05 DB evidence stands | W05 browser suite re-run 3/3 on 2026-11-14 |
 | A24 | scoped down | You confirmed legacy data is waitlist rows only. Import generator, preflight, runbook written and tested; no live data touched | Authorized export and import; staging dry run |
 | A25, A34, A35 | ready for verification | Mock and real-stack screens at 390px/desktop; disabled placeholder nav replaced with working links | Person-led accessibility and side-by-side visual comparison (W12.3) |
 | A26–A31 | accepted | W03 runners re-run green on the fresh database | none new |

@@ -82,9 +82,9 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables`);
     await expect(page.getByRole("heading", { name: "Manage Tables" })).toBeVisible();
-    await expect(page.getByText("Synthetic provider fixture", { exact: true })).toBeVisible();
+    await expect(page.getByText("Local test data", { exact: true })).toBeVisible();
     const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/admin/supply/sync") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Run supply sync" }).click();
+    await page.getByRole("button", { name: "Check Airtable" }).click();
     const syncResponse = await responsePromise;
     expect(syncResponse.status()).toBe(200);
     const syncEnvelope = await syncResponse.json() as { ok?: boolean; data?: { runId?: string; state?: string; counts?: { tables?: number; venues?: number }; candidateRevisionId?: string | null } };
@@ -93,11 +93,11 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
     expect(syncEnvelope.data?.candidateRevisionId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(syncEnvelope.data?.counts).toMatchObject({ tables: 1, venues: 2 });
 
-    await expect(page.getByRole("heading", { name: "Candidates ready for draft review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tables ready for review" })).toBeVisible();
     await expect(page.getByText(new RegExp(`Synthetic Thursday Table ${process.env.SUPPLY_FIXTURE_RUN_ID}`))).toBeVisible();
     const runId = syncEnvelope.data?.runId;
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Candidates ready for draft review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tables ready for review" })).toBeVisible();
     const afterReload = await admin.request.get(`${appOrigin}/api/admin/supply/sync`, { headers: { accept: "application/json" } });
     expect(afterReload.status()).toBe(200);
     const afterEnvelope = await afterReload.json() as { ok?: boolean; data?: { lastGoodPublished?: unknown; latestRun?: { runId?: string; state?: string } | null } };
@@ -106,7 +106,7 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
     expect(afterEnvelope.data?.lastGoodPublished ?? null).toEqual(baselineLastGood);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-supply-sync-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByText("Synthetic provider fixture", { exact: true })).toBeVisible();
+    await expect(page.getByText("Local test data", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-supply-sync-390px.png"), fullPage: true });
     console.log("W05 fixture sync persisted staged state; last-good published pointer was unchanged.");
@@ -142,7 +142,7 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
 
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables`);
-    await expect(page.getByRole("heading", { name: "Candidates ready for draft review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tables ready for review" })).toBeVisible();
     await expect(page.getByText(candidateTitle, { exact: true })).toBeVisible();
     let createBody = "";
     await page.route("**/api/supply/drafts", async (route) => {
@@ -151,7 +151,7 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
       await route.fulfill({ response, body: createBody });
     });
     const createResponse = page.waitForResponse((response) => response.url().endsWith("/api/supply/drafts") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Start draft review" }).click();
+    await page.getByRole("button", { name: "Review Table details" }).click();
     const created = await createResponse;
     const postedSource = JSON.parse(created.request().postData() ?? "{}") as { source?: { tableId?: string; revisionId?: string } };
     console.log("W05 candidate create identifiers", JSON.stringify({ posted: postedSource.source, candidate: candidate && { tableId: candidate.tableId, sourceRevisionId: candidate.sourceRevisionId } }));
@@ -342,12 +342,12 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
     await page.reload();
     expect((await faultInjectedListResponse).status()).toBe(200);
     expect(responseFaultInjected).toBe(true);
-    await expect(page.getByText("Provider mapping not configured", { exact: true })).toBeVisible();
-    await expect(page.getByText("Airtable fields have not been verified. Create, accept and publish actions are disabled.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Airtable fields need setup", { exact: true })).toBeVisible();
+    await expect(page.getByText("We have not confirmed how Airtable fields match Table details. Creating, approving, and publishing are paused.", { exact: true })).toBeVisible();
     await expect(page.getByText(`${candidateTitle} · reviewed`, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create draft" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Run supply sync" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Start draft review" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Check Airtable" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Review Table details" })).toHaveCount(0);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-tables-disabled-unmapped-response-fault-injection-390px.png"), fullPage: true });
   } finally { await admin.close(); }
 });

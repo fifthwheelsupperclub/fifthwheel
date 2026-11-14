@@ -30,7 +30,7 @@ Defect found by the replay and fixed: weekly-clone **undo** deleted cloned Table
 | W04 profile, private evidence, admin review | passed (2/2) |
 | W06 member Tables, requests, access gates, shared preview | passed (1/1) |
 | W06.5 Table invitation delivery and recovery | passed (1/1) |
-| W05 supply sync, Table management, weekly clone | **not passing**: the tests predate the admin navigation and copy changes (they look for a sync panel and strings that no longer exist on `/admin/tables`). The product is not known to be broken, but it is not re-verified. Airtable sync is out of launch scope; Table management and weekly clone are in scope and need their tests brought up to date. |
+| W05 supply sync, Table management, weekly clone | **passing** (2026-11-14): `node scripts/run-w05-browser.mjs`, 3/3, after updating test strings to the current copy (no product change). Real stack, fixture provider only; Airtable remains disabled. |
 
 Stale test strings (copy edits made after the tests were written) were corrected in the W03, W06, W06.5 and roster mock tests. One W03 assertion that no downstream tables existed yet was changed to the current schema.
 
