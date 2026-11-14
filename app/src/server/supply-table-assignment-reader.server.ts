@@ -27,20 +27,24 @@ export function createSupplyTableAssignmentReader(config: Config): TrustedAssign
   return Object.freeze({
     async readForAuthUser(authUserId: string): Promise<TrustedResourceAssignments> {
       if (!uuidPattern.test(authUserId)) throw new SupplyTableAssignmentReaderError("response_invalid");
-      const url = new URL("/rest/v1/app_supply_table_assignments", baseUrl);
-      url.searchParams.set("select", "table_id,user_id");
-      url.searchParams.set("user_id", `eq.${authUserId}`);
-      let response: Response;
-      try {
-        response = await fetchImpl(url, { method: "GET", headers: { apikey: config.secretKey, authorization: `Bearer ${config.secretKey}`, accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(5_000) });
-      } catch { throw new SupplyTableAssignmentReaderError("request_failed"); }
-      if (!response.ok) throw new SupplyTableAssignmentReaderError("request_failed");
-      let rows: unknown;
-      try { rows = await response.json() as unknown; } catch { throw new SupplyTableAssignmentReaderError("response_invalid"); }
-      if (!Array.isArray(rows) || rows.length > 500 || rows.some((row) => typeof row !== "object" || row === null || Array.isArray(row)
-        || (row as Record<string, unknown>).user_id !== authUserId || typeof (row as Record<string, unknown>).table_id !== "string"
-        || !uuidPattern.test((row as Record<string, string>).table_id))) throw new SupplyTableAssignmentReaderError("response_invalid");
-      return Object.freeze({ tableIds: Object.freeze([...new Set(rows.map((row) => (row as Record<string, string>).table_id))]), venueIds: Object.freeze([]) });
+      async function read(relation: string, column: "table_id" | "venue_id"): Promise<readonly string[]> {
+        const url = new URL(`/rest/v1/${relation}`, baseUrl);
+        url.searchParams.set("select", `${column},user_id`);
+        url.searchParams.set("user_id", `eq.${authUserId}`);
+        let response: Response;
+        try {
+          response = await fetchImpl(url, { method: "GET", headers: { apikey: config.secretKey, authorization: `Bearer ${config.secretKey}`, accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(5_000) });
+        } catch { throw new SupplyTableAssignmentReaderError("request_failed"); }
+        if (!response.ok) throw new SupplyTableAssignmentReaderError("request_failed");
+        let rows: unknown;
+        try { rows = await response.json() as unknown; } catch { throw new SupplyTableAssignmentReaderError("response_invalid"); }
+        if (!Array.isArray(rows) || rows.length > 500 || rows.some((row) => typeof row !== "object" || row === null || Array.isArray(row)
+          || (row as Record<string, unknown>).user_id !== authUserId || typeof (row as Record<string, unknown>)[column] !== "string"
+          || !uuidPattern.test((row as Record<string, string>)[column]))) throw new SupplyTableAssignmentReaderError("response_invalid");
+        return Object.freeze([...new Set(rows.map((row) => (row as Record<string, string>)[column]))]);
+      }
+      const [tableIds, venueIds] = await Promise.all([read("app_supply_table_assignments", "table_id"), read("app_venue_memberships", "venue_id")]);
+      return Object.freeze({ tableIds, venueIds });
     },
   });
 }

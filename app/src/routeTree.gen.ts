@@ -14,6 +14,7 @@ import { Route as MemberRouteImport } from './routes/member'
 import { Route as MySeatsRouteImport } from './routes/my-seats'
 import { Route as PreviewRouteImport } from './routes/preview'
 import { Route as RequestsRouteImport } from './routes/requests'
+import { Route as RestaurantRouteImport } from './routes/restaurant'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as TablesRouteImport } from './routes/tables'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
@@ -21,6 +22,8 @@ import { Route as AdminCancellationsRouteImport } from './routes/admin/cancellat
 import { Route as AdminIdentityReviewRouteImport } from './routes/admin/identity-review'
 import { Route as AdminRefundsRouteImport } from './routes/admin/refunds'
 import { Route as AdminSeatRequestsRouteImport } from './routes/admin/seat-requests'
+import { Route as AdminStaffAssignmentsRouteImport } from './routes/admin/staff-assignments'
+import { Route as AdminTableDecisionsRouteImport } from './routes/admin/table-decisions'
 import { Route as AdminTableInvitationsRouteImport } from './routes/admin/table-invitations'
 import { Route as AdminTablesRouteImport } from './routes/admin/tables'
 import { Route as AdminWaitlistRouteImport } from './routes/admin/waitlist'
@@ -65,6 +68,7 @@ import { Route as ApiSupplyTablesRouteImport } from './routes/api/supply/tables'
 import { Route as ApiSupplyVenuesRouteImport } from './routes/api/supply/venues'
 import { Route as ApiTablesTableIdRouteImport } from './routes/api/tables.$tableId'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
+import { Route as HostAttendanceTableIdRouteImport } from './routes/host/attendance.$tableId'
 import { Route as MySeatsSeatIdIndexRouteImport } from './routes/my-seats.$seatId.index'
 import { Route as MySeatsSeatIdCancellationRouteImport } from './routes/my-seats.$seatId.cancellation'
 import { Route as ApiAdminCancellationsRequestIdRouteImport } from './routes/api/admin/cancellations.$requestId'
@@ -143,6 +147,11 @@ const RequestsRoute = RequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RestaurantRoute = RestaurantRouteImport.update({
+  id: '/restaurant',
+  path: '/restaurant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
@@ -176,6 +185,16 @@ const AdminRefundsRoute = AdminRefundsRouteImport.update({
 const AdminSeatRequestsRoute = AdminSeatRequestsRouteImport.update({
   id: '/admin/seat-requests',
   path: '/admin/seat-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStaffAssignmentsRoute = AdminStaffAssignmentsRouteImport.update({
+  id: '/admin/staff-assignments',
+  path: '/admin/staff-assignments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTableDecisionsRoute = AdminTableDecisionsRouteImport.update({
+  id: '/admin/table-decisions',
+  path: '/admin/table-decisions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTableInvitationsRoute = AdminTableInvitationsRouteImport.update({
@@ -403,6 +422,11 @@ const ApiTablesTableIdRoute = ApiTablesTableIdRouteImport.update({
 const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   id: '/api/webhooks/stripe',
   path: '/api/webhooks/stripe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HostAttendanceTableIdRoute = HostAttendanceTableIdRouteImport.update({
+  id: '/host/attendance/$tableId',
+  path: '/host/attendance/$tableId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MySeatsSeatIdIndexRoute = MySeatsSeatIdIndexRouteImport.update({
@@ -717,6 +741,7 @@ export interface FileRoutesByFullPath {
   '/my-seats': typeof MySeatsRouteWithChildren
   '/preview': typeof PreviewRoute
   '/requests': typeof RequestsRoute
+  '/restaurant': typeof RestaurantRoute
   '/sign-in': typeof SignInRoute
   '/tables': typeof TablesRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
@@ -724,6 +749,8 @@ export interface FileRoutesByFullPath {
   '/admin/identity-review': typeof AdminIdentityReviewRouteWithChildren
   '/admin/refunds': typeof AdminRefundsRouteWithChildren
   '/admin/seat-requests': typeof AdminSeatRequestsRouteWithChildren
+  '/admin/staff-assignments': typeof AdminStaffAssignmentsRoute
+  '/admin/table-decisions': typeof AdminTableDecisionsRoute
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
@@ -766,6 +793,7 @@ export interface FileRoutesByFullPath {
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
   '/my-seats/$seatId/cancellation': typeof MySeatsSeatIdCancellationRoute
   '/admin/cancellations/': typeof AdminCancellationsIndexRoute
   '/admin/refunds/': typeof AdminRefundsIndexRoute
@@ -826,10 +854,13 @@ export interface FileRoutesByTo {
   '/member': typeof MemberRoute
   '/preview': typeof PreviewRoute
   '/requests': typeof RequestsRoute
+  '/restaurant': typeof RestaurantRoute
   '/sign-in': typeof SignInRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/identity-review': typeof AdminIdentityReviewRouteWithChildren
   '/admin/seat-requests': typeof AdminSeatRequestsRouteWithChildren
+  '/admin/staff-assignments': typeof AdminStaffAssignmentsRoute
+  '/admin/table-decisions': typeof AdminTableDecisionsRoute
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
@@ -871,6 +902,7 @@ export interface FileRoutesByTo {
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
   '/my-seats/$seatId/cancellation': typeof MySeatsSeatIdCancellationRoute
   '/admin/cancellations': typeof AdminCancellationsIndexRoute
   '/admin/refunds': typeof AdminRefundsIndexRoute
@@ -933,6 +965,7 @@ export interface FileRoutesById {
   '/my-seats': typeof MySeatsRouteWithChildren
   '/preview': typeof PreviewRoute
   '/requests': typeof RequestsRoute
+  '/restaurant': typeof RestaurantRoute
   '/sign-in': typeof SignInRoute
   '/tables': typeof TablesRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
@@ -940,6 +973,8 @@ export interface FileRoutesById {
   '/admin/identity-review': typeof AdminIdentityReviewRouteWithChildren
   '/admin/refunds': typeof AdminRefundsRouteWithChildren
   '/admin/seat-requests': typeof AdminSeatRequestsRouteWithChildren
+  '/admin/staff-assignments': typeof AdminStaffAssignmentsRoute
+  '/admin/table-decisions': typeof AdminTableDecisionsRoute
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
@@ -982,6 +1017,7 @@ export interface FileRoutesById {
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
   '/my-seats/$seatId/cancellation': typeof MySeatsSeatIdCancellationRoute
   '/admin/cancellations/': typeof AdminCancellationsIndexRoute
   '/admin/refunds/': typeof AdminRefundsIndexRoute
@@ -1045,6 +1081,7 @@ export interface FileRouteTypes {
     | '/my-seats'
     | '/preview'
     | '/requests'
+    | '/restaurant'
     | '/sign-in'
     | '/tables'
     | '/account/profile'
@@ -1052,6 +1089,8 @@ export interface FileRouteTypes {
     | '/admin/identity-review'
     | '/admin/refunds'
     | '/admin/seat-requests'
+    | '/admin/staff-assignments'
+    | '/admin/table-decisions'
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
@@ -1094,6 +1133,7 @@ export interface FileRouteTypes {
     | '/api/supply/venues'
     | '/api/tables/$tableId'
     | '/api/webhooks/stripe'
+    | '/host/attendance/$tableId'
     | '/my-seats/$seatId/cancellation'
     | '/admin/cancellations/'
     | '/admin/refunds/'
@@ -1154,10 +1194,13 @@ export interface FileRouteTypes {
     | '/member'
     | '/preview'
     | '/requests'
+    | '/restaurant'
     | '/sign-in'
     | '/account/profile'
     | '/admin/identity-review'
     | '/admin/seat-requests'
+    | '/admin/staff-assignments'
+    | '/admin/table-decisions'
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
@@ -1199,6 +1242,7 @@ export interface FileRouteTypes {
     | '/api/supply/venues'
     | '/api/tables/$tableId'
     | '/api/webhooks/stripe'
+    | '/host/attendance/$tableId'
     | '/my-seats/$seatId/cancellation'
     | '/admin/cancellations'
     | '/admin/refunds'
@@ -1260,6 +1304,7 @@ export interface FileRouteTypes {
     | '/my-seats'
     | '/preview'
     | '/requests'
+    | '/restaurant'
     | '/sign-in'
     | '/tables'
     | '/account/profile'
@@ -1267,6 +1312,8 @@ export interface FileRouteTypes {
     | '/admin/identity-review'
     | '/admin/refunds'
     | '/admin/seat-requests'
+    | '/admin/staff-assignments'
+    | '/admin/table-decisions'
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
@@ -1309,6 +1356,7 @@ export interface FileRouteTypes {
     | '/api/supply/venues'
     | '/api/tables/$tableId'
     | '/api/webhooks/stripe'
+    | '/host/attendance/$tableId'
     | '/my-seats/$seatId/cancellation'
     | '/admin/cancellations/'
     | '/admin/refunds/'
@@ -1371,6 +1419,7 @@ export interface RootRouteChildren {
   MySeatsRoute: typeof MySeatsRouteWithChildren
   PreviewRoute: typeof PreviewRoute
   RequestsRoute: typeof RequestsRoute
+  RestaurantRoute: typeof RestaurantRoute
   SignInRoute: typeof SignInRoute
   TablesRoute: typeof TablesRouteWithChildren
   AccountProfileRoute: typeof AccountProfileRoute
@@ -1378,6 +1427,8 @@ export interface RootRouteChildren {
   AdminIdentityReviewRoute: typeof AdminIdentityReviewRouteWithChildren
   AdminRefundsRoute: typeof AdminRefundsRouteWithChildren
   AdminSeatRequestsRoute: typeof AdminSeatRequestsRouteWithChildren
+  AdminStaffAssignmentsRoute: typeof AdminStaffAssignmentsRoute
+  AdminTableDecisionsRoute: typeof AdminTableDecisionsRoute
   AdminTableInvitationsRoute: typeof AdminTableInvitationsRoute
   AdminTablesRoute: typeof AdminTablesRouteWithChildren
   AdminWaitlistRoute: typeof AdminWaitlistRoute
@@ -1409,6 +1460,7 @@ export interface RootRouteChildren {
   ApiSupplyTablesRoute: typeof ApiSupplyTablesRouteWithChildren
   ApiSupplyVenuesRoute: typeof ApiSupplyVenuesRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
+  HostAttendanceTableIdRoute: typeof HostAttendanceTableIdRoute
   ApiAdminSupplySyncRoute: typeof ApiAdminSupplySyncRoute
   ApiAdminSupplyWeeklyCloneRoute: typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   ApiMeCheckoutAttemptsAttemptIdRoute: typeof ApiMeCheckoutAttemptsAttemptIdRoute
@@ -1465,6 +1517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/restaurant': {
+      id: '/restaurant'
+      path: '/restaurant'
+      fullPath: '/restaurant'
+      preLoaderRoute: typeof RestaurantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in': {
       id: '/sign-in'
       path: '/sign-in'
@@ -1512,6 +1571,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/seat-requests'
       fullPath: '/admin/seat-requests'
       preLoaderRoute: typeof AdminSeatRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/staff-assignments': {
+      id: '/admin/staff-assignments'
+      path: '/admin/staff-assignments'
+      fullPath: '/admin/staff-assignments'
+      preLoaderRoute: typeof AdminStaffAssignmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/table-decisions': {
+      id: '/admin/table-decisions'
+      path: '/admin/table-decisions'
+      fullPath: '/admin/table-decisions'
+      preLoaderRoute: typeof AdminTableDecisionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/table-invitations': {
@@ -1820,6 +1893,13 @@ declare module '@tanstack/react-router' {
       path: '/api/webhooks/stripe'
       fullPath: '/api/webhooks/stripe'
       preLoaderRoute: typeof ApiWebhooksStripeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/host/attendance/$tableId': {
+      id: '/host/attendance/$tableId'
+      path: '/host/attendance/$tableId'
+      fullPath: '/host/attendance/$tableId'
+      preLoaderRoute: typeof HostAttendanceTableIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-seats/$seatId/': {
@@ -2654,6 +2734,7 @@ const rootRouteChildren: RootRouteChildren = {
   MySeatsRoute: MySeatsRouteWithChildren,
   PreviewRoute: PreviewRoute,
   RequestsRoute: RequestsRoute,
+  RestaurantRoute: RestaurantRoute,
   SignInRoute: SignInRoute,
   TablesRoute: TablesRouteWithChildren,
   AccountProfileRoute: AccountProfileRoute,
@@ -2661,6 +2742,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIdentityReviewRoute: AdminIdentityReviewRouteWithChildren,
   AdminRefundsRoute: AdminRefundsRouteWithChildren,
   AdminSeatRequestsRoute: AdminSeatRequestsRouteWithChildren,
+  AdminStaffAssignmentsRoute: AdminStaffAssignmentsRoute,
+  AdminTableDecisionsRoute: AdminTableDecisionsRoute,
   AdminTableInvitationsRoute: AdminTableInvitationsRoute,
   AdminTablesRoute: AdminTablesRouteWithChildren,
   AdminWaitlistRoute: AdminWaitlistRoute,
@@ -2692,6 +2775,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSupplyTablesRoute: ApiSupplyTablesRouteWithChildren,
   ApiSupplyVenuesRoute: ApiSupplyVenuesRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
+  HostAttendanceTableIdRoute: HostAttendanceTableIdRoute,
   ApiAdminSupplySyncRoute: ApiAdminSupplySyncRoute,
   ApiAdminSupplyWeeklyCloneRoute: ApiAdminSupplyWeeklyCloneRouteWithChildren,
   ApiMeCheckoutAttemptsAttemptIdRoute: ApiMeCheckoutAttemptsAttemptIdRoute,

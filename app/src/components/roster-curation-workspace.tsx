@@ -194,6 +194,8 @@ function StaffShell({ actor, active, children }: { actor: Actor; active: "queue"
           <a className="member-nav-link" href="/admin/waitlist"><UsersRound aria-hidden="true" />Waitlist</a>
           <a className="member-nav-link" href="/admin/identity-review"><ShieldCheck aria-hidden="true" />Identity review</a>
           <a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
+          <a className="member-nav-link" href="/admin/table-decisions">Table decisions</a>
+          <a className="member-nav-link" href="/admin/staff-assignments">Staff assignments</a>
           <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a>
         </> : <>
           <a className={`member-nav-link ${active === "queue" ? "active" : ""}`} href="/host/assigned-tables"><Table2 aria-hidden="true" />Assigned Tables</a>
@@ -249,6 +251,7 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
           <Link className="button button-outline roster-open" to={admin ? "/admin/seat-requests/$tableId" : "/host/tables/$tableId/roster"} params={{ tableId: table.tableId }}>
             {admin ? "Review roster" : "Open roster"}<ArrowRight aria-hidden="true" />
           </Link>
+          <a className="button button-outline roster-open" href={`/host/attendance/${encodeURIComponent(table.tableId)}`}>Attendance</a>
         </article>)}</div>
         {cursor && <button className="button button-outline roster-more" onClick={() => void load(cursor)}>Load more<ArrowRight /></button>}
       </>}

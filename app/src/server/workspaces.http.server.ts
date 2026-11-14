@@ -21,7 +21,7 @@ export function authorizedWorkspaces(principal: ServerVerifiedPrincipal): readon
     workspaces.push({ key: "host", available: true });
   }
   if (principal.staffRoles.has("restaurant") && principal.assignedVenueIds.size > 0) {
-    workspaces.push({ key: "restaurant", available: false });
+    workspaces.push({ key: "restaurant", available: true });
   }
   return Object.freeze(workspaces);
 }
