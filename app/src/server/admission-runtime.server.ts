@@ -2,6 +2,7 @@
 
 import { env } from "node:process";
 import { createAdmissionRepository } from "./admission.repository.server.ts";
+import { createResendEmail } from "./email.resend.server.ts";
 import { createMailpitAdmissionEmailProvider, createMailpitMagicLinkEmailProvider } from "./admission.email.mailpit.server.ts";
 import { createSupabaseAuthLinkProvider } from "./auth.link.supabase.server.ts";
 import { createMemberLinkRepository } from "./member-link.repository.server.ts";
@@ -29,10 +30,14 @@ export function createAdmissionRuntime() {
     siteUrl: appOrigin,
     allowedCallbackUrls: [callback],
   });
-  const mailpitConfig = {
+  const fromName = env.MAIL_FROM_NAME?.trim();
+  const resend = env.RESEND_API_KEY?.trim()
+    ? createResendEmail({ apiKey: env.RESEND_API_KEY.trim(), fromEmail: required("MAIL_FROM_EMAIL", env.MAIL_FROM_EMAIL), ...(fromName ? { fromName } : {}), appOrigin })
+    : null;
+  const mailpitConfig = resend ? null : {
     baseUrl: required("MAILPIT_URL", env.MAILPIT_URL),
     fromEmail: required("MAIL_FROM_EMAIL", env.MAIL_FROM_EMAIL),
-    ...(env.MAIL_FROM_NAME?.trim() ? { fromName: env.MAIL_FROM_NAME.trim() } : {}),
+    ...(fromName ? { fromName } : {}),
   };
   const supabase = createSupabaseServerClient(config);
   const admissionRepository = createAdmissionRepository(config);
@@ -43,8 +48,8 @@ export function createAdmissionRuntime() {
     authProvider,
     supabase,
     admissionRepository,
-    emailProvider: createMailpitAdmissionEmailProvider(mailpitConfig),
-    magicLinkEmailProvider: createMailpitMagicLinkEmailProvider(mailpitConfig),
+    emailProvider: resend ? resend.admission : createMailpitAdmissionEmailProvider(mailpitConfig!),
+    magicLinkEmailProvider: resend ? resend.magicLink : createMailpitMagicLinkEmailProvider(mailpitConfig!),
     memberLinkRepository: createMemberLinkRepository(config),
     resolvePrincipal: createVerifiedPrincipalResolver(supabase),
   });

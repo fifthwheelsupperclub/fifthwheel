@@ -7,6 +7,7 @@ import { createTableInvitationRepository } from "./table-invitations.repository.
 import { createTableInvitationDeliveryWorkerRepository } from "./table-invitations.repository.server.ts";
 import { createTableInvitationService } from "./table-invitations.service.server.ts";
 import { createTableInvitationHttpHandlers } from "./table-invitations.http.server.ts";
+import { createResendEmail } from "./email.resend.server.ts";
 import { createMailpitTableInvitationEmailProvider } from "./table-invitation.email.mailpit.server.ts";
 import { createTableInvitationDeliveryWorker } from "./table-invitation-delivery.worker.server.ts";
 
@@ -35,12 +36,15 @@ function supabaseConfig(environment: Readonly<Record<string, string | undefined>
 
 export function createTableInvitationDeliveryWorkerRuntime(environment: Readonly<Record<string, string | undefined>> = env) {
   const config = supabaseConfig(environment);
-  const emailProvider = createMailpitTableInvitationEmailProvider({
-    baseUrl: required("MAILPIT_URL", environment.MAILPIT_URL),
-    appOrigin: required("APP_ORIGIN", environment.APP_ORIGIN),
-    fromEmail: environment.EMAIL_FROM?.trim() || "fifthwheel@example.test",
-    fromName: environment.EMAIL_FROM_NAME?.trim() || "Fifth Wheel",
-  });
+  const fromEmail = environment.EMAIL_FROM?.trim() || environment.MAIL_FROM_EMAIL?.trim() || "fifthwheel@example.test";
+  const fromName = environment.EMAIL_FROM_NAME?.trim() || environment.MAIL_FROM_NAME?.trim() || "Fifth Wheel";
+  const emailProvider = environment.RESEND_API_KEY?.trim()
+    ? createResendEmail({ apiKey: environment.RESEND_API_KEY.trim(), fromEmail, fromName, appOrigin: required("APP_ORIGIN", environment.APP_ORIGIN) }).tableInvitation
+    : createMailpitTableInvitationEmailProvider({
+      baseUrl: required("MAILPIT_URL", environment.MAILPIT_URL),
+      appOrigin: required("APP_ORIGIN", environment.APP_ORIGIN),
+      fromEmail, fromName,
+    });
   return createTableInvitationDeliveryWorker({ repository: createTableInvitationDeliveryWorkerRepository(config), emailProvider });
 }
 
