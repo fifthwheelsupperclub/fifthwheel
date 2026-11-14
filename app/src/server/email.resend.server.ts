@@ -133,5 +133,12 @@ export function createResendEmail(config: ResendConfig, fetcher: typeof fetch = 
     },
   });
 
-  return Object.freeze({ admission: Object.freeze(admission), magicLink: Object.freeze(magicLink), tableInvitation });
+  /** Guest notices (Seat, cancellation, removal, reminder). The key includes the attempt so an operator retry is a new send, while a replay of one attempt is deduplicated. */
+  const notice = Object.freeze({
+    async send(input: Readonly<{ noticeId: string; attempt: number; to: string; subject: string; text: string; html: string }>): Promise<EmailSendResult> {
+      if (!emailPattern.test(input.to) || !idPattern.test(input.noticeId)) return { state: "failed", safeErrorCode: "resend_invalid_request", retryable: false };
+      return send(input.to, input.subject, input.text, input.html, `notice-${input.noticeId}-${input.attempt}`, { "Notice-ID": input.noticeId });
+    },
+  });
+  return Object.freeze({ admission: Object.freeze(admission), magicLink: Object.freeze(magicLink), tableInvitation, notice });
 }

@@ -47,3 +47,25 @@ test("a failed overview load says so and offers a retry; a non-admin is told the
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "You don’t have access to this" })).toBeVisible();
 });
+
+test("email problems: unknown vs failed are explained and Send again / Dismiss post the exact action", async ({ page, context }) => {
+  const noticeId = "e0840000-0000-4000-8000-000000000501";
+  const seen: Array<{ path: string; body: unknown }> = [];
+  let resolved = false;
+  await context.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.origin !== origin) return route.abort();
+    if (url.pathname === "/api/admin/notices") return route.fulfill({ json: { ok: true, correlationId: "m", data: { items: resolved ? [] : [{ noticeId, kind: "table_cancelled", state: "unknown", attempts: 1, errorCode: "lease_expired", createdAt: "2026-12-12T12:00:00Z", firstName: "Maya", tableTitle: "Autumn Table" }] } } });
+    if (url.pathname === `/api/admin/notices/${noticeId}/resolve`) { seen.push({ path: url.pathname, body: JSON.parse(route.request().postData() ?? "{}") }); resolved = true; return route.fulfill({ json: { ok: true, correlationId: "m", data: { noticeId, state: "queued" } } }); }
+    if (url.pathname.startsWith("/api/")) return route.abort();
+    return route.continue();
+  });
+  await page.goto("/admin/notices");
+  await expect(page.getByText("Unconfirmed", { exact: true })).toBeVisible();
+  await expect(page.getByText(/never sends an uncertain email twice on its own/)).toBeVisible();
+  await expect(page.getByText(/@/)).toHaveCount(0);
+  await page.screenshot({ path: `${shots}/w10-email-problems-desktop-mock-only.png`, fullPage: true });
+  await page.getByRole("button", { name: "Send again" }).click();
+  await expect(page.getByRole("heading", { name: "No email problems" })).toBeVisible();
+  expect(seen[0].body).toEqual({ action: "retry" });
+});

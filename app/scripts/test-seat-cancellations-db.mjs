@@ -180,6 +180,7 @@ delete from public.app_user_roles where user_id in (${list([admin, host])});
 delete from public.app_member_profiles where guest_id in (${list(guests)});
 delete from public.app_admissions where id in (${list(admissions)});
 delete from public.waitlist_signups where id in (${list(signups)});
+delete from public.app_notice_outbox where recipient_user_id in (${list([admin, host, ...members])});
 delete from auth.users where id in (${list([admin, host, ...members])});
 commit;`;
 

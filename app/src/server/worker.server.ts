@@ -2,6 +2,8 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { env } from "node:process";
+import { deliverNotices } from "./notice-delivery.server.ts";
+import { createNoticeSender } from "./notice-sender.server.ts";
 import { createRefundWorkerRuntime } from "./refunds-runtime.server.ts";
 import { createTableInvitationDeliveryWorkerRuntime } from "./table-invitations-runtime.server.ts";
 
@@ -10,6 +12,7 @@ export type WorkerDeps = Readonly<{
   deliverInvitation: () => Promise<{ state: string }>;
   runRefunds: () => Promise<unknown>;
   purgeVotes?: () => Promise<unknown>;
+  deliverNotices?: () => Promise<unknown>;
   runRetention?: () => Promise<unknown>;
   recordHeartbeat?: (ok: boolean, summary: Record<string, unknown>) => Promise<unknown>;
 }>;
@@ -49,14 +52,18 @@ export async function runWorkerPass(deps: WorkerDeps, refundsReady: boolean) {
   if (deps.purgeVotes) {
     try { summary.votePurge = await deps.purgeVotes(); } catch { summary.votePurge = "error"; }
   }
+  if (deps.deliverNotices) {
+    try { summary.notices = await deps.deliverNotices(); } catch { summary.notices = "error"; }
+  }
   if (deps.runRetention) {
     try { summary.retention = await deps.runRetention(); } catch { summary.retention = "error"; }
   }
-  summary.ok = summary.invitations !== "error" && summary.refunds !== "error" && summary.votePurge !== "error" && summary.retention !== "error";
+  summary.ok = summary.invitations !== "error" && summary.refunds !== "error" && summary.votePurge !== "error" && summary.retention !== "error" && summary.notices !== "error";
   if (deps.recordHeartbeat) {
     // The heartbeat records that a pass ran (and whether it was clean); counts only, never content.
-    const compact = (v: unknown) => (typeof v === "string" ? v : typeof v === "object" && v !== null ? "ran" : String(v));
-    try { await deps.recordHeartbeat(summary.ok === true, { invitations: compact(summary.invitations), refunds: compact(summary.refunds), votePurge: compact(summary.votePurge), retention: compact(summary.retention) }); }
+    const compact = (v: unknown) => (typeof v === "string" ? v : "ran");
+    const outcomes = Object.fromEntries(["invitations", "refunds", "votePurge", "notices", "retention"].filter((k) => summary[k] !== undefined).map((k) => [k, compact(summary[k])]));
+    try { await deps.recordHeartbeat(summary.ok === true, outcomes); }
     catch { summary.heartbeat = "error"; summary.ok = false; }
   }
   return summary;
@@ -68,6 +75,7 @@ export async function handleWorkerRequest(request: Request, environment: Environ
   const resolved: WorkerDeps = deps ?? {
     deliverInvitation: () => createTableInvitationDeliveryWorkerRuntime(environment).deliverNext(),
     runRefunds: () => createRefundWorkerRuntime(environment.REFUND_WORKER_SECRET ?? "", environment).runOnce(10),
+    deliverNotices: () => { const sender = createNoticeSender(environment); return deliverNotices({ rpc: (name, args) => rpc(environment, name, args ?? {}), send: sender.send, appOrigin: sender.appOrigin }); },
     purgeVotes: () => rpc(environment, "purge_vote_data"),
     runRetention: () => rpc(environment, "run_retention"),
     recordHeartbeat: (ok, summary) => rpc(environment, "record_worker_heartbeat", { p_ok: ok, p_summary: summary }),

@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshC
 import { SignOutButton } from "./sign-out-button.tsx";
 import "./ops-workspaces.css";
 
-type Area = "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
+type Area = "admin-notices" | "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
 type Reply<T> = { ok: true; data: T } | { ok: false; status: number; reason: string | null; message: string };
 type Load<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; status: number; message: string };
 
@@ -36,6 +36,7 @@ function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>
       {admin ? <><a className={`member-nav-link ${area === "admin-overview" ? "active" : ""}`} href="/admin">Overview</a>
         <a className={`member-nav-link ${area === "admin-decisions" ? "active" : ""}`} href="/admin/table-decisions">Table decisions</a>
         <a className={`member-nav-link ${area === "admin-staff" ? "active" : ""}`} href="/admin/staff-assignments">Staff assignments</a>
+        <a className={`member-nav-link ${area === "admin-notices" ? "active" : ""}`} href="/admin/notices">Email problems</a>
         <a className={`member-nav-link ${area === "admin-feedback" ? "active" : ""}`} href="/admin/conduct-reports">Reports &amp; ratings</a>
         <a className="member-nav-link" href="/admin/seat-requests">Seat requests</a><a className="member-nav-link" href="/admin/tables">Tables</a><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a></>
         : area === "host" ? <a className="member-nav-link active" href="/host/assigned-tables">Assigned Tables</a> : <a className="member-nav-link active" href="/restaurant">Service times</a>}
@@ -258,6 +259,7 @@ const queues: Queue[] = [
   { key: "paymentsUnaccounted", label: "Payments with no Seat or refund", help: "Investigate before anything else; money is unaccounted for.", href: "/admin/refunds", alert: true },
   { key: "refundsNeedingAttention", label: "Refunds failed or unconfirmed", help: "Retry or reconcile; never resend without provider evidence.", href: "/admin/refunds", alert: true },
   { key: "votesNotFinalized", label: "Vote results not finalized", help: "A closed vote has no results after a day. Ask engineering to run the finalizer.", href: "/admin", alert: true },
+  { key: "noticeProblems", label: "Guest emails failed or unconfirmed", help: "Check the provider’s logs, then send again or dismiss.", href: "/admin/notices", alert: true },
   { key: "refundsOpen", label: "Refunds owed", help: "Open refund obligations.", href: "/admin/refunds" },
   { key: "cancellationsPending", label: "Cancellation requests", help: "Guests waiting for a decision.", href: "/admin/cancellations" },
   { key: "cancellationsFlagged", label: "Flagged by a host", help: "Hosts asked for your attention on these cancellation requests.", href: "/admin/cancellations" },
@@ -291,4 +293,26 @@ export function AdminOverview() {
       <p className="ops-footnote">Need help? Email <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. Terms and privacy: <a href="https://fifthwheel.community/terms">Terms</a> · <a href="https://fifthwheel.community/privacy">Privacy</a>.</p>
     </Shell>;
   })()}</Status>;
+}
+
+// ---- Admin: guest email problems ------------------------------------------------------------------------------------
+type NoticeProblem = { noticeId: string; kind: string; state: "failed" | "unknown"; attempts: number; errorCode: string | null; createdAt: string; firstName: string; tableTitle: string | null };
+const kindLabels: Record<string, string> = { seat_confirmed: "Seat confirmed", cancellation_decision: "Cancellation decision", table_cancelled: "Table cancelled", member_removed: "Removed from Table", t48_reminder: "Invitation reminder" };
+export function AdminNoticeProblems() {
+  const { load, reload } = useLoad<{ items: NoticeProblem[] }>("/api/admin/notices");
+  const [message, setMessage] = useState("");
+  async function resolve(item: NoticeProblem, action: "retry" | "dismiss") {
+    setMessage("");
+    const result = await call(`/api/admin/notices/${item.noticeId}/resolve`, { action });
+    if (result.ok) await reload(); else setMessage(result.message);
+  }
+  return <Status area="admin-notices" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-notices">
+    <header className="ops-heading"><p className="eyebrow">EMAIL</p><h1>Guest emails that need a person</h1><p>The system never sends an uncertain email twice on its own. For “unconfirmed”, check the email provider’s logs for this guest first. If it was not sent, send again; if it was, dismiss it.</p></header>
+    {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
+    {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No email problems</h2><p>Failed and unconfirmed guest emails appear here.</p></section>
+      : <ul className="ops-list">{load.data.items.map((n) => <li className="ops-card" key={n.noticeId}>
+        <div><h2>{kindLabels[n.kind] ?? n.kind} · {n.firstName}</h2><p>{n.tableTitle ?? "Table"} · {new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(n.createdAt))}</p>
+          <p className="ops-meta"><span className={`status-pill ${n.state === "unknown" ? "status-pill-warning" : ""}`}>{n.state === "unknown" ? "Unconfirmed" : "Failed"}</span><span>{n.attempts} attempt{n.attempts === 1 ? "" : "s"}</span>{n.errorCode && <span>{n.errorCode.replaceAll("_", " ")}</span>}</p></div>
+        <div className="ops-actions"><button className="button button-outline" type="button" onClick={() => void resolve(n, "retry")}>Send again</button><button className="button button-outline" type="button" onClick={() => void resolve(n, "dismiss")}>Dismiss</button></div></li>)}</ul>}
+  </Shell>}</Status>;
 }

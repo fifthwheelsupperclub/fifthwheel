@@ -119,3 +119,16 @@ test("overview, report deletion and account deletion are admin-only; account del
   assert.equal(held.status, 409);
   assert.equal((await held.json()).error.reason, "case_held");
 });
+
+test("notice problems: admin only; resolve takes exactly retry or dismiss", async () => {
+  const admin = setup(who("admin"));
+  assert.equal((await admin.handle("noticeProblems", get("/n"))).status, 200);
+  assert.equal((await admin.handle("resolveNotice", post({ action: "retry" }), { noticeId: id(4) })).status, 200);
+  assert.deepEqual(admin.calls.at(-1), ["resolve_notice", { p_actor: id(1), p_notice_id: id(4), p_action: "retry" }]);
+  assert.equal((await admin.handle("resolveNotice", post({ action: "delete" }), { noticeId: id(4) })).status, 400);
+  assert.equal((await admin.handle("resolveNotice", post({ action: "retry", extra: 1 }), { noticeId: id(4) })).status, 400);
+  const host = setup(who("host"));
+  assert.equal((await host.handle("noticeProblems", get("/n"))).status, 403);
+  assert.equal((await host.handle("resolveNotice", post({ action: "retry" }), { noticeId: id(4) })).status, 403);
+  assert.equal(host.calls.length, 0);
+});

@@ -71,6 +71,7 @@ begin
         where rt.state in ('open','review_required','proceeding')
           and ((r.content->>'localDate')::date+(r.content->>'startLocalTime')::time) at time zone 'America/New_York' between now() and now()+interval '7 days'
           and not exists(select 1 from public.app_supply_table_assignments a where a.table_id=h.table_id)),
+    'noticeProblems',(select count(*) from public.app_notice_outbox where state in ('failed','unknown')),
     'votesNotFinalized',(select count(*) from public.app_vote_periods where finalized_at is null and closes_at<clock_timestamp()-interval '1 day')
   ) into v_out;
   return jsonb_build_object('generatedAt',clock_timestamp(),
