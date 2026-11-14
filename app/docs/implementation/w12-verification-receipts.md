@@ -15,7 +15,7 @@ Everything below was run in this session against the **isolated local test stack
 
 ## Database: clean full migration replay
 
-The guarded `test reset` replayed the migration chain onto an empty database and **failed at migration 13**: `20261112202411_supply_draft_management.sql` contained a stray `end if;` (it had only ever worked on a database that was migrated incrementally before an edit). Fixed. After the fix `supabase migration up` applied all 35 migrations to the empty database without error. Because the reset began before the failure, the test database was left empty and partially migrated until the repair; it is now fully migrated and holds no data.
+The guarded `test reset` replayed the migration chain onto an empty database and **failed at migration 13**: `20261112202411_supply_draft_management.sql` contained a stray `end if;` (it had only ever worked on a database that was migrated incrementally before an edit). Fixed. After the fix `supabase migration up` applied all 37 migrations to the empty database without error. Because the reset began before the failure, the test database was left empty and partially migrated until the repair; it is now fully migrated and holds no data.
 
 Run on that freshly replayed database (all rollback-only harnesses, each passed): table requests, roster curation, checkout holds, checkout fulfillment, seat cancellations, refunds, Table cancellation, W08 operations, W08 removal and replacement, W09 vote and feedback, W10 overview and retention, W10 notices, profile foundation, supply management, supply sync, weekly clone, admission operation, invitation attempts, Table invitation delivery.
 
