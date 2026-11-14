@@ -68,7 +68,7 @@ const collision = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", `
   (not exists(select 1 from public.app_seats where invitation_id in (${list([invitation,refundInvitation])}) or payment_id in (select payment_id from public.app_payments where provider_payment_id in ('pi_w072pay','pi_w072late'))))::text,'|',
   (not exists(select 1 from public.app_stripe_checkout_events where event_id in ('evt_w072pay','evt_w072fail','evt_w072late')))::text,'|',
   (not exists(select 1 from public.app_refund_obligations where payment_id in (select payment_id from public.app_payments where provider_payment_id in ('pi_w072pay','pi_w072late'))))::text,'|',
-  (not exists(select 1 from public.app_audit_events where operation_id in (${list([...ids])}) or subject_id in (${list([attempt,refundAttempt,invitation,refundInvitation])})))`]);
+  (not exists(select 1 from public.app_audit_events where operation_id in (${list([...ids])}) or subject_id in (${list([attempt,refundAttempt,invitation,refundInvitation])})))::text)`]);
 assert.equal(collision.status, 0, collision.stderr || collision.stdout);
 assert.equal(collision.stdout.trim(), Array(18).fill("true").join("|"), "refusing fixture collisions across W07.2 rows");
 

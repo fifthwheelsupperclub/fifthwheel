@@ -220,7 +220,7 @@ begin
   v_refund_available:=v_paid_cents-v_refund_committed;
   select jsonb_build_object('request',app_private.cancellation_request_dto(cr),
     'member',jsonb_build_object('guestId',m.guest_id,'displayName',btrim(m.first_name||' '||m.last_name)),
-    'table',jsonb_build_object('tableId',h.table_id,'title',r.content->>'title','localDate',r.content->>'localDate','startLocalTime',r.content->>'startLocalTime'),
+    'table',jsonb_build_object('tableId',s.table_id,'title',r.content->>'title','localDate',r.content->>'localDate','startLocalTime',r.content->>'startLocalTime'),
     'seat',jsonb_build_object('seatId',s.seat_id,'state',case when rt.state='completed' then 'completed'
       when rt.state='cancelled' then 'cancelled' else s.state end,'paidAt',p.verified_at,
       'amountCents',p.amount_cents,'refundAvailableCents',v_refund_available))

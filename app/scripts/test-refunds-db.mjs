@@ -31,7 +31,7 @@ function run(command, args, input) {
   return result;
 }
 function psql(sql) {
-  const result = run("psql", [db, "-X", "-v", "ON_ERROR_STOP=1", "-c", sql]);
+  const result = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", sql]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
 }
@@ -108,12 +108,15 @@ insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest
   ${tables.map((table, i) => `(${quote(attempts[i])},${quote(invitations[i])},${quote(table)},${quote(guests[i])},${quote(members[i])},1,1,${quote(revisions[i])},'consumed',now()-interval '1 hour',now()-interval '58 minutes','test','w075-key-${i + 1}','cs_test_w075session${i + 1}','seat-checkout-v1',now()-interval '1 hour')`).join(",\n  ")};
 insert into public.app_payments(payment_id,attempt_id,provider_mode,provider_payment_id,amount_cents,currency,state,verified_at) values
   ${tables.map((_, i) => `(${quote(payments[i])},${quote(attempts[i])},'test','pi_w075_${i + 1}',2500,'USD','verified_paid',now()-interval '1 hour')`).join(",\n  ")};
+set local request.jwt.claims='{"role":"service_role"}';
 insert into public.app_refund_obligations(obligation_id,payment_id,source,amount_cents,currency,state) values
   ${payments.map((payment, i) => `(${quote(obligations[i])},${quote(payment)},'late_checkout_ineligible',1250,'USD','open')`).join(",\n  ")};
 set local request.jwt.claims='{"role":"service_role"}';
 do $w075$ declare v jsonb; v_msg text; v_jobs jsonb; j jsonb; v_detail jsonb; begin
   if public.queue_refund_dispatch('${admin}','${obligations[0]}','${operations[0]}',true)->'operation'->>'operationId'<>'${operations[0]}' then raise exception 'dispatch did not persist operation ID'; end if;
   perform public.queue_refund_dispatch('${admin}','${obligations[0]}','${operations[0]}',true);
+  perform public.queue_refund_dispatch('${admin}','${obligations[1]}','${operations[1]}',true);
+  perform public.queue_refund_dispatch('${admin}','${obligations[2]}','${operations[2]}',true);
   begin perform public.queue_refund_dispatch('${admin}','${obligations[1]}','${operations[0]}',true); raise exception 'changed dispatch body replayed';
   exception when sqlstate 'P0001' then get stacked diagnostics v_msg=message_text; if v_msg<>'operation_conflict' then raise; end if; end;
   begin insert into public.app_refund_obligations(payment_id,source,amount_cents,currency,state)

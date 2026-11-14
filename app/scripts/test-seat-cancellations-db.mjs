@@ -58,7 +58,7 @@ function runAsync(command, args, input) {
   });
 }
 function psql(sql) {
-  const result = run("psql", [db, "-X", "-v", "ON_ERROR_STOP=1", "-c", sql]);
+  const result = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", sql]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
 }
@@ -172,8 +172,9 @@ delete from public.app_table_invitations where invitation_id in (${list(invitati
 delete from public.app_table_roster_proposal_members where proposal_id in (${list(proposals)});
 delete from public.app_table_roster_proposals where proposal_id in (${list(proposals)});
 delete from public.app_table_requests where request_id in (${list(tableRequests)});
-delete from public.app_supply_table_revisions where revision_id in (${list(revisions)});
 delete from public.app_table_runtime where table_id in (${list(tables)});
+update public.app_supply_table_heads set published_revision_id=null where table_id in (${list(tables)});
+delete from public.app_supply_table_revisions where revision_id in (${list(revisions)});
 delete from public.app_supply_table_heads where table_id in (${list(tables)});
 delete from public.app_user_roles where user_id in (${list([admin, host])});
 delete from public.app_member_profiles where guest_id in (${list(guests)});
@@ -189,6 +190,7 @@ function cleanup() {
 
 async function main() {
   assertTarget();
+  if (process.argv.includes("--cleanup-only")) { cleanup(); return; }
   try { writeFileSync(runLock, `${process.pid}\n`, { flag: "wx", mode: 0o600 }); }
   catch { throw new Error("W07.4 DB harness already running or lock file exists; inspect the isolated test stack first"); }
   let fixturesCommitted = false;
@@ -235,9 +237,10 @@ async function main() {
     const winningReason = winningOp === memberOps[0] ? "race A" : "race B";
     const serviceClaims = `set local request.jwt.claims='{"role":"service_role"}';`;
     const calls = psql(`begin; ${serviceClaims}
-      do $w074$ declare v jsonb; msg text; begin
+      do $w074$ declare v jsonb; rid uuid; msg text; begin
         v:=public.request_seat_cancellation(${quote(members[0])},${quote(seats[0])},${quote(winningOp)},${quote(winningReason)});
         if v->>'seatId'<>'${seats[0]}' then raise exception 'wrong idempotent replay result'; end if;
+        rid:=(v->>'requestId')::uuid;
         begin perform public.request_seat_cancellation(${quote(members[0])},${quote(seats[0])},${quote(winningOp)},'changed body');
           raise exception 'changed request body reused operation';
         exception when unique_violation then get stacked diagnostics msg=message_text; if msg<>'operation_conflict' then raise; end if; end;
@@ -257,8 +260,8 @@ async function main() {
           or (select state from public.app_table_invitations where invitation_id='${invitations[0]}')<>'active'
           or public.read_invitation_seat_status('${invitations[0]}')->>'status'<>'confirmed_seat' then
           raise exception 'pending request removed paid Seat/offer eligibility'; end if;
-        if (select count(*) from public.app_seat_cancellation_operations where action='member_request' and cancellation_request_id=(v->>'requestId')::uuid)<>1
-          or (select count(*) from public.app_audit_events where action='seat.cancellation.requested' and subject_id=(v->>'requestId')::uuid)<>1 then
+        if (select count(*) from public.app_seat_cancellation_operations where action='member_request' and cancellation_request_id=rid)<>1
+          or (select count(*) from public.app_audit_events where action='seat.cancellation.requested' and subject_id=rid)<>1 then
           raise exception 'request replay duplicated operation or audit'; end if;
       end $w074$;
       commit`);

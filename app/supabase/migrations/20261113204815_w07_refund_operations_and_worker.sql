@@ -259,7 +259,7 @@ begin
   select * into v_operation from public.app_refund_operations where operation_id=p_operation_id for update;
   if not p_provider_available then raise exception using errcode='P0001',message='provider_unavailable'; end if;
   if p_action='retry' then
-    if v_operation.state not in ('unknown','failed') or v_operation.provider_refund_id is not null then raise exception using errcode='P0001',message='not_retryable'; end if;
+    if v_operation.state not in ('unknown','failed') or v_operation.provider_refund_id is not null or v_operation.safe_code is not distinct from 'payment_mismatch' then raise exception using errcode='P0001',message='not_retryable'; end if;
     update public.app_refund_operations set state='pending',safe_code=null,updated_at=clock_timestamp() where operation_id=p_operation_id returning * into v_operation;
     update public.app_refund_obligations set state='pending',updated_at=clock_timestamp() where obligation_id=v_operation.obligation_id;
     v_work_action:='dispatch';
@@ -388,7 +388,7 @@ alter table public.app_audit_events add constraint app_audit_events_subject_type
 
 alter table public.app_audit_events drop constraint app_audit_events_system_actor_check;
 alter table public.app_audit_events add constraint app_audit_events_system_actor_check
-  check(system_actor is null or system_actor in ('auth_callback','email_delivery_worker','retention_worker','supply_sync_worker','refund_worker'));
+  check(system_actor is null or system_actor in ('auth_callback','email_delivery_worker','retention_worker','supply_sync_worker','table_invitation_worker','stripe_webhook_worker','checkout_fulfillment_worker','refund_worker'));
 
 create or replace function app_private.is_safe_audit_metadata(p_metadata jsonb)
 returns boolean language sql immutable strict set search_path = ''

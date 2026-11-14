@@ -66,7 +66,7 @@ alter table public.app_audit_events add constraint app_audit_events_subject_type
 ));
 alter table public.app_audit_events drop constraint app_audit_events_system_actor_check;
 alter table public.app_audit_events add constraint app_audit_events_system_actor_check check (system_actor is null or system_actor in (
-  'auth_callback','email_delivery_worker','retention_worker','supply_sync_worker','stripe_webhook_worker','checkout_fulfillment_worker'
+  'auth_callback','email_delivery_worker','retention_worker','supply_sync_worker','table_invitation_worker','stripe_webhook_worker','checkout_fulfillment_worker','refund_worker'
 ));
 
 create function public.persist_stripe_checkout_event(
