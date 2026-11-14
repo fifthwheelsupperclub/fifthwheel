@@ -25,6 +25,7 @@ begin
       delete from public.app_supply_external_mappings where entity_kind='table' and core_id=v_item.target_table_id;
       delete from public.app_supply_table_assignments where table_id=v_item.target_table_id;
       delete from public.app_supply_table_revisions where table_id=v_item.target_table_id;
+      delete from public.app_table_runtime where table_id=v_item.target_table_id;
       delete from public.app_supply_table_heads where table_id=v_item.target_table_id;
       update public.app_supply_weekly_clone_items set state='undone',safe_code=null,lease_until=null,updated_at=now()
         where operation_id=p_operation_id and source_table_id=p_source_table_id;

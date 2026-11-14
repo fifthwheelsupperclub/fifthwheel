@@ -292,7 +292,7 @@ function AdminWaitlistPage() {
     <div className="product-layout">
       <aside className="product-sidebar" aria-label="Admin navigation">
         <p className="sidebar-caption">WORKSPACE</p>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true">Overview</span>
+        <a className="member-nav-link" href="/admin">Overview</a>
         <p className="group-label">PEOPLE</p>
         <a className="member-nav-link active" aria-current="page" href="/admin/waitlist"><UsersRound aria-hidden="true" />Waitlist</a>
         <a className="member-nav-link" href="/admin/identity-review"><FileCheck2 aria-hidden="true" />Identity review</a>
@@ -303,10 +303,10 @@ function AdminWaitlistPage() {
         <a className="member-nav-link" href="/admin/cancellations">Cancellations</a>
         <a className="member-nav-link" href="/admin/refunds">Refunds</a>
         <p className="group-label">OPERATIONS</p>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true">Communications</span>
+        <a className="member-nav-link" href="/admin/notices">Communications</a>
         <a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true">Conduct reports</span>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true">Audit</span>
+        <a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
+        
         <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />App access and Table invitations are separate.</div>
       </aside>
 

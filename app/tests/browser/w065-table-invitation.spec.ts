@@ -149,7 +149,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     });
 
     await card.getByRole("button", { name: "Queue delivery retry" }).click();
-    await expect(admin.getByText(/A delivery retry is queued/i)).toBeVisible();
+    await expect(admin.getByText(/A new email attempt is queued/i)).toBeVisible();
     await expect(card.getByText("Email queued", { exact: true })).toBeVisible();
 
     // The one-shot poller can only run when the synthetic outbox is the sole eligible row.
@@ -171,7 +171,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
 
     await admin.reload();
     const acceptedCard = admin.locator(".admin-invitation-card").filter({ hasText: tableTitle });
-    await expect(acceptedCard.getByText("Provider accepted", { exact: true })).toBeVisible();
+    await expect(acceptedCard.getByText("Email service accepted", { exact: true })).toBeVisible();
     await acceptedCard.locator("details.admin-invitation-attempts summary").click();
     await expect(acceptedCard.getByText("Attempt 2 · accepted", { exact: true })).toBeVisible();
     await expect(acceptedCard.getByRole("button", { name: "Queue delivery retry" })).toHaveCount(0);
@@ -186,7 +186,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     expect(JSON.stringify(adminJson)).not.toContain(providerMessageId);
     await screenshotPair(admin, "w065-admin-accepted-delivery", async () => {
       await admin.goto(`${appOrigin}/admin/table-invitations`);
-      await expect(admin.locator(".admin-invitation-card").filter({ hasText: tableTitle }).getByText("Provider accepted", { exact: true })).toBeVisible();
+      await expect(admin.locator(".admin-invitation-card").filter({ hasText: tableTitle }).getByText("Email service accepted", { exact: true })).toBeVisible();
     });
 
     const memberContext = await localContext(browser);
@@ -204,8 +204,8 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await member.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
       await member.waitForURL(invitationUrl, { timeout: 20_000 });
       await expect(member.getByRole("heading", { name: tableTitle })).toBeVisible();
-      await expect(member.getByText("Provider accepted", { exact: true })).toHaveCount(2);
-      await expect(member.getByText("Provider accepted", { exact: true }).first()).toBeVisible();
+      await expect(member.getByText("Email service accepted", { exact: true })).toHaveCount(2);
+      await expect(member.getByText("Email service accepted", { exact: true }).first()).toBeVisible();
       await expect(member.getByRole("heading", { name: "Evening itinerary" })).toBeVisible();
       await expect(member.getByText("Test Bar")).toBeVisible();
       await expect(member.getByText(/PRIVATE W06\.5/)).toHaveCount(0);

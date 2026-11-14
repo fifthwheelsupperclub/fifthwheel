@@ -204,13 +204,13 @@ export function AdminSupplySyncWorkspace() {
     </header>
     <div className="product-layout">
       <aside className="product-sidebar" aria-label="Admin navigation">
-        <p className="sidebar-caption">WORKSPACE</p><span className="member-nav-link is-preview-disabled" aria-disabled="true">Overview</span>
+        <p className="sidebar-caption">WORKSPACE</p><a className="member-nav-link" href="/admin">Overview</a>
         <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><span className="supply-nav-number">01</span>Waitlist</a>
         <a className="member-nav-link" href="/admin/identity-review"><span className="supply-nav-number">02</span>Identity review</a>
         <a className="member-nav-link" href="/admin/seat-requests"><span className="supply-nav-number">03</span>Seat requests</a>
         <p className="group-label">TABLES</p><a className="member-nav-link active" href="/admin/tables" aria-current="page"><Table2 aria-hidden="true" />Tables</a>
         <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a>
-        <p className="group-label">OPERATIONS</p><span className="member-nav-link is-preview-disabled" aria-disabled="true">Communications</span><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><span className="member-nav-link is-preview-disabled" aria-disabled="true">Conduct reports</span><span className="member-nav-link is-preview-disabled" aria-disabled="true">Audit</span>
+        <p className="group-label">OPERATIONS</p><a className="member-nav-link" href="/admin/notices">Communications</a><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
         <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />Supply changes never alter invitations, Seats or payment state.</div>
       </aside>
 

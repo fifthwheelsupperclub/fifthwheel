@@ -234,6 +234,7 @@ begin
   where table_id=any(v_table_ids);
   delete from public.app_supply_table_operations where actor_user_id=${actorId}::uuid;
   delete from public.app_supply_table_revisions where table_id=any(v_table_ids);
+  delete from public.app_table_runtime where table_id=any(v_table_ids);
   delete from public.app_supply_table_heads where table_id=any(v_table_ids);
 end
 $cleanup_supply_management$;

@@ -59,7 +59,7 @@ function MemberHomePage() {
         <a className="member-nav-link active" aria-current="page" href="/member"><House aria-hidden="true" />Home</a>
         <a className="member-nav-link" href="/tables"><Table2 aria-hidden="true" />Tables</a>
         <a className="member-nav-link" href="/requests"><ClipboardList aria-hidden="true" />Requests</a>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true"><Ticket aria-hidden="true" />My Seats</span>
+        <a className="member-nav-link" href="/my-seats"><Ticket aria-hidden="true" />My Seats</a>
         <div className="product-sidebar-foot">Your admission is separate from Table invitations and payment.</div>
       </aside>
 

@@ -327,13 +327,13 @@ function AdminReviewShell(props: Readonly<{ active: "queue" | "detail"; children
     </header>
     <div className="product-layout">
       <aside className="product-sidebar" aria-label="Admin navigation">
-        <p className="sidebar-caption">WORKSPACE</p><span className="member-nav-link is-preview-disabled" aria-disabled="true">Overview</span>
+        <p className="sidebar-caption">WORKSPACE</p><a className="member-nav-link" href="/admin">Overview</a>
         <p className="group-label">PEOPLE</p><a className="member-nav-link" href="/admin/waitlist"><UserRoundCheck aria-hidden="true" />Waitlist</a>
         <a className={"member-nav-link " + (props.active === "queue" || props.active === "detail" ? "active" : "")} href="/admin/identity-review" aria-current={props.active === "queue" ? "page" : undefined}><FileCheck2 aria-hidden="true" />Identity review</a>
         <a className="member-nav-link" href="/admin/seat-requests"><UsersRound aria-hidden="true" />Seat requests</a>
         <p className="group-label">TABLES</p><a className="member-nav-link" href="/admin/tables"><Table2 aria-hidden="true" />Tables</a>
         <p className="group-label">MONEY</p><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a>
-        <p className="group-label">OPERATIONS</p><span className="member-nav-link is-preview-disabled" aria-disabled="true">Communications</span><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><span className="member-nav-link is-preview-disabled" aria-disabled="true">Conduct reports</span><span className="member-nav-link is-preview-disabled" aria-disabled="true">Audit</span>
+        <p className="group-label">OPERATIONS</p><a className="member-nav-link" href="/admin/notices">Communications</a><a className="member-nav-link" href="/admin/table-invitations">Table invitation delivery</a><a className="member-nav-link" href="/admin/conduct-reports">Conduct reports</a>
         <div className="product-sidebar-foot"><ShieldCheck aria-hidden="true" />Identity evidence is restricted to current submitted reviews.</div>
       </aside>
       <section className="product-content identity-review-content">{props.children}</section>

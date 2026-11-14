@@ -75,19 +75,19 @@ test("W06.3–W06.4 roster queue/detail/approval UI uses intercepted contract fi
     const adminPage = await adminContext.newPage();
     await openIsolatedContext(adminPage, "/admin/seat-requests");
     await expect(adminPage.getByRole("heading", { name: "Autumn Table" })).toBeVisible();
-    await expect(adminPage.getByText("4 pending requests")).toBeVisible();
+    await expect(adminPage.getByText(/4 waiting Seat requests/)).toBeVisible();
     await adminPage.getByRole("link", { name: "Review roster" }).click();
     await adminPage.waitForURL(`${appOrigin}/admin/seat-requests/${tableId}`);
-    await expect(adminPage.getByRole("heading", { name: "Applicants" })).toBeVisible();
+    await expect(adminPage.getByRole("heading", { name: "People who asked to join" })).toBeVisible();
     await expect(adminPage.getByText("Riley Morgan")).toBeVisible();
     await expect(adminPage.getByText("A selected profile needs current administrator approval.")).toBeVisible();
-    await expect(adminPage.getByText("Roster meets current rules")).toBeVisible();
+    await expect(adminPage.getByText("Roster meets the current rules")).toBeVisible();
     await expect(adminPage.getByRole("button", { name: "Approve roster" })).toBeVisible();
     await adminPage.getByRole("button", { name: "Approve roster" }).click();
     const dialog = adminPage.getByRole("dialog", { name: "Approve this roster?" });
     await expect(dialog).toBeVisible();
     for (const name of ["Maya Chen", "Noah James", "Oliver Park"]) await expect(dialog.getByText(name, { exact: true })).toBeVisible();
-    await expect(dialog.getByText(/will not charge members or claim that email was delivered/i)).toBeVisible();
+    await expect(dialog.getByText(/will not charge anyone or confirm that an email reached their inbox/i)).toBeVisible();
     await expect(adminPage.getByRole("button", { name: "Approve and queue invitations" })).toBeVisible();
 
     await mkdir(screenshotDirectory, { recursive: true });
@@ -99,7 +99,7 @@ test("W06.3–W06.4 roster queue/detail/approval UI uses intercepted contract fi
     const hostPage = await hostContext.newPage();
     await openIsolatedContext(hostPage, `/host/tables/${tableId}/roster`);
     await expect(hostPage.getByRole("heading", { name: "Autumn Table" })).toBeVisible();
-    await expect(hostPage.getByRole("heading", { name: "Applicants" })).toBeVisible();
+    await expect(hostPage.getByRole("heading", { name: "People who asked to join" })).toBeVisible();
     await expect(hostPage.getByText("A selected profile needs current administrator approval.")).toBeVisible();
     await expect(hostPage.getByRole("button", { name: "Approve roster" })).toHaveCount(0);
     await expect(hostPage.getByRole("button", { name: "Approve and queue invitations" })).toHaveCount(0);

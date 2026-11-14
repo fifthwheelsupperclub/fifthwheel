@@ -148,7 +148,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
       await page.goto(`${appOrigin}/requests`);
       await expect(page.getByRole("heading", { name: /Every request/i })).toBeVisible();
       await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toHaveCount(2);
-      await expect(page.getByText("PENDING", { exact: true })).toBeVisible();
+      await expect(page.getByText("SEAT REQUEST · PENDING", { exact: true })).toBeVisible();
       await expect(page.getByText("WITHDRAWN", { exact: true })).toBeVisible();
     });
 

@@ -604,7 +604,7 @@ export function ProfileWorkspace() {
         <a className="member-nav-link" href="/member"><House aria-hidden="true" />Home</a>
         <a className="member-nav-link" href="/tables"><Table2 aria-hidden="true" />Tables</a>
         <a className="member-nav-link" href="/requests"><ClipboardList aria-hidden="true" />Requests</a>
-        <span className="member-nav-link is-preview-disabled" aria-disabled="true"><BadgeCheck aria-hidden="true" />My Seats</span>
+        <a className="member-nav-link" href="/my-seats"><BadgeCheck aria-hidden="true" />My Seats</a>
         <div className="product-sidebar-foot">Your profile stays private and is visible only to you and the authorized review team.</div>
       </aside>
       <section className="product-content profile-content" aria-labelledby="profile-heading">

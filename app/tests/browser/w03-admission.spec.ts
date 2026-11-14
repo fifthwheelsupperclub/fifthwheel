@@ -570,9 +570,9 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
 
   // Member identity is authenticated but lacks admin role; direct API access
   // must remain denied after the invited link activates the admission.
-  await signupRow.getByRole("button", { name: "Review invite" }).click();
-  const dialog = adminJourney.page.getByRole("dialog", { name: "Review before confirming" });
-  await expect(dialog).toContainText("Table invitations and Seats are separate");
+  await signupRow.getByRole("button", { name: "Review app invite" }).click();
+  const dialog = adminJourney.page.getByRole("dialog", { name: "Review this app invite" });
+  await expect(dialog).toContainText("Table invitation and Seat are separate");
   await saveMilestoneScreenshot(adminJourney.page, "w03-invitation-confirmation-desktop.png");
   const initialAdmissionRequestPromise = adminJourney.page.waitForRequest((request) =>
     request.url() === `${appOrigin}/api/admin/waitlist` && request.method() === "POST",
@@ -580,7 +580,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const initialAdmissionResponsePromise = adminJourney.page.waitForResponse((response) =>
     response.url() === `${appOrigin}/api/admin/waitlist` && response.request().method() === "POST",
   );
-  await dialog.getByRole("button", { name: "Approve access and send" }).click();
+  await dialog.getByRole("button", { name: "Approve app access and send" }).click();
   const [initialAdmissionRequest, initialAdmissionResponse] = await Promise.all([
     initialAdmissionRequestPromise,
     initialAdmissionResponsePromise,
@@ -639,10 +639,10 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   expect(await mailpitHasRecipientMessage(memberEmail, "Your Fifth Wheel app invitation")).toBe(false);
 
   await dialog.getByRole("button", { name: "Retry email" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Delivery outcome unknown");
+  await expect(dialog.getByRole("alert")).toContainText("Email status unclear");
   await expect(dialog.getByRole("alert")).toContainText("Do not resend until delivery status is reconciled");
-  await dialog.getByRole("button", { name: "Reconcile delivery" }).click();
-  await expect(dialog.getByRole("status")).toContainText("Email provider accepted");
+  await dialog.getByRole("button", { name: "Check email status" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Email service accepted the message");
   const proxyHealthResponse = await fetch(`${mailpitProxyOrigin}/__health`, { cache: "no-store" });
   expect(proxyHealthResponse.ok).toBe(true);
   const proxyHealth: unknown = await proxyHealthResponse.json();
@@ -677,7 +677,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const wrongOwnerResponse = await wrongOwnerVerify;
   expect(wrongOwnerResponse.status(), "a forwarded invite opened under another account should be rejected before replacing its session").toBe(409);
   await expect(wrongRecipientPage.getByRole("alert")).toContainText("You are already signed in.");
-  await expect(wrongRecipientPage.getByRole("alert")).toContainText("Sign out first, then continue with this same link. Your current session was kept.");
+  await expect(wrongRecipientPage.getByRole("alert")).toContainText("Sign out before using this link. Your current sign-in is still active, and you can continue with this same link.");
   const preservedCookies = await wrongRecipientContext.cookies(appOrigin);
   expect(preservedCookies.find((cookie) => cookie.name === "fw_access_token")?.value)
     .toBe(adminAccessCookie!.value);
@@ -695,7 +695,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   expect(memberJourney.linkHref).toBe(originalInvitationHref);
   await expect(memberJourney.page).toHaveURL(`${appOrigin}/member`);
   await expect(memberJourney.page.getByText(`App access is active for ${memberEmail}.`)).toBeVisible();
-  await expect(memberJourney.page.getByRole("heading", { name: "Profile setup is next" })).toBeVisible();
+  await expect(memberJourney.page.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
   await expect(memberJourney.page.getByText(/Table invitations and Seats are separate/)).toBeVisible();
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
   await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-desktop.png");
@@ -833,13 +833,14 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
     expect.objectContaining({ attempt_number: 2, state: "accepted" }),
   ]);
   expect(afterReplaySnapshot.activation_audit_count).toBe(1);
+  // W03 originally asserted that no downstream tables existed yet. Later slices created them, so this now records the current schema:
   expect(readW03DomainTableAvailability()).toEqual({
-    profiles: false,
+    profiles: true,
     profile_reviews: false,
     tables: false,
-    requests: false,
-    seats: false,
-    payments: false,
+    requests: true,
+    payments: true,
+    seats: true,
   });
 
   // Malformed links show the recovery action. A syntactically valid fake token

@@ -204,7 +204,6 @@ begin
     where cand.value->>'title' is not null and cand.value->>'id' is not null
       and not exists(select 1 from public.app_supply_table_heads h where h.table_id=(cand.value->>'id')::uuid);
   end if;
-  end if;
   return jsonb_build_object('items',v_items,'stagedCandidates',v_candidates,'nextCursor',v_next);
 end $function$;
 

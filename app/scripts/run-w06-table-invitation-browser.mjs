@@ -239,6 +239,7 @@ delete from public.app_table_roster_proposals where proposal_id=${sql(f.proposal
 delete from public.app_table_requests where request_id=${sql(f.requestId)};
 update public.app_supply_table_heads set draft_revision_id=null,accepted_revision_id=null,published_revision_id=null where table_id=${sql(f.tableId)};
 delete from public.app_supply_table_revisions where revision_id=${sql(f.revisionId)};
+delete from public.app_table_runtime where table_id=${sql(f.tableId)};
 delete from public.app_supply_table_heads where table_id=${sql(f.tableId)};
 delete from public.app_member_profiles where guest_id in (${sql(f.memberGuest)},${sql(f.otherGuest)});
 delete from public.app_member_link_cooldowns where admission_id in (${sql(f.adminAdmission)},${sql(f.memberAdmission)},${sql(f.otherAdmission)});

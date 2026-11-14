@@ -85,7 +85,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     const targetWeek = target.toISOString().slice(0, 10);
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables/weekly-clone`);
-    await expect(page.getByRole("heading", { name: "Preview a week, then clone drafts." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Preview and copy a week of drafts." })).toBeVisible();
     await expect(page.locator("main.weekly-clone-page")).toHaveAttribute("data-client-ready", "true");
     await page.getByLabel("Source week starts Monday").fill(sourceWeek);
     await page.getByLabel("Target week starts Monday").fill(targetWeek);
@@ -96,7 +96,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     expect((await previewResponse).status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Drafts to review" })).toBeVisible();
     await expect(page.getByText(String(content.title), { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Review clone confirmation" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Review copy" })).toBeEnabled();
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-weekly-clone-preview-desktop.png"), fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -104,7 +104,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-weekly-clone-preview-390px.png"), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
 
-    await page.getByRole("button", { name: "Review clone confirmation" }).click();
+    await page.getByRole("button", { name: "Review copy" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Clone eligible drafts to this week?" })).toBeVisible();
     let committedOperationId = "";
@@ -125,7 +125,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     await browserRequestFailed;
     expect(committedResponseStatus).toBe(200);
     expect(committedOperationId).toMatch(/^[0-9a-f-]{36}$/i);
-    await expect(page.getByText("Clone complete", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Drafts copied", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Open cloned draft" })).toBeVisible();
     await expect(page.locator(".weekly-clone-operation code")).toHaveText(committedOperationId);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-weekly-clone-complete-desktop.png"), fullPage: true });
@@ -136,15 +136,15 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     const recentOperation = page.getByRole("button", { name: `Open weekly operation ${committedOperationId}` });
     await expect(recentOperation).toBeVisible();
     await recentOperation.click();
-    await expect(page.getByRole("heading", { name: "Clone run and recovery" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Draft copy and recovery" })).toBeVisible();
     await expect(page.locator(".weekly-clone-operation code")).toHaveText(committedOperationId);
-    await expect(page.getByText("Clone complete", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Drafts copied", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "Review undo" }).click();
     const undoDialog = page.getByRole("dialog");
     const undoResponse = page.waitForResponse((response) => /\/api\/admin\/supply\/weekly-clone\/operations\/[0-9a-f-]+\/undo$/i.test(response.url()) && response.request().method() === "POST");
     await undoDialog.getByRole("button", { name: "Confirm safe undo" }).click();
     expect((await undoResponse).status()).toBe(200);
-    await expect(page.getByText("Undo complete", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Copies removed", { exact: true }).first()).toBeVisible();
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-weekly-clone-undone-desktop.png"), fullPage: true });
     await page.close();
   } finally { await admin.close(); }

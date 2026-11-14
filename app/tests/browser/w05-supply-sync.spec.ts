@@ -81,7 +81,7 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
 
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables`);
-    await expect(page.getByRole("heading", { name: "Tables, built deliberately." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Manage Tables" })).toBeVisible();
     await expect(page.getByText("Synthetic provider fixture", { exact: true })).toBeVisible();
     const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/admin/supply/sync") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Run supply sync" }).click();

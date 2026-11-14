@@ -158,6 +158,7 @@ delete from public.app_table_request_operations where actor_user_id in (${userId
 delete from public.app_table_requests where auth_user_id in (${userIds}) or table_id in (${tableIds});
 update public.app_supply_table_heads set draft_revision_id=null,accepted_revision_id=null,published_revision_id=null where table_id in (${tableIds});
 delete from public.app_supply_table_revisions where table_id in (${tableIds});
+delete from public.app_table_runtime where table_id in (${tableIds});
 delete from public.app_supply_table_heads where table_id in (${tableIds});
 delete from public.app_member_profiles where auth_user_id in (${userIds});
 delete from public.app_admissions where id in (${[f.memberAdmission,f.otherAdmission,f.incompleteAdmission].map(sql).join(",")});
