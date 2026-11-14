@@ -15,7 +15,7 @@ const isUuid = (v: unknown): v is string => typeof v === "string" && uuid.test(v
 const text = (v: unknown, max: number): v is string => typeof v === "string" && v.trim().length >= 1 && v.trim().length <= max;
 type Body = Record<string, unknown>;
 type Spec = Readonly<{
-  method: "GET" | "POST"; roles: readonly ("admin" | "host" | "restaurant")[]; rpc: string;
+  method: "GET" | "POST"; roles: readonly ("admin" | "host" | "restaurant" | "member")[]; rpc: string;
   /** Returns the RPC arguments (without p_actor) or null when the input is invalid. */
   args: (params: Readonly<Record<string, string>>, body: Body, url: URL) => Record<string, unknown> | null;
 }>;
@@ -34,6 +34,24 @@ export const opsSpecs = {
     args: (p, b) => isUuid(p.invitationId) && isUuid(b.operationId) && Number.isSafeInteger(b.expectedRevision) && Number.isSafeInteger(b.refundCents)
       && (b.replaceRequestId === null || isUuid(b.replaceRequestId)) && Object.keys(b).length === 4
       ? { p_invitation_id: p.invitationId, p_operation_id: b.operationId, p_expected_revision: b.expectedRevision, p_refund_cents: b.refundCents, p_replace_request_id: b.replaceRequestId } : null },
+  tonight: { method: "GET", roles: ["member"], rpc: "read_tonight", args: (p) => isUuid(p.tableId) ? { p_table_id: p.tableId } : null },
+  ballot: { method: "POST", roles: ["member"], rpc: "submit_ballot",
+    args: (p, b) => isUuid(p.tableId) && Object.keys(b).length === 1 && (b.choiceGuestId === null || isUuid(b.choiceGuestId)) ? { p_table_id: p.tableId, p_choice_guest_id: b.choiceGuestId } : null },
+  reveal: { method: "GET", roles: ["member"], rpc: "read_my_reveal", args: (p) => isUuid(p.tableId) ? { p_table_id: p.tableId } : null },
+  recap: { method: "GET", roles: ["member"], rpc: "read_my_recap", args: (p) => isUuid(p.tableId) ? { p_table_id: p.tableId } : null },
+  rating: { method: "POST", roles: ["member"], rpc: "save_rating",
+    args: (p, b) => isUuid(p.tableId) && Object.keys(b).length === 3 && Number.isSafeInteger(b.overall) && typeof b.venueScores === "object" && b.venueScores !== null && !Array.isArray(b.venueScores)
+      && (b.note === null || (typeof b.note === "string" && b.note.length <= 2000))
+      ? { p_table_id: p.tableId, p_overall: b.overall, p_venue_scores: b.venueScores, p_note: b.note } : null },
+  conductReport: { method: "POST", roles: ["member"], rpc: "submit_conduct_report",
+    args: (p, b) => isUuid(p.tableId) && Object.keys(b).length === 3 && isUuid(b.operationId) && (b.subjectGuestId === null || isUuid(b.subjectGuestId)) && text(b.body, 4000)
+      ? { p_table_id: p.tableId, p_subject_guest_id: b.subjectGuestId, p_body: b.body.trim(), p_operation_id: b.operationId } : null },
+  conductReports: { method: "GET", roles: ["admin"], rpc: "list_conduct_reports",
+    args: (_p, _b, url) => { const v = url.searchParams.get("status"); return v === null ? { p_status: null } : ["new", "reviewing", "resolved"].includes(v) ? { p_status: v } : null; } },
+  conductReportUpdate: { method: "POST", roles: ["admin"], rpc: "update_conduct_report",
+    args: (p, b) => isUuid(p.reportId) && Object.keys(b).length === 2 && typeof b.status === "string" && ["new", "reviewing", "resolved"].includes(b.status) && typeof b.held === "boolean"
+      ? { p_report_id: p.reportId, p_status: b.status, p_held: b.held } : null },
+  ratingAggregates: { method: "GET", roles: ["admin"], rpc: "read_rating_aggregates", args: () => ({}) },
   staffAssignments: { method: "GET", roles: ["admin"], rpc: "read_staff_assignments", args: () => ({}) },
   hostAssignment: { method: "POST", roles: ["admin"], rpc: "set_host_assignment",
     args: (_p, b) => isUuid(b.tableId) && isUuid(b.userId) && typeof b.assigned === "boolean" && Object.keys(b).length === 3 ? { p_table_id: b.tableId, p_user_id: b.userId, p_assigned: b.assigned } : null },
@@ -56,7 +74,7 @@ export class OpsRpcError extends Error {}
 const headers = { "cache-control": "private, no-store", "referrer-policy": "no-referrer", vary: "Cookie, Origin" };
 const conflicts = new Set(["table_not_proceeding", "table_not_proceedable", "decision_not_open", "group_invalid", "seat_not_checkin_eligible",
   "decision_finalized", "not_a_host", "not_a_restaurant_user", "operation_conflict", "revision_conflict", "invitation_not_removable", "table_not_active",
-  "refund_amount_exceeds_balance"]);
+  "refund_amount_exceeds_balance", "voting_not_open", "voting_closed", "voting_unavailable", "ballot_conflict", "feedback_not_open", "profile_incomplete"]);
 const codes = { unauthenticated: 401, forbidden: 403, not_found: 404, invalid_input: 400, conflict: 409, temporarily_unavailable: 503 } as const;
 const messages: Record<keyof typeof codes, string> = { unauthenticated: "Sign in to continue.", forbidden: "You do not have access to this.",
   not_found: "That could not be found.", invalid_input: "Check the details and try again.", conflict: "That action is not available right now.",
@@ -86,14 +104,14 @@ export function createOpsHandler(deps: OpsDeps, expectedOrigin: string | undefin
     try {
       const principal = await deps.resolvePrincipal(token);
       if (!principal) return fail("unauthenticated");
-      if (!spec.roles.some((role) => principal.staffRoles.has(role))) return fail("forbidden");
+      if (!spec.roles.some((role) => role === "member" ? principal.admission.state === "activated" : principal.staffRoles.has(role))) return fail("forbidden");
       const data = await deps.rpc(spec.rpc, { p_actor: principal.userId, ...args });
       return Response.json({ ok: true, data, correlationId: randomUUID() }, { headers });
     } catch (error) {
       const reason = error instanceof OpsRpcError ? error.message : "";
-      if (reason === "forbidden" || reason.endsWith("_required")) return fail("forbidden");
+      if (reason === "forbidden" || reason === "member_not_admitted" || reason === "not_eligible" || reason.endsWith("_required")) return fail("forbidden");
       if (reason === "not_found") return fail("not_found");
-      if (reason === "invalid_input") return fail("invalid_input");
+      if (reason === "invalid_input" || reason === "invalid_choice") return fail("invalid_input");
       if (conflicts.has(reason)) return fail("conflict", reason);
       return fail("temporarily_unavailable");
     }

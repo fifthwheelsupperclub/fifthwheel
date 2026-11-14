@@ -75,3 +75,29 @@ test("removal and replacement: admin only, exact body, null replacement allowed,
   assert.equal(conflict.status, 409);
   assert.equal((await conflict.json()).error.reason, "revision_conflict");
 });
+
+test("member routes need an activated admission, not a staff role; ballot body is exactly one key", async () => {
+  const member: ServerVerifiedPrincipal = { ...who(), admission: { state: "activated", authUserId: id(1), emailNormalized: "m@x.test" } };
+  const s = setup(member);
+  assert.equal((await s.handle("ballot", post({ choiceGuestId: null }), { tableId: id(2) })).status, 200);
+  assert.deepEqual(s.calls[0], ["submit_ballot", { p_actor: id(1), p_table_id: id(2), p_choice_guest_id: null }]);
+  assert.equal((await s.handle("ballot", post({ choiceGuestId: id(5) }), { tableId: id(2) })).status, 200);
+  assert.equal((await s.handle("ballot", post({}), { tableId: id(2) })).status, 400);
+  assert.equal((await s.handle("ballot", post({ choiceGuestId: "x" }), { tableId: id(2) })).status, 400);
+  assert.equal((await s.handle("ballot", post({ choiceGuestId: null, extra: 1 }), { tableId: id(2) })).status, 400);
+  assert.equal((await s.handle("conductReports", get("/c"), {})).status, 403);
+  const staffOnly = setup(who("admin", "host"));
+  assert.equal((await staffOnly.handle("tonight", get("/t"), { tableId: id(2) })).status, 403);
+  assert.equal(staffOnly.calls.length, 0);
+  const denied = (message: string) => setup(member, async () => { throw new OpsRpcError(message); });
+  assert.equal((await denied("not_eligible").handle("ballot", post({ choiceGuestId: null }), { tableId: id(2) })).status, 403);
+  assert.equal((await denied("invalid_choice").handle("ballot", post({ choiceGuestId: null }), { tableId: id(2) })).status, 400);
+  const closed = await denied("voting_closed").handle("ballot", post({ choiceGuestId: null }), { tableId: id(2) });
+  assert.equal(closed.status, 409);
+  assert.equal((await closed.json()).error.reason, "voting_closed");
+  const report = await s.handle("conductReport", post({ operationId: id(3), subjectGuestId: null, body: "  text " }), { tableId: id(2) });
+  assert.equal(report.status, 200);
+  assert.deepEqual(s.calls.at(-1), ["submit_conduct_report", { p_actor: id(1), p_table_id: id(2), p_subject_guest_id: null, p_body: "text", p_operation_id: id(3) }]);
+  assert.equal((await s.handle("rating", post({ overall: 4, venueScores: {}, note: null }), { tableId: id(2) })).status, 200);
+  assert.equal((await s.handle("rating", post({ overall: 4, venueScores: [], note: null }), { tableId: id(2) })).status, 400);
+});

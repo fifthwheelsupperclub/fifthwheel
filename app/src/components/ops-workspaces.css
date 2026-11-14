@@ -33,3 +33,6 @@
 .ops-modal p { color: var(--muted-strong); font-size: 14px; line-height: 1.55; }
 .ops-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .ops-modal-actions .button { min-height: 44px; }
+.ops-report-body { white-space: pre-wrap; color: var(--ivory); }
+.ops-heading-gap { margin-top: 36px; }
+.ops-check { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--muted-strong); font-size: 13px; }

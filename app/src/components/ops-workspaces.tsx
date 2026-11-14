@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshC
 import { SignOutButton } from "./sign-out-button.tsx";
 import "./ops-workspaces.css";
 
-type Area = "admin-decisions" | "admin-staff" | "host" | "restaurant";
+type Area = "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
 type Reply<T> = { ok: true; data: T } | { ok: false; status: number; reason: string | null; message: string };
 type Load<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; status: number; message: string };
 
@@ -35,6 +35,7 @@ function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>
     <div className="product-layout"><aside className="product-sidebar" aria-label="Navigation"><span className="sidebar-caption">WORKSPACE</span>
       {admin ? <><a className={`member-nav-link ${area === "admin-decisions" ? "active" : ""}`} href="/admin/table-decisions">Table decisions</a>
         <a className={`member-nav-link ${area === "admin-staff" ? "active" : ""}`} href="/admin/staff-assignments">Staff assignments</a>
+        <a className={`member-nav-link ${area === "admin-feedback" ? "active" : ""}`} href="/admin/conduct-reports">Reports &amp; ratings</a>
         <a className="member-nav-link" href="/admin/seat-requests">Seat requests</a><a className="member-nav-link" href="/admin/tables">Tables</a><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a></>
         : area === "host" ? <a className="member-nav-link active" href="/host/assigned-tables">Assigned Tables</a> : <a className="member-nav-link active" href="/restaurant">Service times</a>}
     </aside><div className="ops-content">{children}</div></div></main>;
@@ -216,4 +217,32 @@ export function RemoveGuestAction({ invitationId, guestName, onDone }: Readonly<
         </>}
       </section></div>}
   </>;
+}
+
+// ---- Admin: conduct reports and rating aggregates -------------------------------------------------------------------
+type Report = { reportId: string; tableId: string; tableTitle: string; status: "new" | "reviewing" | "resolved"; held: boolean; createdAt: string; author: string; subject: string | null; body: string };
+type Aggregates = { tables: { tableId: string; title: string; localDate: string; responses: number; overallAverage: number | null }[] };
+export function AdminConductReports() {
+  const reports = useLoad<{ items: Report[] }>("/api/admin/conduct-reports");
+  const ratings = useLoad<Aggregates>("/api/admin/rating-aggregates");
+  const [message, setMessage] = useState("");
+  async function update(r: Report, status: Report["status"], held: boolean) {
+    setMessage("");
+    const result = await call(`/api/admin/conduct-reports/${r.reportId}`, { status, held });
+    if (result.ok) await reports.reload(); else setMessage(result.message);
+  }
+  return <Status area="admin-feedback" load={reports.load} retry={() => void reports.reload()}>{reports.load.state === "ready" && <Shell area="admin-feedback">
+    <header className="ops-heading"><p className="eyebrow">PRIVATE</p><h1>Conduct reports</h1><p>Visible to admins only. Hosts, restaurants and other guests never see these, and report text is kept out of audit logs. Fifth Wheel does not monitor evenings in real time.</p></header>
+    {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
+    {reports.load.data.items.length === 0 ? <section className="ops-state"><h2>No reports</h2><p>Reports from guests who attended appear here.</p></section>
+      : <ul className="ops-list">{reports.load.data.items.map((r) => <li className="ops-card ops-card-stack" key={r.reportId}>
+        <div><h2>{r.tableTitle}</h2><p className="ops-meta"><span className={`status-pill ${r.status === "new" ? "status-pill-warning" : ""}`}>{r.status}</span>{r.held && <span className="status-pill status-pill-warning">On hold</span>}<span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))}</span></p>
+          <p>From {r.author}{r.subject ? ` about ${r.subject}` : ""}</p><p className="ops-report-body">{r.body}</p></div>
+        <div className="ops-actions"><label className="ops-field">Status<select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></label>
+          <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Hold (do not delete)</label></div></li>)}</ul>}
+    <header className="ops-heading ops-heading-gap"><p className="eyebrow">AGGREGATE ONLY</p><h1>Ratings</h1><p>Averages appear once at least three guests have responded. Free-text notes are never shown here.</p></header>
+    {ratings.load.state === "ready" && (ratings.load.data.tables.length === 0 ? <section className="ops-state"><h2>No ratings yet</h2></section>
+      : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{t.localDate} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
+        <span className="status-pill">{t.overallAverage === null ? "Fewer than 3 responses" : `${t.overallAverage.toFixed(2)} overall`}</span></li>)}</ul>)}
+  </Shell>}</Status>;
 }
