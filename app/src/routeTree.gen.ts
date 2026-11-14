@@ -47,6 +47,8 @@ import { Route as ApiAdminCancellationsRouteImport } from './routes/api/admin/ca
 import { Route as ApiAdminIdentityReviewsRouteImport } from './routes/api/admin/identity-reviews'
 import { Route as ApiAdminRefundsRouteImport } from './routes/api/admin/refunds'
 import { Route as ApiAdminSeatRequestsRouteImport } from './routes/api/admin/seat-requests'
+import { Route as ApiAdminStaffAssignmentsRouteImport } from './routes/api/admin/staff-assignments'
+import { Route as ApiAdminTableDecisionsRouteImport } from './routes/api/admin/table-decisions'
 import { Route as ApiAdminTableInvitationsRouteImport } from './routes/api/admin/table-invitations'
 import { Route as ApiAdminWaitlistRouteImport } from './routes/api/admin/waitlist'
 import { Route as ApiAuthRequestLinkRouteImport } from './routes/api/auth/request-link'
@@ -57,6 +59,7 @@ import { Route as ApiInternalWorkerRouteImport } from './routes/api/internal/wor
 import { Route as ApiMeRequestsRouteImport } from './routes/api/me/requests'
 import { Route as ApiMemberHomeRouteImport } from './routes/api/member/home'
 import { Route as ApiMemberProfileRouteImport } from './routes/api/member/profile'
+import { Route as ApiRestaurantWorkspaceRouteImport } from './routes/api/restaurant/workspace'
 import { Route as ApiSupplyDraftsRouteImport } from './routes/api/supply/drafts'
 import { Route as ApiSupplyTablesRouteImport } from './routes/api/supply/tables'
 import { Route as ApiSupplyVenuesRouteImport } from './routes/api/supply/venues'
@@ -67,6 +70,9 @@ import { Route as MySeatsSeatIdCancellationRouteImport } from './routes/my-seats
 import { Route as ApiAdminCancellationsRequestIdRouteImport } from './routes/api/admin/cancellations.$requestId'
 import { Route as ApiAdminIdentityReviewsGuestIdRouteImport } from './routes/api/admin/identity-reviews.$guestId'
 import { Route as ApiAdminRefundsObligationIdRouteImport } from './routes/api/admin/refunds.$obligationId'
+import { Route as ApiAdminStaffAssignmentsContactRouteImport } from './routes/api/admin/staff-assignments.contact'
+import { Route as ApiAdminStaffAssignmentsHostRouteImport } from './routes/api/admin/staff-assignments.host'
+import { Route as ApiAdminStaffAssignmentsVenueRouteImport } from './routes/api/admin/staff-assignments.venue'
 import { Route as ApiAdminSupplySyncRouteImport } from './routes/api/admin/supply/sync'
 import { Route as ApiAdminSupplyWeeklyCloneRouteImport } from './routes/api/admin/supply/weekly-clone'
 import { Route as ApiMeCheckoutAttemptsAttemptIdRouteImport } from './routes/api/me/checkout-attempts.$attemptId'
@@ -90,8 +96,12 @@ import { Route as ApiAdminSupplyWeeklyClonePreviewRouteImport } from './routes/a
 import { Route as ApiAdminTableInvitationsInvitationIdReconcileRouteImport } from './routes/api/admin/table-invitations.$invitationId.reconcile'
 import { Route as ApiAdminTableInvitationsInvitationIdRetryRouteImport } from './routes/api/admin/table-invitations.$invitationId.retry'
 import { Route as ApiAdminTablesTableIdCancelRouteImport } from './routes/api/admin/tables.$tableId.cancel'
+import { Route as ApiAdminTablesTableIdProceedRouteImport } from './routes/api/admin/tables.$tableId.proceed'
 import { Route as ApiCurationTablesTableIdRosterRouteImport } from './routes/api/curation/tables.$tableId.roster'
 import { Route as ApiCurationTablesTableIdRosterProposalRouteImport } from './routes/api/curation/tables.$tableId.roster-proposal'
+import { Route as ApiHostCancellationsRequestIdFlagRouteImport } from './routes/api/host/cancellations.$requestId.flag'
+import { Route as ApiHostTablesTableIdAttendanceRouteImport } from './routes/api/host/tables.$tableId.attendance'
+import { Route as ApiHostTablesTableIdCheckInRouteImport } from './routes/api/host/tables.$tableId.check-in'
 import { Route as ApiMeRequestsRequestIdWithdrawRouteImport } from './routes/api/me/requests.$requestId.withdraw'
 import { Route as ApiMeSeatsSeatIdCancellationRequestsRouteImport } from './routes/api/me/seats.$seatId.cancellation-requests'
 import { Route as ApiMeTableInvitationsInvitationIdCheckoutRouteImport } from './routes/api/me/table-invitations.$invitationId.checkout'
@@ -302,6 +312,17 @@ const ApiAdminSeatRequestsRoute = ApiAdminSeatRequestsRouteImport.update({
   path: '/api/admin/seat-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminStaffAssignmentsRoute =
+  ApiAdminStaffAssignmentsRouteImport.update({
+    id: '/api/admin/staff-assignments',
+    path: '/api/admin/staff-assignments',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminTableDecisionsRoute = ApiAdminTableDecisionsRouteImport.update({
+  id: '/api/admin/table-decisions',
+  path: '/api/admin/table-decisions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminTableInvitationsRoute =
   ApiAdminTableInvitationsRouteImport.update({
     id: '/api/admin/table-invitations',
@@ -352,6 +373,11 @@ const ApiMemberHomeRoute = ApiMemberHomeRouteImport.update({
 const ApiMemberProfileRoute = ApiMemberProfileRouteImport.update({
   id: '/api/member/profile',
   path: '/api/member/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRestaurantWorkspaceRoute = ApiRestaurantWorkspaceRouteImport.update({
+  id: '/api/restaurant/workspace',
+  path: '/api/restaurant/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSupplyDraftsRoute = ApiSupplyDraftsRouteImport.update({
@@ -407,6 +433,24 @@ const ApiAdminRefundsObligationIdRoute =
     id: '/$obligationId',
     path: '/$obligationId',
     getParentRoute: () => ApiAdminRefundsRoute,
+  } as any)
+const ApiAdminStaffAssignmentsContactRoute =
+  ApiAdminStaffAssignmentsContactRouteImport.update({
+    id: '/contact',
+    path: '/contact',
+    getParentRoute: () => ApiAdminStaffAssignmentsRoute,
+  } as any)
+const ApiAdminStaffAssignmentsHostRoute =
+  ApiAdminStaffAssignmentsHostRouteImport.update({
+    id: '/host',
+    path: '/host',
+    getParentRoute: () => ApiAdminStaffAssignmentsRoute,
+  } as any)
+const ApiAdminStaffAssignmentsVenueRoute =
+  ApiAdminStaffAssignmentsVenueRouteImport.update({
+    id: '/venue',
+    path: '/venue',
+    getParentRoute: () => ApiAdminStaffAssignmentsRoute,
   } as any)
 const ApiAdminSupplySyncRoute = ApiAdminSupplySyncRouteImport.update({
   id: '/api/admin/supply/sync',
@@ -540,6 +584,12 @@ const ApiAdminTablesTableIdCancelRoute =
     path: '/api/admin/tables/$tableId/cancel',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminTablesTableIdProceedRoute =
+  ApiAdminTablesTableIdProceedRouteImport.update({
+    id: '/api/admin/tables/$tableId/proceed',
+    path: '/api/admin/tables/$tableId/proceed',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCurationTablesTableIdRosterRoute =
   ApiCurationTablesTableIdRosterRouteImport.update({
     id: '/api/curation/tables/$tableId/roster',
@@ -550,6 +600,24 @@ const ApiCurationTablesTableIdRosterProposalRoute =
   ApiCurationTablesTableIdRosterProposalRouteImport.update({
     id: '/api/curation/tables/$tableId/roster-proposal',
     path: '/api/curation/tables/$tableId/roster-proposal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiHostCancellationsRequestIdFlagRoute =
+  ApiHostCancellationsRequestIdFlagRouteImport.update({
+    id: '/api/host/cancellations/$requestId/flag',
+    path: '/api/host/cancellations/$requestId/flag',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiHostTablesTableIdAttendanceRoute =
+  ApiHostTablesTableIdAttendanceRouteImport.update({
+    id: '/api/host/tables/$tableId/attendance',
+    path: '/api/host/tables/$tableId/attendance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiHostTablesTableIdCheckInRoute =
+  ApiHostTablesTableIdCheckInRouteImport.update({
+    id: '/api/host/tables/$tableId/check-in',
+    path: '/api/host/tables/$tableId/check-in',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiMeRequestsRequestIdWithdrawRoute =
@@ -680,6 +748,8 @@ export interface FileRoutesByFullPath {
   '/api/admin/identity-reviews': typeof ApiAdminIdentityReviewsRouteWithChildren
   '/api/admin/refunds': typeof ApiAdminRefundsRouteWithChildren
   '/api/admin/seat-requests': typeof ApiAdminSeatRequestsRouteWithChildren
+  '/api/admin/staff-assignments': typeof ApiAdminStaffAssignmentsRouteWithChildren
+  '/api/admin/table-decisions': typeof ApiAdminTableDecisionsRoute
   '/api/admin/table-invitations': typeof ApiAdminTableInvitationsRouteWithChildren
   '/api/admin/waitlist': typeof ApiAdminWaitlistRoute
   '/api/auth/request-link': typeof ApiAuthRequestLinkRoute
@@ -690,6 +760,7 @@ export interface FileRoutesByFullPath {
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
+  '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
@@ -702,6 +773,9 @@ export interface FileRoutesByFullPath {
   '/api/admin/cancellations/$requestId': typeof ApiAdminCancellationsRequestIdRouteWithChildren
   '/api/admin/identity-reviews/$guestId': typeof ApiAdminIdentityReviewsGuestIdRouteWithChildren
   '/api/admin/refunds/$obligationId': typeof ApiAdminRefundsObligationIdRouteWithChildren
+  '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
+  '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
+  '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
@@ -725,8 +799,12 @@ export interface FileRoutesByFullPath {
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
   '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
+  '/api/admin/tables/$tableId/proceed': typeof ApiAdminTablesTableIdProceedRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
+  '/api/host/cancellations/$requestId/flag': typeof ApiHostCancellationsRequestIdFlagRoute
+  '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
+  '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
@@ -775,6 +853,8 @@ export interface FileRoutesByTo {
   '/api/admin/identity-reviews': typeof ApiAdminIdentityReviewsRouteWithChildren
   '/api/admin/refunds': typeof ApiAdminRefundsRouteWithChildren
   '/api/admin/seat-requests': typeof ApiAdminSeatRequestsRouteWithChildren
+  '/api/admin/staff-assignments': typeof ApiAdminStaffAssignmentsRouteWithChildren
+  '/api/admin/table-decisions': typeof ApiAdminTableDecisionsRoute
   '/api/admin/table-invitations': typeof ApiAdminTableInvitationsRouteWithChildren
   '/api/admin/waitlist': typeof ApiAdminWaitlistRoute
   '/api/auth/request-link': typeof ApiAuthRequestLinkRoute
@@ -785,6 +865,7 @@ export interface FileRoutesByTo {
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
+  '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
@@ -797,6 +878,9 @@ export interface FileRoutesByTo {
   '/api/admin/cancellations/$requestId': typeof ApiAdminCancellationsRequestIdRouteWithChildren
   '/api/admin/identity-reviews/$guestId': typeof ApiAdminIdentityReviewsGuestIdRouteWithChildren
   '/api/admin/refunds/$obligationId': typeof ApiAdminRefundsObligationIdRouteWithChildren
+  '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
+  '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
+  '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
@@ -820,8 +904,12 @@ export interface FileRoutesByTo {
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
   '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
+  '/api/admin/tables/$tableId/proceed': typeof ApiAdminTablesTableIdProceedRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
+  '/api/host/cancellations/$requestId/flag': typeof ApiHostCancellationsRequestIdFlagRoute
+  '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
+  '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
@@ -876,6 +964,8 @@ export interface FileRoutesById {
   '/api/admin/identity-reviews': typeof ApiAdminIdentityReviewsRouteWithChildren
   '/api/admin/refunds': typeof ApiAdminRefundsRouteWithChildren
   '/api/admin/seat-requests': typeof ApiAdminSeatRequestsRouteWithChildren
+  '/api/admin/staff-assignments': typeof ApiAdminStaffAssignmentsRouteWithChildren
+  '/api/admin/table-decisions': typeof ApiAdminTableDecisionsRoute
   '/api/admin/table-invitations': typeof ApiAdminTableInvitationsRouteWithChildren
   '/api/admin/waitlist': typeof ApiAdminWaitlistRoute
   '/api/auth/request-link': typeof ApiAuthRequestLinkRoute
@@ -886,6 +976,7 @@ export interface FileRoutesById {
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
+  '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
   '/api/supply/venues': typeof ApiSupplyVenuesRoute
@@ -898,6 +989,9 @@ export interface FileRoutesById {
   '/api/admin/cancellations/$requestId': typeof ApiAdminCancellationsRequestIdRouteWithChildren
   '/api/admin/identity-reviews/$guestId': typeof ApiAdminIdentityReviewsGuestIdRouteWithChildren
   '/api/admin/refunds/$obligationId': typeof ApiAdminRefundsObligationIdRouteWithChildren
+  '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
+  '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
+  '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
@@ -921,8 +1015,12 @@ export interface FileRoutesById {
   '/api/admin/table-invitations/$invitationId/reconcile': typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   '/api/admin/table-invitations/$invitationId/retry': typeof ApiAdminTableInvitationsInvitationIdRetryRoute
   '/api/admin/tables/$tableId/cancel': typeof ApiAdminTablesTableIdCancelRoute
+  '/api/admin/tables/$tableId/proceed': typeof ApiAdminTablesTableIdProceedRoute
   '/api/curation/tables/$tableId/roster': typeof ApiCurationTablesTableIdRosterRoute
   '/api/curation/tables/$tableId/roster-proposal': typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
+  '/api/host/cancellations/$requestId/flag': typeof ApiHostCancellationsRequestIdFlagRoute
+  '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
+  '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
@@ -978,6 +1076,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews'
     | '/api/admin/refunds'
     | '/api/admin/seat-requests'
+    | '/api/admin/staff-assignments'
+    | '/api/admin/table-decisions'
     | '/api/admin/table-invitations'
     | '/api/admin/waitlist'
     | '/api/auth/request-link'
@@ -988,6 +1088,7 @@ export interface FileRouteTypes {
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
+    | '/api/restaurant/workspace'
     | '/api/supply/drafts'
     | '/api/supply/tables'
     | '/api/supply/venues'
@@ -1000,6 +1101,9 @@ export interface FileRouteTypes {
     | '/api/admin/cancellations/$requestId'
     | '/api/admin/identity-reviews/$guestId'
     | '/api/admin/refunds/$obligationId'
+    | '/api/admin/staff-assignments/contact'
+    | '/api/admin/staff-assignments/host'
+    | '/api/admin/staff-assignments/venue'
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
@@ -1023,8 +1127,12 @@ export interface FileRouteTypes {
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
     | '/api/admin/tables/$tableId/cancel'
+    | '/api/admin/tables/$tableId/proceed'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
+    | '/api/host/cancellations/$requestId/flag'
+    | '/api/host/tables/$tableId/attendance'
+    | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
@@ -1073,6 +1181,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews'
     | '/api/admin/refunds'
     | '/api/admin/seat-requests'
+    | '/api/admin/staff-assignments'
+    | '/api/admin/table-decisions'
     | '/api/admin/table-invitations'
     | '/api/admin/waitlist'
     | '/api/auth/request-link'
@@ -1083,6 +1193,7 @@ export interface FileRouteTypes {
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
+    | '/api/restaurant/workspace'
     | '/api/supply/drafts'
     | '/api/supply/tables'
     | '/api/supply/venues'
@@ -1095,6 +1206,9 @@ export interface FileRouteTypes {
     | '/api/admin/cancellations/$requestId'
     | '/api/admin/identity-reviews/$guestId'
     | '/api/admin/refunds/$obligationId'
+    | '/api/admin/staff-assignments/contact'
+    | '/api/admin/staff-assignments/host'
+    | '/api/admin/staff-assignments/venue'
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
@@ -1118,8 +1232,12 @@ export interface FileRouteTypes {
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
     | '/api/admin/tables/$tableId/cancel'
+    | '/api/admin/tables/$tableId/proceed'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
+    | '/api/host/cancellations/$requestId/flag'
+    | '/api/host/tables/$tableId/attendance'
+    | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
@@ -1173,6 +1291,8 @@ export interface FileRouteTypes {
     | '/api/admin/identity-reviews'
     | '/api/admin/refunds'
     | '/api/admin/seat-requests'
+    | '/api/admin/staff-assignments'
+    | '/api/admin/table-decisions'
     | '/api/admin/table-invitations'
     | '/api/admin/waitlist'
     | '/api/auth/request-link'
@@ -1183,6 +1303,7 @@ export interface FileRouteTypes {
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
+    | '/api/restaurant/workspace'
     | '/api/supply/drafts'
     | '/api/supply/tables'
     | '/api/supply/venues'
@@ -1195,6 +1316,9 @@ export interface FileRouteTypes {
     | '/api/admin/cancellations/$requestId'
     | '/api/admin/identity-reviews/$guestId'
     | '/api/admin/refunds/$obligationId'
+    | '/api/admin/staff-assignments/contact'
+    | '/api/admin/staff-assignments/host'
+    | '/api/admin/staff-assignments/venue'
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
@@ -1218,8 +1342,12 @@ export interface FileRouteTypes {
     | '/api/admin/table-invitations/$invitationId/reconcile'
     | '/api/admin/table-invitations/$invitationId/retry'
     | '/api/admin/tables/$tableId/cancel'
+    | '/api/admin/tables/$tableId/proceed'
     | '/api/curation/tables/$tableId/roster'
     | '/api/curation/tables/$tableId/roster-proposal'
+    | '/api/host/cancellations/$requestId/flag'
+    | '/api/host/tables/$tableId/attendance'
+    | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
@@ -1264,6 +1392,8 @@ export interface RootRouteChildren {
   ApiAdminIdentityReviewsRoute: typeof ApiAdminIdentityReviewsRouteWithChildren
   ApiAdminRefundsRoute: typeof ApiAdminRefundsRouteWithChildren
   ApiAdminSeatRequestsRoute: typeof ApiAdminSeatRequestsRouteWithChildren
+  ApiAdminStaffAssignmentsRoute: typeof ApiAdminStaffAssignmentsRouteWithChildren
+  ApiAdminTableDecisionsRoute: typeof ApiAdminTableDecisionsRoute
   ApiAdminTableInvitationsRoute: typeof ApiAdminTableInvitationsRouteWithChildren
   ApiAdminWaitlistRoute: typeof ApiAdminWaitlistRoute
   ApiAuthRequestLinkRoute: typeof ApiAuthRequestLinkRoute
@@ -1274,6 +1404,7 @@ export interface RootRouteChildren {
   ApiMeRequestsRoute: typeof ApiMeRequestsRouteWithChildren
   ApiMemberHomeRoute: typeof ApiMemberHomeRoute
   ApiMemberProfileRoute: typeof ApiMemberProfileRouteWithChildren
+  ApiRestaurantWorkspaceRoute: typeof ApiRestaurantWorkspaceRoute
   ApiSupplyDraftsRoute: typeof ApiSupplyDraftsRouteWithChildren
   ApiSupplyTablesRoute: typeof ApiSupplyTablesRouteWithChildren
   ApiSupplyVenuesRoute: typeof ApiSupplyVenuesRoute
@@ -1288,8 +1419,12 @@ export interface RootRouteChildren {
   ApiAdminRefundOperationsOperationIdReconcileRoute: typeof ApiAdminRefundOperationsOperationIdReconcileRoute
   ApiAdminRefundOperationsOperationIdRetryRoute: typeof ApiAdminRefundOperationsOperationIdRetryRoute
   ApiAdminTablesTableIdCancelRoute: typeof ApiAdminTablesTableIdCancelRoute
+  ApiAdminTablesTableIdProceedRoute: typeof ApiAdminTablesTableIdProceedRoute
   ApiCurationTablesTableIdRosterRoute: typeof ApiCurationTablesTableIdRosterRoute
   ApiCurationTablesTableIdRosterProposalRoute: typeof ApiCurationTablesTableIdRosterProposalRouteWithChildren
+  ApiHostCancellationsRequestIdFlagRoute: typeof ApiHostCancellationsRequestIdFlagRoute
+  ApiHostTablesTableIdAttendanceRoute: typeof ApiHostTablesTableIdAttendanceRoute
+  ApiHostTablesTableIdCheckInRoute: typeof ApiHostTablesTableIdCheckInRoute
   ApiMeSeatsSeatIdCancellationRequestsRoute: typeof ApiMeSeatsSeatIdCancellationRequestsRoute
 }
 
@@ -1561,6 +1696,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSeatRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/staff-assignments': {
+      id: '/api/admin/staff-assignments'
+      path: '/api/admin/staff-assignments'
+      fullPath: '/api/admin/staff-assignments'
+      preLoaderRoute: typeof ApiAdminStaffAssignmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/table-decisions': {
+      id: '/api/admin/table-decisions'
+      path: '/api/admin/table-decisions'
+      fullPath: '/api/admin/table-decisions'
+      preLoaderRoute: typeof ApiAdminTableDecisionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/table-invitations': {
       id: '/api/admin/table-invitations'
       path: '/api/admin/table-invitations'
@@ -1629,6 +1778,13 @@ declare module '@tanstack/react-router' {
       path: '/api/member/profile'
       fullPath: '/api/member/profile'
       preLoaderRoute: typeof ApiMemberProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/restaurant/workspace': {
+      id: '/api/restaurant/workspace'
+      path: '/api/restaurant/workspace'
+      fullPath: '/api/restaurant/workspace'
+      preLoaderRoute: typeof ApiRestaurantWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/supply/drafts': {
@@ -1700,6 +1856,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/refunds/$obligationId'
       preLoaderRoute: typeof ApiAdminRefundsObligationIdRouteImport
       parentRoute: typeof ApiAdminRefundsRoute
+    }
+    '/api/admin/staff-assignments/contact': {
+      id: '/api/admin/staff-assignments/contact'
+      path: '/contact'
+      fullPath: '/api/admin/staff-assignments/contact'
+      preLoaderRoute: typeof ApiAdminStaffAssignmentsContactRouteImport
+      parentRoute: typeof ApiAdminStaffAssignmentsRoute
+    }
+    '/api/admin/staff-assignments/host': {
+      id: '/api/admin/staff-assignments/host'
+      path: '/host'
+      fullPath: '/api/admin/staff-assignments/host'
+      preLoaderRoute: typeof ApiAdminStaffAssignmentsHostRouteImport
+      parentRoute: typeof ApiAdminStaffAssignmentsRoute
+    }
+    '/api/admin/staff-assignments/venue': {
+      id: '/api/admin/staff-assignments/venue'
+      path: '/venue'
+      fullPath: '/api/admin/staff-assignments/venue'
+      preLoaderRoute: typeof ApiAdminStaffAssignmentsVenueRouteImport
+      parentRoute: typeof ApiAdminStaffAssignmentsRoute
     }
     '/api/admin/supply/sync': {
       id: '/api/admin/supply/sync'
@@ -1862,6 +2039,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminTablesTableIdCancelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/tables/$tableId/proceed': {
+      id: '/api/admin/tables/$tableId/proceed'
+      path: '/api/admin/tables/$tableId/proceed'
+      fullPath: '/api/admin/tables/$tableId/proceed'
+      preLoaderRoute: typeof ApiAdminTablesTableIdProceedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/curation/tables/$tableId/roster': {
       id: '/api/curation/tables/$tableId/roster'
       path: '/api/curation/tables/$tableId/roster'
@@ -1874,6 +2058,27 @@ declare module '@tanstack/react-router' {
       path: '/api/curation/tables/$tableId/roster-proposal'
       fullPath: '/api/curation/tables/$tableId/roster-proposal'
       preLoaderRoute: typeof ApiCurationTablesTableIdRosterProposalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host/cancellations/$requestId/flag': {
+      id: '/api/host/cancellations/$requestId/flag'
+      path: '/api/host/cancellations/$requestId/flag'
+      fullPath: '/api/host/cancellations/$requestId/flag'
+      preLoaderRoute: typeof ApiHostCancellationsRequestIdFlagRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host/tables/$tableId/attendance': {
+      id: '/api/host/tables/$tableId/attendance'
+      path: '/api/host/tables/$tableId/attendance'
+      fullPath: '/api/host/tables/$tableId/attendance'
+      preLoaderRoute: typeof ApiHostTablesTableIdAttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host/tables/$tableId/check-in': {
+      id: '/api/host/tables/$tableId/check-in'
+      path: '/api/host/tables/$tableId/check-in'
+      fullPath: '/api/host/tables/$tableId/check-in'
+      preLoaderRoute: typeof ApiHostTablesTableIdCheckInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/me/requests/$requestId/withdraw': {
@@ -2209,6 +2414,24 @@ const ApiAdminSeatRequestsRouteChildren: ApiAdminSeatRequestsRouteChildren = {
 const ApiAdminSeatRequestsRouteWithChildren =
   ApiAdminSeatRequestsRoute._addFileChildren(ApiAdminSeatRequestsRouteChildren)
 
+interface ApiAdminStaffAssignmentsRouteChildren {
+  ApiAdminStaffAssignmentsContactRoute: typeof ApiAdminStaffAssignmentsContactRoute
+  ApiAdminStaffAssignmentsHostRoute: typeof ApiAdminStaffAssignmentsHostRoute
+  ApiAdminStaffAssignmentsVenueRoute: typeof ApiAdminStaffAssignmentsVenueRoute
+}
+
+const ApiAdminStaffAssignmentsRouteChildren: ApiAdminStaffAssignmentsRouteChildren =
+  {
+    ApiAdminStaffAssignmentsContactRoute: ApiAdminStaffAssignmentsContactRoute,
+    ApiAdminStaffAssignmentsHostRoute: ApiAdminStaffAssignmentsHostRoute,
+    ApiAdminStaffAssignmentsVenueRoute: ApiAdminStaffAssignmentsVenueRoute,
+  }
+
+const ApiAdminStaffAssignmentsRouteWithChildren =
+  ApiAdminStaffAssignmentsRoute._addFileChildren(
+    ApiAdminStaffAssignmentsRouteChildren,
+  )
+
 interface ApiAdminTableInvitationsRouteChildren {
   ApiAdminTableInvitationsInvitationIdReconcileRoute: typeof ApiAdminTableInvitationsInvitationIdReconcileRoute
   ApiAdminTableInvitationsInvitationIdRetryRoute: typeof ApiAdminTableInvitationsInvitationIdRetryRoute
@@ -2452,6 +2675,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminIdentityReviewsRoute: ApiAdminIdentityReviewsRouteWithChildren,
   ApiAdminRefundsRoute: ApiAdminRefundsRouteWithChildren,
   ApiAdminSeatRequestsRoute: ApiAdminSeatRequestsRouteWithChildren,
+  ApiAdminStaffAssignmentsRoute: ApiAdminStaffAssignmentsRouteWithChildren,
+  ApiAdminTableDecisionsRoute: ApiAdminTableDecisionsRoute,
   ApiAdminTableInvitationsRoute: ApiAdminTableInvitationsRouteWithChildren,
   ApiAdminWaitlistRoute: ApiAdminWaitlistRoute,
   ApiAuthRequestLinkRoute: ApiAuthRequestLinkRoute,
@@ -2462,6 +2687,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMeRequestsRoute: ApiMeRequestsRouteWithChildren,
   ApiMemberHomeRoute: ApiMemberHomeRoute,
   ApiMemberProfileRoute: ApiMemberProfileRouteWithChildren,
+  ApiRestaurantWorkspaceRoute: ApiRestaurantWorkspaceRoute,
   ApiSupplyDraftsRoute: ApiSupplyDraftsRouteWithChildren,
   ApiSupplyTablesRoute: ApiSupplyTablesRouteWithChildren,
   ApiSupplyVenuesRoute: ApiSupplyVenuesRoute,
@@ -2481,9 +2707,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminRefundOperationsOperationIdRetryRoute:
     ApiAdminRefundOperationsOperationIdRetryRoute,
   ApiAdminTablesTableIdCancelRoute: ApiAdminTablesTableIdCancelRoute,
+  ApiAdminTablesTableIdProceedRoute: ApiAdminTablesTableIdProceedRoute,
   ApiCurationTablesTableIdRosterRoute: ApiCurationTablesTableIdRosterRoute,
   ApiCurationTablesTableIdRosterProposalRoute:
     ApiCurationTablesTableIdRosterProposalRouteWithChildren,
+  ApiHostCancellationsRequestIdFlagRoute:
+    ApiHostCancellationsRequestIdFlagRoute,
+  ApiHostTablesTableIdAttendanceRoute: ApiHostTablesTableIdAttendanceRoute,
+  ApiHostTablesTableIdCheckInRoute: ApiHostTablesTableIdCheckInRoute,
   ApiMeSeatsSeatIdCancellationRequestsRoute:
     ApiMeSeatsSeatIdCancellationRequestsRoute,
 }
