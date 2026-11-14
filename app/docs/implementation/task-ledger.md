@@ -19,3 +19,9 @@ Source: [W00–W12](../tasks-checklist.md). Status values: `not started`, `imple
 | W12 Whole-app acceptance and rewrite completion | not started | Sentry / Liza | Requires all required tasks complete and current A01–A35 evidence. |
 
 Keep this ledger current as work is handed off. A specialist marks work `ready for verification`; Liza records `accepted` only after inspecting the integrated application and evidence. Record blocked tasks with the specific owner/dependency and continue independent work.
+
+## 2026-11-14 update (release-readiness pass)
+
+- All W07 migrations (`20261113161438`–`20261113204815`) are now applied to isolated `fifthwheel-rewrite-test` without reset; the W06 roster cursor function was re-applied.
+- Rollback-only DB harnesses now pass: `test-roster-curation-db` (W06.3–W06.4 DB evidence), `test-checkout-holds-db`, `test-checkout-fulfillment-db`, `test-seat-cancellations-db`, `test-refunds-db`. Defects found and fixed: W07.2/W07.5 audit-actor allowlists overwrote each other (replay failed on existing rows); `admin_cancellation_dto` used an unjoined alias; `queue_refund_followup` allowed retry of `payment_mismatch`; four harness bugs (psql output mode, paren, cleanup FK order, fixture ordering). `pnpm typecheck` and `pnpm test` (287/287) pass.
+- Still open: real-stack browser journeys for W06.3–W06.4 and all of W07 (needs Stripe test keys), W07.6–W07.7, concurrency beyond the single-session harnesses, and everything in W08–W12. Checklist boxes are unchanged until browser evidence exists.
