@@ -6,6 +6,7 @@ const ENDPOINT =
   `${productionAppUrl}/api/waitlist`;
 const STATUS_ID = "formStatus";
 const MINIMUM_AGE = 21;
+const MAXIMUM_MATCH_AGE = 120;
 const SUBMIT_TIMEOUT_MS = 15_000;
 const FAILURE_MESSAGE =
   "That didn’t go through. Try again, or email hello@fifthwheel.community and we’ll add you by hand.";
@@ -46,13 +47,18 @@ const jump = requireAs(
   document.querySelector("[data-jump]"),
   (value): value is HTMLElement => value instanceof HTMLElement,
 );
-const thanksSent = requireAs(
-  thanksPanel.querySelector("[data-thanks='sent']"),
-  (value): value is HTMLElement => value instanceof HTMLElement,
+
+const birthMonth = requireAs(
+  document.getElementById("f-birth-month"),
+  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
 );
-const thanksStored = requireAs(
-  thanksPanel.querySelector("[data-thanks='stored']"),
-  (value): value is HTMLElement => value instanceof HTMLElement,
+const birthDay = requireAs(
+  document.getElementById("f-birth-day"),
+  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
+);
+const birthYear = requireAs(
+  document.getElementById("f-birth-year"),
+  (value): value is HTMLInputElement => value instanceof HTMLInputElement,
 );
 
 function setStatus(el: HTMLElement, msg: string, kind?: "err" | "ok"): void {
@@ -107,7 +113,9 @@ function parseIsoDate(value: string): Date | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
+  const date = new Date(0);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -118,8 +126,16 @@ function parseIsoDate(value: string): Date | null {
   return date;
 }
 
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+function startOfAtlantaDay(now: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: "year" | "month" | "day") =>
+    Number(parts.find((item) => item.type === type)?.value);
+  return new Date(part("year"), part("month") - 1, part("day"));
 }
 
 function ageOn(birth: Date, on: Date): number {
@@ -136,44 +152,19 @@ function parseWholeAge(value: string): number | null {
   return Number(value);
 }
 
-const birthMonth = requireAs(
-  document.getElementById("f-birth-month"),
-  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
-);
-const birthDay = requireAs(
-  document.getElementById("f-birth-day"),
-  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
-);
-const birthYear = requireAs(
-  document.getElementById("f-birth-year"),
-  (value): value is HTMLSelectElement => value instanceof HTMLSelectElement,
-);
-
 function daysInMonth(year: number | null, month: number | null): number {
   if (month == null) return 31;
   const yearForLength = year ?? 2024;
-  return new Date(yearForLength, month, 0).getDate();
-}
-
-function fillBirthYears(): void {
-  const now = new Date().getFullYear();
-  const oldest = now - 120;
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Year";
-  birthYear.replaceChildren(placeholder);
-  for (let year = now; year >= oldest; year -= 1) {
-    const option = document.createElement("option");
-    option.value = String(year);
-    option.textContent = String(year);
-    birthYear.append(option);
-  }
+  const lastDay = new Date(0);
+  lastDay.setFullYear(yearForLength, month, 0);
+  return lastDay.getDate();
 }
 
 function rebuildBirthDays(): void {
   const selected = birthDay.value;
   const month = birthMonth.value ? Number(birthMonth.value) : null;
-  const year = birthYear.value ? Number(birthYear.value) : null;
+  const yearValue = birthYear.value.trim();
+  const year = /^\d{1,4}$/.test(yearValue) ? Number(yearValue) : null;
   const max = daysInMonth(year, month);
   const placeholder = document.createElement("option");
   placeholder.value = "";
@@ -188,20 +179,13 @@ function rebuildBirthDays(): void {
   birthDay.value = selected && Number(selected) <= max ? selected : "";
 }
 
-fillBirthYears();
 rebuildBirthDays();
 birthMonth.addEventListener("change", rebuildBirthDays);
+birthYear.addEventListener("input", rebuildBirthDays);
 birthYear.addEventListener("change", rebuildBirthDays);
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function emailWasAccepted(body: unknown): boolean {
-  if (typeof body !== "object" || body === null || !("email" in body)) {
-    return false;
-  }
-  return body.email === "sent";
 }
 
 function trackWaitlistLead(): void {
@@ -217,9 +201,7 @@ function trackWaitlistLead(): void {
   }
 }
 
-function revealThanks(emailSent: boolean): void {
-  thanksSent.hidden = !emailSent;
-  thanksStored.hidden = emailSent;
+function revealThanks(): void {
   const scrollBehavior: ScrollBehavior = prefersReducedMotion()
     ? "auto"
     : "smooth";
@@ -290,29 +272,21 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  const today = startOfLocalDay(new Date());
+  const today = startOfAtlantaDay(new Date());
   if (!birthMonthValue) {
-    failField(
-      "birth_month",
-      "Add your date of birth so we know you’re 21 or older.",
-    );
+    failField("birth_month", "Add your date of birth so we know you’re 21 or older.");
     return;
   }
   if (!birthDayValue) {
-    failField(
-      "birth_day",
-      "Add your date of birth so we know you’re 21 or older.",
-    );
+    failField("birth_day", "Add your date of birth so we know you’re 21 or older.");
     return;
   }
-  if (!birthYearValue) {
-    failField(
-      "birth_year",
-      "Add your date of birth so we know you’re 21 or older.",
-    );
+  const birthYearNumber = parseWholeAge(birthYearValue);
+  if (birthYearNumber === null || birthYearNumber < 1 || birthYearNumber > today.getFullYear()) {
+    failField("birth_year", "Add a valid year of birth.");
     return;
   }
-  const birthdateValue = `${birthYearValue}-${birthMonthValue}-${birthDayValue}`;
+  const birthdateValue = `${String(birthYearNumber).padStart(4, "0")}-${birthMonthValue}-${birthDayValue}`;
   const birthdate = parseIsoDate(birthdateValue);
   if (!birthdate) {
     failField("birth_day", "That date isn’t a valid birthday.");
@@ -355,6 +329,14 @@ form.addEventListener("submit", (event) => {
   }
   if (matchMax < MINIMUM_AGE) {
     failField("match_age_max", "Ages you want to meet have to be 21 or older.");
+    return;
+  }
+  if (matchMin > MAXIMUM_MATCH_AGE) {
+    failField("match_age_min", "Choose an age from 21 to 120.");
+    return;
+  }
+  if (matchMax > MAXIMUM_MATCH_AGE) {
+    failField("match_age_max", "Choose an age from 21 to 120.");
     return;
   }
   if (matchMax < matchMin) {
@@ -424,14 +406,14 @@ form.addEventListener("submit", (event) => {
   })
     .then(async (res) => {
       if (!res.ok) throw new Error("bad response");
-      let body: unknown = null;
       try {
-        body = await res.json();
+        await res.json();
       } catch (error) {
         if (controller.signal.aborted) throw error;
-        body = null;
       }
-      revealThanks(emailWasAccepted(body));
+      // Every 2xx response uses the same copy so duplicates and honeypots
+      // cannot reveal whether an address is already on the waitlist.
+      revealThanks();
       if (!payload._gotcha) {
         trackWaitlistLead();
       }
