@@ -8,7 +8,7 @@ type Workspace = Readonly<{ key: "member" | "admin" | "host" | "restaurant"; ava
 type EntryState = "loading" | "error" | "no-access" | "choose";
 const workspaceLabels = {
   member: { label: "Member", href: "/member", description: "Your profile, requests and Seats." },
-  admin: { label: "Admin", href: "/admin/waitlist", description: "Waitlist admission and staff operations." },
+  admin: { label: "Admin", href: "/admin", description: "Waitlist admission and staff operations." },
   host: { label: "Host", href: "/host/assigned-tables", description: "Your assigned Table operations." },
   restaurant: { label: "Restaurant", href: "/restaurant", description: "Your assigned venue service view." },
 } as const;

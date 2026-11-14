@@ -101,3 +101,21 @@ test("member routes need an activated admission, not a staff role; ballot body i
   assert.equal((await s.handle("rating", post({ overall: 4, venueScores: {}, note: null }), { tableId: id(2) })).status, 200);
   assert.equal((await s.handle("rating", post({ overall: 4, venueScores: [], note: null }), { tableId: id(2) })).status, 400);
 });
+
+test("overview, report deletion and account deletion are admin-only; account deletion needs an explicit confirmation", async () => {
+  const admin = setup(who("admin"));
+  assert.equal((await admin.handle("adminOverview", get("/o"))).status, 200);
+  assert.equal((await admin.handle("deleteMemberAccount", post({ guestId: id(9), confirm: "delete" }))).status, 200);
+  assert.deepEqual(admin.calls.at(-1), ["delete_member_account", { p_actor: id(1), p_guest_id: id(9) }]);
+  assert.equal((await admin.handle("deleteMemberAccount", post({ guestId: id(9) }))).status, 400);
+  assert.equal((await admin.handle("deleteMemberAccount", post({ guestId: id(9), confirm: "yes" }))).status, 400);
+  assert.equal((await admin.handle("deleteConductReport", post({}), { reportId: id(8) })).status, 200);
+  const host = setup(who("host"));
+  for (const [name, request, params] of [["adminOverview", get("/o"), {}], ["deleteMemberAccount", post({ guestId: id(9), confirm: "delete" }), {}], ["deleteConductReport", post({}), { reportId: id(8) }]] as const) {
+    assert.equal((await host.handle(name, request, params)).status, 403);
+  }
+  assert.equal(host.calls.length, 0);
+  const held = await setup(who("admin"), async () => { throw new OpsRpcError("case_held"); }).handle("deleteConductReport", post({}), { reportId: id(8) });
+  assert.equal(held.status, 409);
+  assert.equal((await held.json()).error.reason, "case_held");
+});

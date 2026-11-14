@@ -52,6 +52,10 @@ export const opsSpecs = {
     args: (p, b) => isUuid(p.reportId) && Object.keys(b).length === 2 && typeof b.status === "string" && ["new", "reviewing", "resolved"].includes(b.status) && typeof b.held === "boolean"
       ? { p_report_id: p.reportId, p_status: b.status, p_held: b.held } : null },
   ratingAggregates: { method: "GET", roles: ["admin"], rpc: "read_rating_aggregates", args: () => ({}) },
+  adminOverview: { method: "GET", roles: ["admin"], rpc: "read_admin_overview", args: () => ({}) },
+  deleteConductReport: { method: "POST", roles: ["admin"], rpc: "delete_conduct_report", args: (p, b) => isUuid(p.reportId) && Object.keys(b).length === 0 ? { p_report_id: p.reportId } : null },
+  deleteMemberAccount: { method: "POST", roles: ["admin"], rpc: "delete_member_account",
+    args: (_p, b) => isUuid(b.guestId) && b.confirm === "delete" && Object.keys(b).length === 2 ? { p_guest_id: b.guestId } : null },
   staffAssignments: { method: "GET", roles: ["admin"], rpc: "read_staff_assignments", args: () => ({}) },
   hostAssignment: { method: "POST", roles: ["admin"], rpc: "set_host_assignment",
     args: (_p, b) => isUuid(b.tableId) && isUuid(b.userId) && typeof b.assigned === "boolean" && Object.keys(b).length === 3 ? { p_table_id: b.tableId, p_user_id: b.userId, p_assigned: b.assigned } : null },
@@ -74,7 +78,7 @@ export class OpsRpcError extends Error {}
 const headers = { "cache-control": "private, no-store", "referrer-policy": "no-referrer", vary: "Cookie, Origin" };
 const conflicts = new Set(["table_not_proceeding", "table_not_proceedable", "decision_not_open", "group_invalid", "seat_not_checkin_eligible",
   "decision_finalized", "not_a_host", "not_a_restaurant_user", "operation_conflict", "revision_conflict", "invitation_not_removable", "table_not_active",
-  "refund_amount_exceeds_balance", "voting_not_open", "voting_closed", "voting_unavailable", "ballot_conflict", "feedback_not_open", "profile_incomplete"]);
+  "refund_amount_exceeds_balance", "voting_not_open", "voting_closed", "voting_unavailable", "ballot_conflict", "feedback_not_open", "profile_incomplete", "case_held", "review_not_due", "active_seat_exists", "staff_account"]);
 const codes = { unauthenticated: 401, forbidden: 403, not_found: 404, invalid_input: 400, conflict: 409, temporarily_unavailable: 503 } as const;
 const messages: Record<keyof typeof codes, string> = { unauthenticated: "Sign in to continue.", forbidden: "You do not have access to this.",
   not_found: "That could not be found.", invalid_input: "Check the details and try again.", conflict: "That action is not available right now.",

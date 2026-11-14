@@ -26,3 +26,17 @@ test("runs refunds when ready and reports 500 when a queue throws", async () => 
   const bad = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, { deliverInvitation: async () => { throw new Error("x"); }, runRefunds: async () => ({}) });
   assert.equal(bad.status, 500);
 });
+
+test("each pass records a heartbeat with compact outcomes and runs retention and purge; a failing step fails the pass but still reports in", async () => {
+  const beats: Array<[boolean, Record<string, unknown>]> = [];
+  const deps = { deliverInvitation: async () => ({ state: "idle" }), runRefunds: async () => ({}), purgeVotes: async () => ({ ballotsDeleted: 2 }), runRetention: async () => ({ ratingsAnonymized: 1 }),
+    recordHeartbeat: async (ok: boolean, summary: Record<string, unknown>) => { beats.push([ok, summary]); } };
+  const ok = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, deps);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(beats[0], [true, { invitations: "ran", refunds: "disabled", votePurge: "ran", retention: "ran" }]);
+  const bad = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, { ...deps, runRetention: async () => { throw new Error("boom"); } });
+  assert.equal(bad.status, 500);
+  assert.deepEqual(beats[1], [false, { invitations: "ran", refunds: "disabled", votePurge: "ran", retention: "error" }]);
+  const noBeat = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, { ...deps, recordHeartbeat: async () => { throw new Error("db down"); } });
+  assert.equal(noBeat.status, 500);
+});

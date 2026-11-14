@@ -10,18 +10,20 @@ export type WorkerDeps = Readonly<{
   deliverInvitation: () => Promise<{ state: string }>;
   runRefunds: () => Promise<unknown>;
   purgeVotes?: () => Promise<unknown>;
+  runRetention?: () => Promise<unknown>;
+  recordHeartbeat?: (ok: boolean, summary: Record<string, unknown>) => Promise<unknown>;
 }>;
 
 const MAX_INVITATIONS_PER_RUN = 20;
 
-/** Ballots 30 days after the Table and results after 90 days; idempotent, so every pass may call it. */
-async function purgeVoteData(environment: Environment): Promise<unknown> {
+async function rpc(environment: Environment, name: string, args: Record<string, unknown> = {}): Promise<unknown> {
   const url = environment.SUPABASE_URL?.trim(), key = (environment.SUPABASE_SECRET_KEY ?? environment.SUPABASE_SERVICE_ROLE_KEY)?.trim();
-  if (!url || !key) throw new Error("purge_unavailable");
-  const response = await fetch(new URL("/rest/v1/rpc/purge_vote_data", url), { method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000),
-    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" }, body: "{}" });
-  if (!response.ok) throw new Error("purge_failed");
-  return response.json();
+  if (!url || !key) throw new Error("rpc_unavailable");
+  const response = await fetch(new URL(`/rest/v1/rpc/${name}`, url), { method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15_000),
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(args) });
+  if (!response.ok) throw new Error("rpc_failed");
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export function isAuthorized(request: Request, environment: Environment): boolean {
@@ -47,7 +49,16 @@ export async function runWorkerPass(deps: WorkerDeps, refundsReady: boolean) {
   if (deps.purgeVotes) {
     try { summary.votePurge = await deps.purgeVotes(); } catch { summary.votePurge = "error"; }
   }
-  summary.ok = summary.invitations !== "error" && summary.refunds !== "error" && summary.votePurge !== "error";
+  if (deps.runRetention) {
+    try { summary.retention = await deps.runRetention(); } catch { summary.retention = "error"; }
+  }
+  summary.ok = summary.invitations !== "error" && summary.refunds !== "error" && summary.votePurge !== "error" && summary.retention !== "error";
+  if (deps.recordHeartbeat) {
+    // The heartbeat records that a pass ran (and whether it was clean); counts only, never content.
+    const compact = (v: unknown) => (typeof v === "string" ? v : typeof v === "object" && v !== null ? "ran" : String(v));
+    try { await deps.recordHeartbeat(summary.ok === true, { invitations: compact(summary.invitations), refunds: compact(summary.refunds), votePurge: compact(summary.votePurge), retention: compact(summary.retention) }); }
+    catch { summary.heartbeat = "error"; summary.ok = false; }
+  }
   return summary;
 }
 
@@ -57,7 +68,9 @@ export async function handleWorkerRequest(request: Request, environment: Environ
   const resolved: WorkerDeps = deps ?? {
     deliverInvitation: () => createTableInvitationDeliveryWorkerRuntime(environment).deliverNext(),
     runRefunds: () => createRefundWorkerRuntime(environment.REFUND_WORKER_SECRET ?? "", environment).runOnce(10),
-    purgeVotes: () => purgeVoteData(environment),
+    purgeVotes: () => rpc(environment, "purge_vote_data"),
+    runRetention: () => rpc(environment, "run_retention"),
+    recordHeartbeat: (ok, summary) => rpc(environment, "record_worker_heartbeat", { p_ok: ok, p_summary: summary }),
   };
   const summary = await runWorkerPass(resolved, environment.REFUND_WORKER_READY === "true");
   return Response.json(summary, { status: summary.ok ? 200 : 500, headers });

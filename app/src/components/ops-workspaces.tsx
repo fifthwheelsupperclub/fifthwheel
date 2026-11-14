@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshC
 import { SignOutButton } from "./sign-out-button.tsx";
 import "./ops-workspaces.css";
 
-type Area = "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
+type Area = "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
 type Reply<T> = { ok: true; data: T } | { ok: false; status: number; reason: string | null; message: string };
 type Load<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; status: number; message: string };
 
@@ -33,7 +33,8 @@ function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>
   return <main className="product-page ops-workspace"><header className="product-topbar"><a className="brand" href="/" aria-label="Fifth Wheel"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
     <div className="product-topbar-actions"><span className="product-workspace-label">{admin ? "ADMIN WORKSPACE" : area === "host" ? "HOST WORKSPACE" : "RESTAURANT WORKSPACE"}</span><SignOutButton /></div></header>
     <div className="product-layout"><aside className="product-sidebar" aria-label="Navigation"><span className="sidebar-caption">WORKSPACE</span>
-      {admin ? <><a className={`member-nav-link ${area === "admin-decisions" ? "active" : ""}`} href="/admin/table-decisions">Table decisions</a>
+      {admin ? <><a className={`member-nav-link ${area === "admin-overview" ? "active" : ""}`} href="/admin">Overview</a>
+        <a className={`member-nav-link ${area === "admin-decisions" ? "active" : ""}`} href="/admin/table-decisions">Table decisions</a>
         <a className={`member-nav-link ${area === "admin-staff" ? "active" : ""}`} href="/admin/staff-assignments">Staff assignments</a>
         <a className={`member-nav-link ${area === "admin-feedback" ? "active" : ""}`} href="/admin/conduct-reports">Reports &amp; ratings</a>
         <a className="member-nav-link" href="/admin/seat-requests">Seat requests</a><a className="member-nav-link" href="/admin/tables">Tables</a><a className="member-nav-link" href="/admin/cancellations">Cancellations</a><a className="member-nav-link" href="/admin/refunds">Refunds</a></>
@@ -239,10 +240,55 @@ export function AdminConductReports() {
         <div><h2>{r.tableTitle}</h2><p className="ops-meta"><span className={`status-pill ${r.status === "new" ? "status-pill-warning" : ""}`}>{r.status}</span>{r.held && <span className="status-pill status-pill-warning">On hold</span>}<span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))}</span></p>
           <p>From {r.author}{r.subject ? ` about ${r.subject}` : ""}</p><p className="ops-report-body">{r.body}</p></div>
         <div className="ops-actions"><label className="ops-field">Status<select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></label>
-          <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Hold (do not delete)</label></div></li>)}</ul>}
+          <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Hold (do not delete)</label>
+          {!r.held && Date.now() - new Date(r.createdAt).getTime() > 365 * 86_400_000 && <button className="button button-outline" type="button" onClick={() => { if (window.confirm("Delete this report permanently? This cannot be undone.")) void (async () => { setMessage(""); const result = await call(`/api/admin/conduct-reports/${r.reportId}/delete`, {}); if (result.ok) await reports.reload(); else setMessage(result.reason === "case_held" ? "This report is on hold." : result.reason === "review_not_due" ? "This report is not yet due for deletion review." : result.message); })(); }}>Delete (review due)</button>}</div></li>)}</ul>}
     <header className="ops-heading ops-heading-gap"><p className="eyebrow">AGGREGATE ONLY</p><h1>Ratings</h1><p>Averages appear once at least three guests have responded. Free-text notes are never shown here.</p></header>
     {ratings.load.state === "ready" && (ratings.load.data.tables.length === 0 ? <section className="ops-state"><h2>No ratings yet</h2></section>
       : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{t.localDate} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
         <span className="status-pill">{t.overallAverage === null ? "Fewer than 3 responses" : `${t.overallAverage.toFixed(2)} overall`}</span></li>)}</ul>)}
   </Shell>}</Status>;
+}
+
+// ---- Admin: overview ------------------------------------------------------------------------------------------------
+type Overview = { generatedAt: string; heartbeat: { lastRunAt: string | null; ageMinutes: number | null; healthy: boolean }; counts: Record<string, number | null> };
+type Queue = { key: string; label: string; help: string; href: string; alert?: boolean };
+const queues: Queue[] = [
+  { key: "decisionsSuspended", label: "Suspended Tables", help: "A removal left a proceeding Table invalid. Review before voting.", href: "/admin/table-decisions", alert: true },
+  { key: "decisionsNeeded", label: "Tables needing a T−24 decision", help: "Checkout is paused until you record proceed or cancel.", href: "/admin/table-decisions", alert: true },
+  { key: "paymentsUnaccounted", label: "Payments with no Seat or refund", help: "Investigate before anything else; money is unaccounted for.", href: "/admin/refunds", alert: true },
+  { key: "refundsNeedingAttention", label: "Refunds failed or unconfirmed", help: "Retry or reconcile; never resend without provider evidence.", href: "/admin/refunds", alert: true },
+  { key: "votesNotFinalized", label: "Vote results not finalized", help: "A closed vote has no results after a day. Ask engineering to run the finalizer.", href: "/admin", alert: true },
+  { key: "refundsOpen", label: "Refunds owed", help: "Open refund obligations.", href: "/admin/refunds" },
+  { key: "cancellationsPending", label: "Cancellation requests", help: "Guests waiting for a decision.", href: "/admin/cancellations" },
+  { key: "cancellationsFlagged", label: "Flagged by a host", help: "Hosts asked for your attention on these cancellation requests.", href: "/admin/cancellations" },
+  { key: "tableInvitationDeliveryProblems", label: "Table invitation emails failed or unconfirmed", help: "Retry, or check the existing attempt first.", href: "/admin/table-invitations" },
+  { key: "admissionDeliveryProblems", label: "App invitation emails failed or unconfirmed", help: "Open the waitlist to retry or reconcile.", href: "/admin/waitlist" },
+  { key: "identityReviews", label: "Profiles awaiting identity review", help: "Review and approve or ask for corrections.", href: "/admin/identity-review" },
+  { key: "seatRequests", label: "Seat requests waiting", help: "Applicants not yet on a roster.", href: "/admin/seat-requests" },
+  { key: "rostersAwaitingApproval", label: "Rosters awaiting approval", help: "A host submitted a roster for you to approve.", href: "/admin/seat-requests" },
+  { key: "waitlistAwaitingInvite", label: "Waitlist people not yet invited", help: "No app invitation has been sent.", href: "/admin/waitlist" },
+  { key: "conductReportsNew", label: "New conduct reports", help: "Private. Triage them.", href: "/admin/conduct-reports" },
+  { key: "conductReportsReviewDue", label: "Reports due for 12-month review", help: "Delete unless on hold.", href: "/admin/conduct-reports" },
+  { key: "supplyNeedsAttention", label: "Tables whose source changed or went missing", help: "Review supply before accepting or publishing.", href: "/admin/tables" },
+  { key: "unstaffedWithinSevenDays", label: "Tables in the next 7 days with no host", help: "Assign a host.", href: "/admin/staff-assignments" },
+];
+export function AdminOverview() {
+  const { load, reload } = useLoad<Overview>("/api/admin/overview");
+  return <Status area="admin-overview" load={load} retry={() => void reload()}>{load.state === "ready" && (() => {
+    const { counts, heartbeat } = load.data;
+    const active = queues.filter((q) => (counts[q.key] ?? 0) > 0);
+    const clear = queues.filter((q) => (counts[q.key] ?? 0) === 0);
+    const oldest = counts.oldestPendingDeliveryMinutes;
+    return <Shell area="admin-overview">
+      <header className="ops-heading"><p className="eyebrow">TODAY</p><h1>Overview</h1><p>Everything that needs a person, in order of urgency. Counts and ages only; nothing private is shown here.</p></header>
+      <p className={`ops-alert ${heartbeat.healthy ? "ops-ok" : ""}`} role={heartbeat.healthy ? "status" : "alert"}>{heartbeat.healthy ? <CheckCircle2 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
+        {heartbeat.lastRunAt === null ? "The background worker has never reported in. Emails and refunds will not send until it runs." : heartbeat.healthy ? `Background worker last ran ${heartbeat.ageMinutes ?? 0} minute${heartbeat.ageMinutes === 1 ? "" : "s"} ago.` : `Background worker last ran ${heartbeat.ageMinutes} minutes ago or has been failing. Emails and refunds may be stuck; check the scheduler.`}</p>
+      {typeof oldest === "number" && oldest >= 15 && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />The oldest queued Table invitation email has waited {oldest} minutes.</p>}
+      {active.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>Nothing needs attention</h2><p>Every queue is empty.</p></section>
+        : <ul className="ops-list">{active.map((q) => <li className="ops-card" key={q.key}><div><h2>{counts[q.key]} · {q.label}</h2><p>{q.help}</p></div>
+          <a className={`button ${q.alert ? "button-primary" : "button-outline"}`} href={q.href}>Open</a></li>)}</ul>}
+      {clear.length > 0 && <details className="ops-clear"><summary>{clear.length} queues are clear</summary><ul>{clear.map((q) => <li key={q.key}><a href={q.href}>{q.label}</a></li>)}</ul></details>}
+      <p className="ops-footnote">Need help? Email <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. Terms and privacy: <a href="https://fifthwheel.community/terms">Terms</a> · <a href="https://fifthwheel.community/privacy">Privacy</a>.</p>
+    </Shell>;
+  })()}</Status>;
 }

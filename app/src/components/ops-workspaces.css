@@ -36,3 +36,8 @@
 .ops-report-body { white-space: pre-wrap; color: var(--ivory); }
 .ops-heading-gap { margin-top: 36px; }
 .ops-check { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--muted-strong); font-size: 13px; }
+.ops-ok { border-color: #4d6b45; background: #172015; color: #cfe0c8; }
+.ops-clear { max-width: 1040px; margin-top: 18px; color: var(--muted-strong); font-size: 13px; }
+.ops-clear summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.ops-clear ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.ops-clear a, .ops-footnote a { color: var(--gold); }
