@@ -11,6 +11,7 @@
     "dev:test": "vite --host 127.0.0.1 --port 8086 --strictPort",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 8085 --strictPort",
+    "start": "node scripts/start-production.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test src/server/*.test.ts",
     "test:browser": "playwright test"

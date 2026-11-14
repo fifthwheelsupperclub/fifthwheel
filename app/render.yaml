@@ -1,0 +1,30 @@
+# Render blueprint for the rewrite. Create it as a NEW service; do not repoint the old app until staging passes.
+services:
+  - type: web
+    name: fifthwheel-app
+    runtime: node
+    rootDir: app
+    plan: starter # always-on so Stripe webhooks and magic links never hit a cold instance; "free" sleeps
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/health
+    envVars:
+      - { key: NODE_VERSION, value: 22.12.0 }
+      - { key: APP_ORIGIN, sync: false }          # e.g. https://app.fifthwheel.community
+      - { key: MARKETING_ORIGIN, value: "https://fifthwheel.community" }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_PUBLISHABLE_KEY, sync: false }
+      - { key: SUPABASE_SECRET_KEY, sync: false }
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: MAIL_FROM_EMAIL, sync: false }
+      - { key: MAIL_FROM_NAME, value: Fifth Wheel }
+      - { key: STRIPE_MODE, value: live }
+      - { key: STRIPE_SECRET_KEY, sync: false }
+      - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
+      - { key: VITE_STRIPE_PUBLISHABLE_KEY, sync: false }
+      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
+      - { key: CHECKOUT_FULFILLMENT_READY, value: "false" } # flip only after webhook + dry run are verified
+      - { key: REFUND_WORKER_READY, value: "false" }
+      - { key: REFUND_WORKER_SECRET, sync: false }
+      - { key: REFUND_WORKER_ID, sync: false }
+      - { key: JOB_SECRET, sync: false }

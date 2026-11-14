@@ -24,6 +24,7 @@ import { Route as AdminSeatRequestsRouteImport } from './routes/admin/seat-reque
 import { Route as AdminTableInvitationsRouteImport } from './routes/admin/table-invitations'
 import { Route as AdminTablesRouteImport } from './routes/admin/tables'
 import { Route as AdminWaitlistRouteImport } from './routes/admin/waitlist'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiTablesRouteImport } from './routes/api/tables'
 import { Route as ApiWaitlistRouteImport } from './routes/api/waitlist'
 import { Route as ApiWorkspacesRouteImport } from './routes/api/workspaces'
@@ -52,6 +53,7 @@ import { Route as ApiAuthRequestLinkRouteImport } from './routes/api/auth/reques
 import { Route as ApiAuthSignOutRouteImport } from './routes/api/auth/sign-out'
 import { Route as ApiAuthVerifyLinkRouteImport } from './routes/api/auth/verify-link'
 import { Route as ApiCurationAssignedTablesRouteImport } from './routes/api/curation/assigned-tables'
+import { Route as ApiInternalWorkerRouteImport } from './routes/api/internal/worker'
 import { Route as ApiMeRequestsRouteImport } from './routes/api/me/requests'
 import { Route as ApiMemberHomeRouteImport } from './routes/api/member/home'
 import { Route as ApiMemberProfileRouteImport } from './routes/api/member/profile'
@@ -178,6 +180,11 @@ const AdminTablesRoute = AdminTablesRouteImport.update({
 const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
   id: '/admin/waitlist',
   path: '/admin/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTablesRoute = ApiTablesRouteImport.update({
@@ -326,6 +333,11 @@ const ApiCurationAssignedTablesRoute =
     path: '/api/curation/assigned-tables',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalWorkerRoute = ApiInternalWorkerRouteImport.update({
+  id: '/api/internal/worker',
+  path: '/api/internal/worker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMeRequestsRoute = ApiMeRequestsRouteImport.update({
   id: '/api/me/requests',
   path: '/api/me/requests',
@@ -640,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/tables': typeof ApiTablesRouteWithChildren
   '/api/waitlist': typeof ApiWaitlistRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
@@ -666,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/verify-link': typeof ApiAuthVerifyLinkRoute
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
+  '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
@@ -733,6 +747,7 @@ export interface FileRoutesByTo {
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/tables': typeof ApiTablesRouteWithChildren
   '/api/waitlist': typeof ApiWaitlistRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
@@ -758,6 +773,7 @@ export interface FileRoutesByTo {
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/verify-link': typeof ApiAuthVerifyLinkRoute
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
+  '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
@@ -830,6 +846,7 @@ export interface FileRoutesById {
   '/admin/table-invitations': typeof AdminTableInvitationsRoute
   '/admin/tables': typeof AdminTablesRouteWithChildren
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/tables': typeof ApiTablesRouteWithChildren
   '/api/waitlist': typeof ApiWaitlistRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
@@ -856,6 +873,7 @@ export interface FileRoutesById {
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/verify-link': typeof ApiAuthVerifyLinkRoute
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
+  '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
@@ -929,6 +947,7 @@ export interface FileRouteTypes {
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
+    | '/api/health'
     | '/api/tables'
     | '/api/waitlist'
     | '/api/workspaces'
@@ -955,6 +974,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-out'
     | '/api/auth/verify-link'
     | '/api/curation/assigned-tables'
+    | '/api/internal/worker'
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
@@ -1022,6 +1042,7 @@ export interface FileRouteTypes {
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
+    | '/api/health'
     | '/api/tables'
     | '/api/waitlist'
     | '/api/workspaces'
@@ -1047,6 +1068,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-out'
     | '/api/auth/verify-link'
     | '/api/curation/assigned-tables'
+    | '/api/internal/worker'
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
@@ -1118,6 +1140,7 @@ export interface FileRouteTypes {
     | '/admin/table-invitations'
     | '/admin/tables'
     | '/admin/waitlist'
+    | '/api/health'
     | '/api/tables'
     | '/api/waitlist'
     | '/api/workspaces'
@@ -1144,6 +1167,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-out'
     | '/api/auth/verify-link'
     | '/api/curation/assigned-tables'
+    | '/api/internal/worker'
     | '/api/me/requests'
     | '/api/member/home'
     | '/api/member/profile'
@@ -1216,6 +1240,7 @@ export interface RootRouteChildren {
   AdminTableInvitationsRoute: typeof AdminTableInvitationsRoute
   AdminTablesRoute: typeof AdminTablesRouteWithChildren
   AdminWaitlistRoute: typeof AdminWaitlistRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiTablesRoute: typeof ApiTablesRouteWithChildren
   ApiWaitlistRoute: typeof ApiWaitlistRoute
   ApiWorkspacesRoute: typeof ApiWorkspacesRoute
@@ -1232,6 +1257,7 @@ export interface RootRouteChildren {
   ApiAuthSignOutRoute: typeof ApiAuthSignOutRoute
   ApiAuthVerifyLinkRoute: typeof ApiAuthVerifyLinkRoute
   ApiCurationAssignedTablesRoute: typeof ApiCurationAssignedTablesRoute
+  ApiInternalWorkerRoute: typeof ApiInternalWorkerRoute
   ApiMeRequestsRoute: typeof ApiMeRequestsRouteWithChildren
   ApiMemberHomeRoute: typeof ApiMemberHomeRoute
   ApiMemberProfileRoute: typeof ApiMemberProfileRouteWithChildren
@@ -1358,6 +1384,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/waitlist'
       fullPath: '/admin/waitlist'
       preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tables': {
@@ -1554,6 +1587,13 @@ declare module '@tanstack/react-router' {
       path: '/api/curation/assigned-tables'
       fullPath: '/api/curation/assigned-tables'
       preLoaderRoute: typeof ApiCurationAssignedTablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/worker': {
+      id: '/api/internal/worker'
+      path: '/api/internal/worker'
+      fullPath: '/api/internal/worker'
+      preLoaderRoute: typeof ApiInternalWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/me/requests': {
@@ -2380,6 +2420,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminTableInvitationsRoute: AdminTableInvitationsRoute,
   AdminTablesRoute: AdminTablesRouteWithChildren,
   AdminWaitlistRoute: AdminWaitlistRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiTablesRoute: ApiTablesRouteWithChildren,
   ApiWaitlistRoute: ApiWaitlistRoute,
   ApiWorkspacesRoute: ApiWorkspacesRoute,
@@ -2396,6 +2437,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSignOutRoute: ApiAuthSignOutRoute,
   ApiAuthVerifyLinkRoute: ApiAuthVerifyLinkRoute,
   ApiCurationAssignedTablesRoute: ApiCurationAssignedTablesRoute,
+  ApiInternalWorkerRoute: ApiInternalWorkerRoute,
   ApiMeRequestsRoute: ApiMeRequestsRouteWithChildren,
   ApiMemberHomeRoute: ApiMemberHomeRoute,
   ApiMemberProfileRoute: ApiMemberProfileRouteWithChildren,
