@@ -41,3 +41,32 @@ Current product scenarios: [A01–A35](../PRD.md). Task ownership/order: [W00–
 | A35 | W01–W12 | implementing | W04 profile/admin review and W05 supply sync/list/draft/weekly clone are reachable through persistent admin navigation and direct URLs. W06.3–W06.4 mock browser checks reach the nested roster detail and show named-member confirmation; backend roster DB acceptance remains open. W06.5 direct routes were exercised in the real guarded journey: authorized admin delivery recovery, member invitation detail and Requests offer overlay, with another member denied by 404. Whole-app direct-route/role and failure-state audit remains open. See [W06.5 browser evidence](w06.5-browser-slice-evidence.md). |
 
 For each gate, record the exercised route(s), role/fixture, command or manual procedure, result, screenshot path when relevant, and known limitation. Do not mark a scenario accepted from a unit mock alone when the contract calls for a real database/provider/browser path. Keep production evidence marked separately.
+
+## 2026-11-15 status addendum (current evidence; supersedes older rows where they differ)
+
+Rule applied: a scenario is `accepted` only when the real database or browser path has run for it. Rollback-only database harnesses plus intercepted-API screens are `ready for verification`. Receipts: [W12 verification receipts](w12-verification-receipts.md). No payment, provider or deployed-environment path has run.
+
+| Scenario | Status | Evidence now | Still missing |
+|---|---|---|---|
+| A01, A02, A03 | accepted for the local stack; A03 host/restaurant storage matrix open | W04 real-stack runner 2/2 on a freshly replayed database | Cross-owner/host/restaurant storage probes, 320px/keyboard pass |
+| A04, A05, A08 | accepted | W06 real-stack runner 1/1 on the fresh database | none new |
+| A06 | ready for verification | Roster DB harness passes (cursor fix applied); mock UI | Real-stack browser run of curation and approval |
+| A07 | ready for verification | T−48 reminder queued once per unpaid invitation and delivered by the notice worker (DB harness, unit tests); wording is a default pending your approval | Real send; policy sign-off |
+| A09, A10, A11 | ready for verification | Hold, fulfillment, late-charge DB harnesses; mock UI | Stripe sandbox, final-slot and webhook/return concurrency |
+| A12 | ready for verification | Cancellation request/decision DB harness and mock UI | Real-stack run |
+| A13 | ready for verification | Same, including Table cancellation (`cancel_table`) | Real-stack run; concurrent-cancel races |
+| A14 | ready for verification | Refund ledger DB harness; admin/member mock UI | Provider settlement, Stripe sandbox |
+| A15 | ready for verification | `cancel_table` DB harness: closes requests/offers/holds, cancels Seats, adds only uncovered remainders, idempotent | Late paid event under a real provider |
+| A16 | ready for verification | Decision queue (live data, scheduler-independent), proceed gate, existing request-time checkout pause; DB harness, mock UI | Real-stack run |
+| A17 | ready for verification | Removal and single replacement DB harness incl. stale suggestion; mock dialog | Pre-T−24 checkout pause is not implemented (admin warning only); real-stack run |
+| A18 | ready for verification | Restaurant DTO privacy and host-assignment checks in DB harness; mock screens | Real-stack permission run; wrong-venue browser probe |
+| A19, A20 | ready for verification | Seven-account ballot/reveal DB harness (windows at minute granularity, snapshots, immutability, own-only reveal, removal invalidation, retention) | Second-exact boundaries, concurrent submissions, real-stack run |
+| A21 | ready for verification | Ratings and conduct-report privacy, aggregates suppression, no audit text (DB harness) | Real-stack run |
+| A22 | ready for verification | Role gates covered in unit tests for every operations route and DB checks; earlier real-stack denials (W03, W05, W06) | Re-run W05; direct-API sweep of every new route against a real stack |
+| A23 | not re-verified | Earlier W05 DB evidence stands | W05 browser suite is stale |
+| A24 | scoped down | You confirmed legacy data is waitlist rows only. Import generator, preflight, runbook written and tested; no live data touched | Authorized export and import; staging dry run |
+| A25, A34, A35 | ready for verification | Mock and real-stack screens at 390px/desktop; disabled placeholder nav replaced with working links | Person-led accessibility and side-by-side visual comparison (W12.3) |
+| A26–A31 | accepted | W03 runners re-run green on the fresh database | none new |
+| A32, A33 | ready for verification | Profile preference round-trip (W04 runner); member states on real routes | Real-stack Tonight/recap journey |
+
+Blocked on you: Stripe access (A09–A15 provider evidence), release-owner policy and copy decisions ([policy copy inventory](policy-copy-inventory.md)), hosted project, domain and secrets, and any live action.
