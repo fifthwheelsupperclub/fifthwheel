@@ -2,8 +2,8 @@
 .tonight-heading h1 { margin: 10px 0; font-family: var(--display); font-size: clamp(28px, 3.4vw, 40px); font-weight: 400; }
 .tonight-heading p:not(.eyebrow) { display: flex; align-items: center; gap: 6px; color: var(--muted-strong); }
 .tonight-section { margin: 22px 0; padding: 20px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
-.tonight-section h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-family: var(--display); font-size: 22px; font-weight: 400; }
-.tonight-section p, .tonight-section legend, .tonight-section label { color: var(--muted-strong); font-size: 14px; line-height: 1.55; }
+.tonight-section h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; }
+.tonight-section p, .tonight-section legend, .tonight-section label { color: var(--muted-strong); font-size: var(--text-base); line-height: 1.55; }
 .tonight-section svg, .tonight-note svg, .tonight-alert svg, .tonight-pill svg { width: 16px; height: 16px; flex: 0 0 16px; }
 .tonight-stops { display: grid; gap: 12px; margin: 0 0 14px; padding-left: 20px; }
 .tonight-stops li { display: grid; gap: 2px; }
@@ -21,10 +21,10 @@
 .tonight-confirm p { flex: 1 1 100%; margin: 0; }
 .tonight-form .button { min-height: 46px; justify-self: start; }
 .tonight-match { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid #5b4a2f; border-radius: 10px; background: #1c1610; }
-.tonight-match strong { font-family: var(--display); font-size: 18px; font-weight: 400; color: var(--ivory); }
+.tonight-match strong { font-family: var(--display); font-size: var(--display-sm); font-weight: 400; color: var(--ivory); }
 .tonight-alert { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid #8b6a35; border-radius: 10px; background: #2a2012; color: #e6d4ac; }
 .tonight-note { display: grid; justify-items: start; gap: 9px; max-width: 560px; margin: 28px 30px; padding: 24px; border: 1px dashed #57452c; border-radius: 13px; color: var(--muted-strong); }
-.tonight-receipts { margin: 0; padding-left: 18px; color: var(--muted-strong); font-size: 13px; }
+.tonight-receipts { margin: 0; padding-left: 18px; color: var(--muted-strong); font-size: var(--text-base); }
 .tonight-spin { animation: tonight-spin .9s linear infinite; }
 @keyframes tonight-spin { to { transform: rotate(360deg); } }
 @media (max-width: 720px) { .tonight-page { padding: 18px 16px 48px; } .tonight-note { margin: 18px 16px; } }
