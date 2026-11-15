@@ -531,7 +531,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   // The new marketing record is visible without changing the original fields.
   const search = adminJourney.page.getByRole("searchbox", { name: "Search waitlist" });
   await search.fill(memberEmail);
-  await adminJourney.page.getByRole("button", { name: "Search", exact: true }).click();
+  await search.press("Enter");
   const signupRow = adminJourney.page.getByRole("row").filter({ hasText: memberEmail });
   await expect(signupRow).toContainText("Jordan W03");
   await expect(signupRow).not.toContainText("Changed W03");
@@ -570,7 +570,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
 
   // Member identity is authenticated but lacks admin role; direct API access
   // must remain denied after the invited link activates the admission.
-  await signupRow.getByRole("button", { name: "Review" }).click();
+  await signupRow.getByRole("button", { name: "Approve…" }).click();
   const dialog = adminJourney.page.getByRole("dialog", { name: /^Approve / });
   await expect(dialog).toContainText("Table invitation and Seat are separate");
   await saveMilestoneScreenshot(adminJourney.page, "w03-invitation-confirmation-desktop.png");

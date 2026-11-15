@@ -285,13 +285,12 @@ function AdminWaitlistPage() {
 
   return <AppShell role="admin" active="waitlist" labelledBy="waitlist-heading">
         <PageHeader titleId="waitlist-heading" title="Waitlist" description="People who signed up on the website. Approve them to send a sign-in link."
-          status={<span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{loadState === "ready" ? `${items.length} on this page` : "Live list"}</span>} />
+          status={loadState === "ready" ? <span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{items.length} on this page</span> : undefined}
+          actions={<button className="button button-tertiary" type="button" onClick={() => void loadWaitlist(cursor)} disabled={loadState === "loading"}>Refresh</button>} />
 
         <form className="waitlist-filters" onSubmit={submitSearch}>
           <label className="search-control" htmlFor="waitlist-search"><span className="visually-hidden">Search waitlist</span><Search aria-hidden="true" /><input id="waitlist-search" type="search" value={query} maxLength={120} onChange={(event) => setQuery(event.currentTarget.value)} placeholder="Search name or email" /></label>
-          <label className="filter-select-label" htmlFor="waitlist-neighborhood">Neighborhood<select id="waitlist-neighborhood" value={neighborhood} onChange={(event) => setNeighborhood(event.currentTarget.value)}><option value="">All neighborhoods</option>{neighborhoods.map((place) => <option key={place} value={place}>{place}</option>)}</select></label>
-          <button className="button button-outline" type="submit" disabled={loadState === "loading"}><Search aria-hidden="true" />Search</button>
-          <button className="icon-button" type="button" aria-label="Refresh waitlist" onClick={() => void loadWaitlist(cursor)} disabled={loadState === "loading"}><RefreshCw aria-hidden="true" /></button>
+          <label className="filter-select-label" htmlFor="waitlist-neighborhood">Neighborhood<select id="waitlist-neighborhood" value={neighborhood} onChange={(event) => { const next = event.currentTarget.value; setNeighborhood(next); neighborhoodRef.current = next; queryRef.current = query; setCursor(undefined); void loadWaitlist(); }}><option value="">All neighborhoods</option>{neighborhoods.map((place) => <option key={place} value={place}>{place}</option>)}</select></label>
         </form>
 
         {loadState === "loading" && <PageState variant="loading" title="Loading…" />}
@@ -309,11 +308,12 @@ function AdminWaitlistPage() {
                 <td data-label="Joined">{safeDate(item.receivedAt)}</td>
                 <td data-label="Access"><AccessState item={item} /></td>
                 <td data-label="Action">{item.admissionState === "none"
-                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Review<ArrowRight aria-hidden="true" /></button>
+                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Approve…</button>
                   : item.admissionState === "deleted"
                     ? <span className="delivery-summary">Access removed</span>
                     : item.admissionState === "invited" && (item.latestDelivery?.state === "queued" || item.latestDelivery?.state === "unknown" || item.latestDelivery?.state === "failed")
                       ? <button className="button button-outline button-small" type="button" onClick={() => openInvite(item)}>{item.latestDelivery.state === "unknown" ? "Check status" : item.latestDelivery.state === "failed" ? "Send again" : "Send link"}<ArrowRight aria-hidden="true" /></button>
+                  : item.admissionState === "activated" ? null
                   : <span className="delivery-summary">{deliveryLabel(item.latestDelivery?.state, item.admissionState)}</span>}</td>
               </tr>)}</tbody>
             </table>
