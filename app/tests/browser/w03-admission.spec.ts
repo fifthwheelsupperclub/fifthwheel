@@ -694,7 +694,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const memberJourney = await clickActualEmailLink(browser, memberEmail, "You’re in: welcome to Fifth Wheel", "Sign in");
   expect(memberJourney.linkHref).toBe(originalInvitationHref);
   await expect(memberJourney.page).toHaveURL(`${appOrigin}/member`);
-  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
   await expect(memberJourney.page.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
   await expect(memberJourney.page.getByText(/Table invitations and Seats are separate/)).toBeVisible();
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
@@ -703,7 +703,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-390px.png");
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
   await memberJourney.page.reload();
-  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
 
   const deniedAdminPage = await memberJourney.context.newPage();
   await deniedAdminPage.goto(`${appOrigin}/admin/waitlist`);
