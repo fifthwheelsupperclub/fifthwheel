@@ -63,7 +63,7 @@ test("W04 member profile submission and admin identity review work through the a
       console.log(`[W04 profile upload] ${path} HTTP ${response.status()} ${String(body?.code ?? "unknown")}: ${String(body?.message ?? "no safe message")} ${fields}`);
     });
     await page.goto(`${appOrigin}/account/profile`);
-    await expect(page.getByRole("heading", { name: /A good introduction/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your profile", level: 1 })).toBeVisible();
     await expect(page.getByLabel("Women", { exact: true })).toBeChecked();
     await expect(page.getByLabel("Men", { exact: true })).not.toBeChecked();
     await expect(page.getByLabel("Non-binary people", { exact: true })).toBeChecked();
@@ -71,7 +71,7 @@ test("W04 member profile submission and admin identity review work through the a
 
     await page.screenshot({ path: resolve(screenshotDirectory, "w04-profile-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByRole("heading", { name: /A good introduction/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your profile", level: 1 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshotDirectory, "w04-profile-390px.png"), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -168,7 +168,7 @@ test("W04 member profile submission and admin identity review work through the a
   const memberPage = await resubmittingMember.newPage();
   try {
     await memberPage.goto(`${appOrigin}/account/profile`);
-    await expect(memberPage.getByRole("heading", { name: /A good introduction/i })).toBeVisible();
+    await expect(memberPage.getByRole("heading", { name: "Your profile", level: 1 })).toBeVisible();
     await expect(memberPage.getByLabel("Men", { exact: true })).toBeChecked();
     const profilePhoto = await syntheticImage(145, 98, 76);
     const privateSelfie = await syntheticImage(108, 127, 92);
