@@ -188,9 +188,9 @@ test("W07.5 mock-only member Seat detail gives honest refund state and next-step
     try {
       const page = await context.newPage();
       await page.goto(`${appOrigin}/my-seats/${memberSeatId}`);
-      const refundCard = page.locator(".member-seat-card").filter({ has: page.getByText("REFUND", { exact: true }) });
-      await expect(refundCard.getByRole("heading", { name: label })).toBeVisible();
-      await expect(refundCard.getByText(detailCopy, { exact: true })).toBeVisible();
+      // T-16: payment and refund are one list; the refund row carries the state, the note carries the next step.
+      await expect(page.locator(".seat-facts").getByText(label)).toBeVisible();
+      await expect(page.locator(".seat-note").getByText(detailCopy, { exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Cancelled" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Ask to cancel" })).toHaveCount(0);
       if (refundState === "failed") {
