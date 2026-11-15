@@ -103,3 +103,17 @@ Evidence: DB harnesses `test-w10-ops-db.mjs` and `test-w10-notices-db.mjs` (roll
 | S6 last-slot concurrency | Six simultaneous checkout starts for five slots → five 200s, one 409; exactly five live holds, no Seats. |
 
 Not covered (W07.7 stays unchecked): refund outcome `unknown` after a provider timeout and its reconcile path; checkout-create timeout reuse of the same operation; simultaneous webhook + browser-return race on one session; out-of-order events beyond the replay above; payment after the last slot was taken by another paid Seat (S5 used revocation as the ineligible trigger); email-outage behaviour for refund/cancellation notices; Dashboard card-only restriction (still a release-owner action).
+
+### 2026-11-15 (later) — W07.7 remaining gaps closed (fault-injection suite)
+
+`node scripts/run-w077-money-browser.mjs faults` — 4/4 pass. Faults are injected by a test-only intercepting proxy (`scripts/lib/fault-proxy.mjs`, throwaway local CA via `NODE_EXTRA_CA_CERTS`, test processes only; no production code hooks). It forwards to the real Stripe and, when armed for a method+path, lets Stripe process the request then drops the response. The app's mail target is a dead port for this suite.
+
+| Gap | Result |
+|---|---|
+| G1 refund response lost after Stripe created it | Obligation → `unknown`; Stripe really holds exactly one refund; app has no refund id; further worker passes do NOT resend; admin sees "Unconfirmed" with **Try again** (no Check status, since no refund id). Try again re-sends with the same idempotency key → obligation `succeeded`, Stripe still has exactly one refund. |
+| G2 checkout create response lost | First start → 503 `outcome_unknown`, attempt `unknown`; same operation retried → 200; Stripe holds exactly one session for that attempt. |
+| G3 return/webhook race + out-of-order | 4 parallel return calls + 4 parallel signed webhooks → 1 Seat, 1 payment. A stale signed `expired/unpaid` event after completion changes nothing. |
+| G4 late charge from a full Table | Payer's hold lapsed, another member took the slot (5 live holds); payer completes payment → no Seat, `late_checkout_ineligible` 2500 owed → refund `succeeded`. |
+| G5 mail outage | With mail unreachable: payment, cancellation approval and refund all completed; member notices sit `unknown` (never accepted, never auto-resent) for the notices queue. |
+
+**Residual risks (not tested / owner decisions):** (1) "Try again" on an unconfirmed refund relies on Stripe's 24-hour idempotency window; an unconfirmed partial refund retried after 24h could pay twice. Mitigation to build if wanted: reconcile by listing refunds for the PaymentIntent and matching `metadata[app_refund_operation_id]`, or block Try again after 23h. (2) Dashboard payment methods are not card-only (Link/Cash App/Klarna/Bank offered). (3) Nightly Stripe-vs-ledger reconciliation job is not built. (4) Live-mode behaviour (live keys, live webhook endpoint, real card) is unverified until the owner-run dry run.

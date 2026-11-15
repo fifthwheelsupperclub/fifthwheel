@@ -2,6 +2,7 @@
 
 // Real local W07.7 money scenarios: Stripe TEST mode (embedded Checkout) + signed webhook via `stripe listen` + Seat.
 // Only the isolated fifthwheel-rewrite-test stack is allowed; Stripe must be sk_test_/pk_test_.
+import { startFaultProxy } from "./lib/fault-proxy.mjs";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
@@ -248,8 +249,14 @@ async function expireOpenStripeSessions(f) {
 }
 
 async function runPlaywright() {
-  const child = spawn("pnpm", ["exec", "playwright", "test", "--config", "playwright.w077-money.config.ts"], { cwd: appRoot, env: process.env, stdio: "inherit" });
-  return await new Promise((res, rej) => { child.once("error", () => rej(new Error("Playwright could not start"))); child.once("exit", (code) => res(code ?? 1)); });
+  const faults = process.argv[2] === "faults";
+  const proxy = faults ? await startFaultProxy() : null;
+  // Fault suite: the app server and the test process send Stripe traffic through a pass-through proxy that can cut one response
+  // after Stripe has processed the request; local services (Supabase, app) bypass it. Mail goes to a dead port to model an outage.
+  const env = faults ? { ...process.env, HTTPS_PROXY: proxy.url, NODE_EXTRA_CA_CERTS: proxy.caPath, NODE_USE_ENV_PROXY: "1", NO_PROXY: "127.0.0.1,localhost", FAULT_PROXY: proxy.url } : process.env;
+  const child = spawn("pnpm", ["exec", "playwright", "test", "--config", faults ? "playwright.w077-faults.config.ts" : "playwright.w077-money.config.ts"], { cwd: appRoot, env, stdio: "inherit" });
+  try { return await new Promise((res, rej) => { child.once("error", () => rej(new Error("Playwright could not start"))); child.once("exit", (code) => res(code ?? 1)); }); }
+  finally { await proxy?.close(); }
 }
 
 async function main() {
