@@ -141,3 +141,33 @@
 @media (max-width: 640px) { .tbl-grid { grid-template-columns: 1fr; } .tbl-filters label:not(.tbl-filter-neighborhood) { flex: 1 1 140px; } .tbl-filters input { width: 100%; } }
 
 #itinerary-title { margin: 0 0 var(--space-3); font-family: var(--display); font-size: var(--display-md); font-weight: 400; }
+
+/* ---- My Seats and seat detail (T-16) ---- */
+.seat-section { margin-bottom: var(--space-6); }
+.seat-section h2, .seat-block h2 { margin: 0 0 var(--space-3); font-family: var(--display); font-size: var(--display-md); font-weight: 400; }
+.seat-list { display: grid; gap: var(--space-3); }
+.seat-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-1); color: inherit; text-decoration: none; }
+.seat-card:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.seat-card h3 { margin: 0; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; }
+.seat-card small { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--text-staff); }
+.seat-notice { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) var(--space-5); border: 1px solid var(--warning-line); border-radius: var(--radius-lg); background: var(--surface-2); }
+.seat-notice h3 { margin: 0; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; }
+.seat-notice-meta { margin: 2px 0 0; color: var(--text-muted); font-size: var(--text-staff); }
+.seat-past { margin-top: var(--space-4); }
+.seat-past summary, .seat-history summary { display: flex; align-items: center; min-height: 44px; color: var(--text-muted); font-size: var(--text-base); font-weight: 600; cursor: pointer; }
+.seat-past .seat-list { margin-top: var(--space-3); }
+.seat-status { margin: 0 0 var(--space-5); padding: var(--space-4) var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--surface-1); }
+.seat-status.tone-good { border-color: var(--success-line); background: var(--success-bg); }
+.seat-status.tone-warning { border-color: var(--warning-line); background: var(--warning-bg); }
+.seat-status h2 { margin: 0 0 2px; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; }
+.seat-status p { margin: 0; color: var(--text-muted); font-size: var(--text-base); }
+.seat-block { margin-bottom: var(--space-6); }
+.seat-facts { display: grid; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-1); }
+.seat-facts > div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); font-size: var(--text-base); }
+.seat-facts > div:last-child { border-bottom: 0; }
+.seat-facts dt { color: var(--text-muted); }
+.seat-facts dd { margin: 0; text-align: right; }
+.seat-note { margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--text-staff); }
+.seat-cancel-link { margin: var(--space-6) 0 0; }
+.seat-cancel-link a { color: var(--text-muted); font-size: var(--text-base); text-underline-offset: 3px; }
+@media (max-width: 640px) { .seat-card, .seat-notice { flex-direction: column; align-items: flex-start; } .seat-notice .button { width: 100%; } }
