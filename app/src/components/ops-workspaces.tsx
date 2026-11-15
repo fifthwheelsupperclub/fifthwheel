@@ -96,16 +96,16 @@ export function HostTableAttendance({ tableId }: Readonly<{ tableId: string }>) 
   }
   return <Status area="host" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="host">
     <PageHeader back={{ href: "/host/assigned-tables", label: "Your tables" }} title={load.data.table.title} description={<>{load.data.table.neighborhood} · {when(load.data.table.localDate, load.data.table.startLocalTime)}</>} />
+    {load.data.guests.length > 0 && <p className="ops-summary"><strong>{load.data.guests.filter((g) => g.checkedInAt).length} of {load.data.guests.length}</strong> checked in</p>}
     {!load.data.canCheckIn && <p className="ops-alert" role="status"><Clock3 aria-hidden="true" />Check-in opens once staff record that this Table is proceeding. A suspended or cancelled Table cannot check guests in.</p>}
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.guests.length === 0 ? <section className="ops-state"><h2>No paid guests yet</h2><p>Only guests with a paid Seat appear here.</p></section>
       : <ul className="ops-list">{load.data.guests.map((g) => <li className="ops-card" key={g.seatId}>
-        <div><h2>{g.firstName}</h2><p className="ops-meta">{g.checkedInAt ? <span className="status-pill status-pill-success"><UserCheck aria-hidden="true" />Checked in {instantTime(g.checkedInAt)}</span> : <span className="status-pill">Not checked in</span>}
-          {g.cancellationRequestId && <span className="status-pill status-pill-warning">Cancellation requested{g.cancellationFlagged ? " · flagged for admin" : ""}</span>}</p></div>
+        <div><h2>{g.firstName}</h2><p className="ops-meta">{g.checkedInAt ? <StatusBadge tone="success" icon={<UserCheck aria-hidden="true" />}>Checked in {instantTime(g.checkedInAt)}</StatusBadge> : <StatusBadge tone="neutral">Not checked in</StatusBadge>}
+          {g.cancellationRequestId && <StatusBadge tone="warning">Cancellation requested{g.cancellationFlagged ? " · flagged for admin" : ""}</StatusBadge>}</p></div>
         <div className="ops-actions">
           {!g.checkedInAt && <button className="button button-primary" type="button" disabled={!load.data.canCheckIn || busy === g.seatId} onClick={() => void act(g.seatId, `/api/host/tables/${encodeURIComponent(tableId)}/check-in`, { seatId: g.seatId }, "Check-in failed. Try again.")}>{busy === g.seatId ? "Checking in…" : "Check in"}</button>}
           {g.cancellationRequestId && !g.cancellationFlagged && <button className="button button-outline" type="button" disabled={busy === g.cancellationRequestId} onClick={() => void act(g.cancellationRequestId as string, `/api/host/cancellations/${g.cancellationRequestId}/flag`, {}, "Flagging failed. Try again.")}><Flag aria-hidden="true" />Flag for admin</button>}</div></li>)}</ul>}
-    <p className="ops-footnote">Flag a cancellation request to bring it to an admin’s attention.</p>
   </Shell>}</Status>;
 }
 
@@ -145,13 +145,13 @@ export function RestaurantWorkspace() {
   const [venueId, setVenueId] = useState<string | null>(null);
   const { load, reload } = useLoad<Workspace>(venueId ? `/api/restaurant/workspace?venueId=${encodeURIComponent(venueId)}` : "/api/restaurant/workspace");
   return <Status area="restaurant" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="restaurant">
-    <PageHeader title="Upcoming service times" description="Party size and timing for your venue." />
+    <PageHeader title="Service times" description="Party size and timing for your venue." />
     {load.data.venues.length > 1 && <label className="ops-venue">Venue<select value={load.data.selected ?? ""} onChange={(event) => setVenueId(event.currentTarget.value)}>{load.data.venues.map((v) => <option key={v.venueId} value={v.venueId}>{v.name}</option>)}</select></label>}
     {load.data.selected === null ? <section className="ops-state"><UtensilsCrossed aria-hidden="true" /><h2>No venue yet</h2><p>Ask Fifth Wheel to add your venue.</p></section>
       : load.data.services.length === 0 ? <section className="ops-state"><h2>No upcoming services</h2><p>When a Table includes your venue, its service time appears here.</p></section>
       : <ul className="ops-list">{load.data.services.map((s) => <li className="ops-card" key={`${s.tableId}-${s.role}`}>
-        <div><h2>{eventTime(s.serviceLocalTime)} · {s.role}</h2><p>{when(s.serviceLocalDate, s.serviceLocalTime)}</p>
-          <p className="ops-meta"><span className="status-pill">{s.paidCount} guest{s.paidCount === 1 ? "" : "s"} expected</span>{s.status === "review_required" && <span className="status-pill status-pill-warning">Under review</span>}</p>
+        <div><h2>{s.role.charAt(0).toUpperCase() + s.role.slice(1)} · {eventTime(s.serviceLocalTime)}</h2><p>{eventDate(s.serviceLocalDate)}</p>
+          <p className="ops-meta"><StatusBadge tone="neutral">{s.paidCount} guest{s.paidCount === 1 ? "" : "s"} expected</StatusBadge>{s.status === "review_required" && <StatusBadge tone="warning">Under review</StatusBadge>}</p>
           {s.notes && <p>{s.notes}</p>}
           {s.hostContacts.length > 0 && <p className="ops-contact-line">Host: {s.hostContacts.map((c) => `${c.displayName} · ${c.businessContact}`).join("; ")}</p>}</div></li>)}</ul>}
   </Shell>}</Status>;

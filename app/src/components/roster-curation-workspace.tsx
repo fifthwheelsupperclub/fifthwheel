@@ -208,13 +208,13 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
       : <>
         <div className="roster-queue-meta"><span><UsersRound aria-hidden="true" />{tables.length} {tables.length === 1 ? "Table" : "Tables"}</span><span>{admin ? "Published and upcoming" : "Your current assignments"}</span></div>
         <div className="roster-queue-list">{tables.map((table) => <article className="roster-queue-card" key={table.tableId}>
-          <div className="roster-card-icon"><Table2 aria-hidden="true" /></div><div className="roster-card-copy">
-            <div className="roster-card-title"><h2>{table.title}</h2><span className="status-pill status-pill-pending">{table.currentProposal ? table.currentProposal.state.replaceAll("_", " ") : "Needs a roster"}</span></div>
+          <div className="roster-card-copy">
+            <div className="roster-card-title"><h2>{table.title}</h2><StatusBadge tone="pending">{table.currentProposal ? titleCase(table.currentProposal.state.replaceAll("_", " ")) : "Needs a roster"}</StatusBadge></div>
             <div className="roster-card-meta"><span><CalendarDays aria-hidden="true" />{fmtDate(table.localDate)}</span><span><Clock3 aria-hidden="true" />{fmtTime(table.startLocalTime)}</span><span><MapPin aria-hidden="true" />{table.neighborhood}</span></div>
             <p>{table.pendingRequestCount} {table.pendingRequestCount === 1 ? "request" : "requests"}{table.currentProposal ? ` · ${table.currentProposal.selectedCount} picked` : " · not started"}</p>
           </div>
           <Link className="button button-outline roster-open" to={admin ? "/admin/seat-requests/$tableId" : "/host/tables/$tableId/roster"} params={{ tableId: table.tableId }}>
-            Open<ArrowRight aria-hidden="true" />
+            {admin ? "Open" : "Roster"}<ArrowRight aria-hidden="true" />
           </Link>
           <a className="button button-outline roster-open" href={`/host/attendance/${encodeURIComponent(table.tableId)}`}>Attendance</a>
         </article>)}</div>
