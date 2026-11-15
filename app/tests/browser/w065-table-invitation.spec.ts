@@ -77,7 +77,7 @@ async function requestMagicLink(page: Page, email: string): Promise<void> {
     const errorCode = isRecord(responseBody) && isRecord(responseBody.error) && typeof responseBody.error.code === "string" ? responseBody.error.code : "unrecognized_response";
     throw new Error(`Local sign-in link request failed with HTTP ${response.status()} (${errorCode})`);
   }
-  await expect(page.getByText("Check your inbox.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Check your email.", { exact: true })).toBeVisible();
 }
 
 async function signInViaActualMail(page: Page, email: string, returnTo: string): Promise<void> {
@@ -134,7 +134,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     const admin = await adminContext.newPage();
     await signInViaActualMail(admin, adminEmail, "/member");
     await admin.goto(`${appOrigin}/admin/table-invitations`);
-    await expect(admin.getByRole("heading", { name: "Table invitations" })).toBeVisible();
+    await expect(admin.getByRole("heading", { name: "Invitation emails" })).toBeVisible();
     const card = admin.locator(".admin-invitation-card").filter({ hasText: tableTitle });
     await expect(card).toHaveCount(1);
     await expect(card.getByText("Email delivery failed", { exact: true })).toBeVisible();
@@ -148,9 +148,9 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await expect(screenshotCard.getByText("Attempt 1 · failed", { exact: true })).toBeVisible();
     });
 
-    await card.getByRole("button", { name: "Queue delivery retry" }).click();
+    await card.getByRole("button", { name: "Send again" }).click();
     await expect(admin.getByText(/A new email attempt is queued/i)).toBeVisible();
-    await expect(card.getByText("Email queued", { exact: true })).toBeVisible();
+    await expect(card.getByText("Waiting to send", { exact: true })).toBeVisible();
 
     // The one-shot poller can only run when the synthetic outbox is the sole eligible row.
     const eligible = psql(`select count(*)::text || '|' || coalesce(string_agg(o.outbox_id::text,',' order by o.outbox_id), '')
@@ -162,7 +162,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     if (worker.state === "unknown") throw new Error(`Local delivery outcome is unknown for ${invitationId}; preserve for reconciliation and do not resend`);
     expect(worker).toMatchObject({ state: "accepted", invitationId, attemptNumber: 2 });
 
-    const invitationMail = await waitForMail(memberEmail, (message) => message.Subject === `Your Fifth Wheel Table invitation: ${tableTitle}`);
+    const invitationMail = await waitForMail(memberEmail, (message) => message.Subject === `You’re invited: ${tableTitle}`);
     const tableLink = urlsIn(invitationMail).find((url) => url.origin === appOrigin && url.pathname === "/sign-in");
     if (!tableLink || tableLink.searchParams.get("returnTo") !== invitePath || /token_hash|auth\/callback/i.test(allMessageText(invitationMail))) {
       throw new Error("Table invitation email did not contain the expected separate sign-in continuation");
@@ -174,7 +174,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     await expect(acceptedCard.getByText("Email service accepted", { exact: true })).toBeVisible();
     await acceptedCard.locator("details.admin-invitation-attempts summary").click();
     await expect(acceptedCard.getByText("Attempt 2 · accepted", { exact: true })).toBeVisible();
-    await expect(acceptedCard.getByRole("button", { name: "Queue delivery retry" })).toHaveCount(0);
+    await expect(acceptedCard.getByRole("button", { name: "Send again" })).toHaveCount(0);
     const adminApi = await admin.request.get(`${appOrigin}/api/admin/table-invitations?limit=25`);
     expect(adminApi.status()).toBe(200);
     const adminJson: unknown = await adminApi.json();

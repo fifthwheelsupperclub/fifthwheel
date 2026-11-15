@@ -160,7 +160,7 @@ export function createRosterService(dependencies: RosterServiceDependencies): Ro
       const resolution = await resolve(input.accessToken);
       if (!resolution.ok) return resolutionFailure<RosterApprovalResultDTO>(resolution);
       const actor = resolution.actor;
-      if (!isAdmin(actor)) return fail("forbidden", "Only an admin may approve a roster.");
+      if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
       try { return { ok: true, value: await dependencies.repository.approveRoster(actor.userId, input.tableId, input.request) }; }
       catch (error) { return repositoryFailure(error); }
     },

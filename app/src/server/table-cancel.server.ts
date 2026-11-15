@@ -25,7 +25,7 @@ const statuses: Record<TableCancelErrorCode, number> = { unauthenticated: 401, f
   table_not_cancellable: 409, operation_conflict: 409, temporarily_unavailable: 503 };
 const messages: Record<TableCancelErrorCode, string> = { unauthenticated: "Sign in to continue.", forbidden: "Admin access is required.",
   not_found: "This Table could not be found.", invalid_input: "Add a reason of 1–500 characters and try again.",
-  table_not_cancellable: "This Table is already cancelled or completed.", operation_conflict: "This operation ID was already used for different details.",
+  table_not_cancellable: "This Table is already cancelled or completed.", operation_conflict: "Something changed. Reload and try again.",
   temporarily_unavailable: "Table cancellation is temporarily unavailable. Try again shortly." };
 const fail = (code: TableCancelErrorCode) => Response.json({ ok: false, error: { code, safeMessage: messages[code], retryable: code === "temporarily_unavailable" } }, { status: statuses[code], headers });
 

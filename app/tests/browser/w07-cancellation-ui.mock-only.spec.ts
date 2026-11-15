@@ -68,13 +68,12 @@ test("W07.4 mock-only member request preserves active Seat rights and shows hist
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/my-seats/${seatId}/cancellation`);
-    await expect(page.getByRole("heading", { name: "Ask to cancel this Seat" })).toBeVisible();
-    await expect(page.getByText("You can request cancellation for this active Seat.")).toBeVisible();
-    await page.getByLabel("Optional note to the team").fill("My plans changed.");
-    await page.getByRole("button", { name: "Submit cancellation request" }).click();
-    await expect(page.getByText("Request under review", { exact: true })).toBeVisible();
-    await expect(page.getByText("Your Seat stays active while your request is reviewed.")).toBeVisible();
-    await expect(page.getByText("You remain eligible for check-in and voting until the team approves its removal.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ask to cancel this seat" })).toBeVisible();
+    await page.getByLabel("Anything we should know? (optional)").fill("My plans changed.");
+    await page.getByRole("button", { name: "Send request" }).click();
+    await expect(page.getByText("Waiting for review", { exact: true })).toBeVisible();
+    await expect(page.getByText("Your seat is still yours until we decide.")).toBeVisible();
+    await expect(page.getByText("You can still come and vote.")).toBeVisible();
     expect(postedBody).toMatchObject({ operationId: expect.any(String), memberReason: "My plans changed." });
     await page.screenshot({ path: resolve(screenshots, "w07-cancellation-member-pending-desktop-mock-only.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -104,7 +103,7 @@ test("W07.4 mock-only member history reflects completed and cancelled Seat state
       if (terminalState === "completed") await expect(page.getByText("The Table is complete.")).toBeVisible();
       else await expect(page.getByText("The Table and your Seat have been cancelled.")).toBeVisible();
       await expect(page.getByText("Your cancellation request remains under review.")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Submit cancellation request" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Send request" })).toHaveCount(0);
       await page.setViewportSize({ width: 390, height: 844 });
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: resolve(screenshots, `w07-cancellation-member-${terminalState}-390px-mock-only.png`), fullPage: true });
@@ -127,18 +126,18 @@ test("W07.4 mock-only admin approval records a bounded partial refund obligation
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshots, "w07-cancellations-admin-queue-390px-mock-only.png"), fullPage: true });
     await page.getByRole("link", { name: "Review request" }).click();
-    await expect(page.getByRole("heading", { name: "Keep or remove this Seat" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cancel this seat?" })).toBeVisible();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.screenshot({ path: resolve(screenshots, "w07-cancellations-admin-detail-desktop-mock-only.png"), fullPage: true });
-    await page.getByLabel("Member-visible explanation").fill("We can return half of the amount paid.");
+    await page.getByLabel("Message to the guest").fill("We can return half of the amount paid.");
     await page.getByLabel("Partial", { exact: false }).check();
     await page.getByLabel("Amount in dollars").fill("12.50");
-    await page.getByRole("button", { name: /Approve · remove Seat/ }).click();
-    await expect(page.getByRole("alertdialog")).toContainText("A $12.50 refund will be recorded for processing.");
-    await expect(page.getByRole("alertdialog")).toContainText("This decision does not send money.");
+    await page.getByRole("button", { name: "Approve cancellation" }).click();
+    await expect(page.getByRole("alertdialog")).toContainText("Approving adds a $12.50 refund to Refunds.");
+    await expect(page.getByRole("alertdialog")).toContainText("Send it from there.");
     await page.screenshot({ path: resolve(screenshots, "w07-cancellations-admin-confirm-desktop-mock-only.png"), fullPage: true });
-    await page.getByRole("button", { name: "Confirm decision" }).click();
-    await expect(page.getByRole("heading", { name: "Seat removal approved" })).toBeVisible();
+    await page.getByRole("button", { name: /^(Approve|Decline)$/ }).last().click();
+    await expect(page.getByRole("heading", { name: "Approved" })).toBeVisible();
     expect(decisionBody).toMatchObject({ decision: "approve", refundCents: 1250, expectedVersion: 1 });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -169,11 +168,11 @@ test("W07.4 mock-only admin denial keeps the Seat active and sends no refund amo
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/cancellations/${requestId}`);
-    await page.getByLabel("Member-visible explanation").fill("The request does not meet the cancellation criteria.");
-    await page.getByRole("button", { name: "Deny · keep Seat active" }).click();
-    await expect(page.getByRole("alertdialog")).toContainText("Denying leaves the Seat active.");
-    await page.getByRole("button", { name: "Confirm decision" }).click();
-    await expect(page.getByRole("heading", { name: "Request denied · Seat remains active" })).toBeVisible();
+    await page.getByLabel("Message to the guest").fill("The request does not meet the cancellation criteria.");
+    await page.getByRole("button", { name: "Decline", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toContainText("Declining keeps their seat as it is (confirmed).");
+    await page.getByRole("button", { name: /^(Approve|Decline)$/ }).last().click();
+    await expect(page.getByRole("heading", { name: "Declined. Seat unchanged." })).toBeVisible();
     expect(decisionBody).toMatchObject({ decision: "deny", refundCents: 0 });
   } finally { await context.close(); }
 });
@@ -187,14 +186,14 @@ test("W07.4 mock-only denial preserves a completed Seat in the confirmation and 
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/cancellations/${requestId}`);
     await expect(page.getByRole("heading", { name: "completed", exact: true })).toBeVisible();
-    await page.getByLabel("Member-visible explanation").fill("The Table has already finished.");
-    await page.getByRole("button", { name: "Deny · keep Seat completed" }).click();
+    await page.getByLabel("Message to the guest").fill("The Table has already finished.");
+    await page.getByRole("button", { name: "Decline", exact: true }).click();
     const confirmation = page.getByRole("alertdialog");
-    await expect(confirmation).toContainText("Denying leaves the Seat marked as completed.");
-    await expect(confirmation).toContainText("No refund will be recorded.");
+    await expect(confirmation).toContainText("Declining keeps their seat as it is (completed).");
+    await expect(confirmation).toContainText("No refund will be added.");
     await expect(confirmation).not.toContainText("Seat stays active");
-    await page.getByRole("button", { name: "Confirm decision" }).click();
-    await expect(page.getByRole("heading", { name: "Request denied · Seat remains completed" })).toBeVisible();
+    await page.getByRole("button", { name: /^(Approve|Decline)$/ }).last().click();
+    await expect(page.getByRole("heading", { name: "Declined. Seat unchanged." })).toBeVisible();
     expect(decisionBody).toMatchObject({ decision: "deny", refundCents: 0 });
   } finally { await context.close(); }
 });

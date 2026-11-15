@@ -136,19 +136,19 @@ export function createCheckoutHttpHandlers(getService: Factory, appOrigin: strin
     },
     async finalizeReturn(request: Request, invitationId: string): Promise<Response> {
       const correlationId = randomUUID();
-      if (!uuid.test(invitationId)) return failure("invalid_input", "Check the checkout return details and try again.", false, correlationId);
+      if (!uuid.test(invitationId)) return failure("invalid_input", "Something went wrong. Reload and try again.", false, correlationId);
       const origin = assertExactOrigin(request, appOrigin);
       if (!origin.allowed) return failure("forbidden", "This checkout request could not be verified.", false, correlationId);
       const parsed = await parseJson(request);
-      if (!parsed.ok) return failure("invalid_input", "Check the checkout return details and try again.", false, correlationId);
+      if (!parsed.ok) return failure("invalid_input", "Something went wrong. Reload and try again.", false, correlationId);
       if (typeof parsed.value !== "object" || parsed.value === null || Array.isArray(parsed.value)) {
-        return failure("invalid_input", "Check the checkout return details and try again.", false, correlationId);
+        return failure("invalid_input", "Something went wrong. Reload and try again.", false, correlationId);
       }
       const body = parsed.value as Record<string, unknown>;
       if (Object.keys(body).some((key) => !["attemptId","sessionId"].includes(key))
         || typeof body.attemptId !== "string" || !uuid.test(body.attemptId)
         || typeof body.sessionId !== "string" || !/^cs_(?:test_|live_)[A-Za-z0-9]+$/.test(body.sessionId)) {
-        return failure("invalid_input", "Check the checkout return details and try again.", false, correlationId);
+        return failure("invalid_input", "Something went wrong. Reload and try again.", false, correlationId);
       }
       try {
         const result = await getService().finalizeReturn({ accessToken: getAccessTokenForPrincipal(request), invitationId,

@@ -71,20 +71,20 @@ function safeDate(value: string | null | undefined): string {
 function providerCopy(state: SupplyProviderState): Readonly<{ title: string; detail: string; className: string; icon: typeof Database }> {
   switch (state) {
     case "ready": return { title: "Airtable is connected", detail: "You can check Airtable for new Table and venue details.", className: "supply-provider-ready", icon: Database };
-    case "fixture": return { title: "Local test data only", detail: "This is a local test environment. It does not read or change real Airtable records.", className: "supply-provider-fixture", icon: Database };
-    case "unavailable": return { title: "Airtable is unavailable", detail: "We can’t reach Airtable. Members will keep seeing the last published Tables.", className: "supply-provider-unavailable", icon: WifiOff };
-    case "disabled_unmapped": return { title: "Airtable fields need setup", detail: "We haven’t confirmed which Airtable fields hold the Table and venue details, so checking for updates is paused.", className: "supply-provider-disabled", icon: Ban };
+    case "fixture": return { title: "Test mode", detail: "Changes don’t reach Airtable.", className: "supply-provider-fixture", icon: Database };
+    case "unavailable": return { title: "Airtable is unavailable", detail: "We can’t reach Airtable. Guests still see the live tables.", className: "supply-provider-unavailable", icon: WifiOff };
+    case "disabled_unmapped": return { title: "Airtable isn’t set up yet", detail: "Ask the operations owner to connect the Airtable fields. Checking is paused until then.", className: "supply-provider-disabled", icon: Ban };
   }
 }
 
 function runLabel(state: SupplySyncRunDTO["state"]): string {
   switch (state) {
-    case "running": return "In progress";
-    case "staged": return "Ready for review";
-    case "no_change": return "No changes found";
-    case "incomplete": return "Check incomplete";
+    case "running": return "Checking";
+    case "staged": return "Changes to review";
+    case "no_change": return "No changes";
+    case "incomplete": return "Didn’t finish";
     case "conflict": return "Needs review";
-    case "failed": return "Sync failed";
+    case "failed": return "Check failed";
   }
 }
 
@@ -130,7 +130,7 @@ export function AdminSupplySyncWorkspace() {
       const result = parseResponse(body, isSummary);
       if (!response.ok || !result?.ok) {
         setSummary(null);
-        setLoadMessage(result && !result.ok ? result.error.message : "Supply status could not be loaded. Try again shortly.");
+        setLoadMessage(result && !result.ok ? result.error.message : "We couldn’t load Airtable status. Try again in a moment.");
         setView("error");
         return;
       }
@@ -139,7 +139,7 @@ export function AdminSupplySyncWorkspace() {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setSummary(null);
-      setLoadMessage("Supply status could not be loaded. Try again shortly.");
+      setLoadMessage("We couldn’t load Airtable status. Try again in a moment.");
       setView("error");
     }
   }, []);
@@ -168,7 +168,7 @@ export function AdminSupplySyncWorkspace() {
         body: JSON.stringify({ operationId }),
       });
       if (response.status === 401) { setView("unauthenticated"); setAction("error"); setActionMessage("Your staff session has ended. Sign in again to continue."); return; }
-      if (response.status === 403) { setView("forbidden"); setAction("error"); setActionMessage("Your account cannot synchronize Table supply."); return; }
+      if (response.status === 403) { setView("forbidden"); setAction("error"); setActionMessage("You don’t have permission to do this."); return; }
       const body: unknown = await response.json().catch(() => null);
       const result = parseResponse(body, isRun);
       if (!response.ok || !result?.ok) {
@@ -196,7 +196,7 @@ export function AdminSupplySyncWorkspace() {
   const provider = summary ? providerCopy(summary.providerState) : null;
   const ProviderIcon = provider?.icon ?? Database;
   const canSync = view === "ready" && summary !== null && ["fixture", "ready"].includes(summary.providerState) && action !== "running";
-  const retryLabel = action === "unknown" ? "Check this sync again" : "Check Airtable for updates";
+  const retryLabel = action === "unknown" ? "Check again" : "Check Airtable";
 
   return <main className="product-page supply-workspace">
     <header className="product-topbar">
@@ -207,16 +207,16 @@ export function AdminSupplySyncWorkspace() {
       <StaffSidebar active="tables" foot="Supply changes never alter invitations, seats or payment state." />
 
       <section className="product-content supply-content" aria-labelledby="supply-title">
-        <div className="product-breadcrumb">Tables <span>/</span> Supply sync</div>
+        <div className="product-breadcrumb">Tables <span>/</span> Check Airtable</div>
         <div className="page-heading-row supply-heading">
-          <div><p className="eyebrow">TABLES / AIRTABLE UPDATES</p><h1 id="supply-title">Check for Table updates.</h1><p className="page-intro">Check Airtable and review new Table details before adding them. This check does not publish changes or affect Tables with invitations or paid Seats.</p></div>
-          <span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{summary?.latestRun ? "Latest sync " + safeDate(summary.latestRun.startedAt) : "No sync recorded"}</span>
+          <div><p className="eyebrow">AIRTABLE</p><h1 id="supply-title">Check Airtable</h1><p className="page-intro">See what’s new in Airtable before adding it. Nothing goes live from here.</p></div>
+          <span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{summary?.latestRun ? "Last check " + safeDate(summary.latestRun.startedAt) : "No check yet"}</span>
         </div>
 
-        {view === "loading" && <section className="supply-state" role="status" aria-live="polite"><span className="supply-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><div><h2>Checking Airtable status</h2><p>Loading the last published Tables and latest check.</p></div></section>}
-        {view === "unauthenticated" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><CircleAlert aria-hidden="true" /></span><div><h2>Sign in to manage Table supply</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></div></section>}
+        {view === "loading" && <section className="supply-state" role="status" aria-live="polite"><span className="supply-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><div><h2>Loading…</h2></div></section>}
+        {view === "unauthenticated" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><CircleAlert aria-hidden="true" /></span><div><h2>Sign in to see this page</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></div></section>}
         {view === "forbidden" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><ShieldCheck aria-hidden="true" /></span><div><h2>You can’t check Airtable here</h2><p>Your account does not have access to view or check Table updates.</p><a className="button button-outline" href="/admin/waitlist">Return to admin workspace<ArrowRight aria-hidden="true" /></a></div></section>}
-        {view === "error" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><CircleAlert aria-hidden="true" /></span><div><h2>Supply status is unavailable</h2><p>{loadMessage}</p><button className="button button-outline" type="button" onClick={() => void loadSummary()}>Try again<RefreshCw aria-hidden="true" /></button></div></section>}
+        {view === "error" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><CircleAlert aria-hidden="true" /></span><div><h2>We couldn’t load Airtable status</h2><p>{loadMessage}</p><button className="button button-outline" type="button" onClick={() => void loadSummary()}>Try again<RefreshCw aria-hidden="true" /></button></div></section>}
 
         {view === "ready" && summary && provider && <>
           <section className={`supply-provider-card ${provider.className}`} aria-label="Supply provider status">
@@ -224,19 +224,19 @@ export function AdminSupplySyncWorkspace() {
             <div className="supply-provider-copy"><p className="eyebrow">AIRTABLE STATUS</p><h2>{provider.title}</h2><p>{provider.detail}</p></div>
             <button className="button button-primary supply-sync-button" type="button" onClick={() => void runSync()} disabled={!canSync} aria-busy={action === "running"}>
               {action === "running" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : action === "unknown" ? <RefreshCw aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-              {action === "running" ? "Syncing…" : retryLabel}
+              {action === "running" ? "Checking…" : retryLabel}
             </button>
           </section>
           {actionMessage && <p className={`supply-action-message ${action === "error" ? "supply-action-error" : action === "unknown" ? "supply-action-warning" : ""}`} role={action === "error" || action === "unknown" ? "alert" : "status"} aria-live="polite">{action === "error" ? <CircleAlert aria-hidden="true" /> : action === "unknown" ? <Clock3 aria-hidden="true" /> : <Check aria-hidden="true" />}{actionMessage}</p>}
 
           <div className="supply-summary-grid">
-            <section className="supply-card supply-last-good"><div className="supply-card-top"><span className="supply-card-icon"><Check aria-hidden="true" /></span><span className="supply-card-kicker">WHAT MEMBERS SEE</span></div><h2>Published Tables</h2>{summary.lastGoodPublished ? <><p className="supply-revision">Version <code>{summary.lastGoodPublished.revisionId}</code></p><p className="supply-card-meta">Published {safeDate(summary.lastGoodPublished.publishedAt)}</p></> : <div className="supply-empty-inline"><p>No Tables have been published yet.</p><small>Checking Airtable does not publish new Tables.</small></div>}</section>
-          <section className="supply-card supply-latest-run"><div className="supply-card-top"><span className="supply-card-icon"><Database aria-hidden="true" /></span><span className="supply-card-kicker">LATEST AIRTABLE CHECK</span></div>{summary.latestRun ? <><div className="supply-run-title"><h2>{runLabel(summary.latestRun.state)}</h2><span className={`supply-run-badge ${runTone(summary.latestRun.state)}`}>{runLabel(summary.latestRun.state)}</span></div><p className="supply-card-meta">Started {safeDate(summary.latestRun.startedAt)}{summary.latestRun.finishedAt ? ` · Finished ${safeDate(summary.latestRun.finishedAt)}` : " · Still in progress"}</p><dl className="supply-counts"><div><dt>Tables checked</dt><dd>{summary.latestRun.counts.tables}</dd></div><div><dt>Venues checked</dt><dd>{summary.latestRun.counts.venues}</dd></div><div><dt>Issues</dt><dd>{summary.latestRun.conflictCount}</dd></div></dl><p className="supply-card-meta">Pages checked: {summary.latestRun.counts.tablePages} Table · {summary.latestRun.counts.venuePages} venue</p>{summary.latestRun.candidateRevisionId && <p className="supply-candidate-revision">Suggested version <code>{summary.latestRun.candidateRevisionId}</code></p>}{summary.latestRun.state === "staged" && <p className="supply-candidate-note"><Clock3 aria-hidden="true" />New details are ready for staff review. They are not accepted or published yet.</p>}{summary.latestRun.safeMessage && <p className="supply-latest-message">{summary.latestRun.safeMessage}</p>}</> : <div className="supply-empty-inline"><p>Airtable hasn’t been checked yet.</p><small>Check for updates when Airtable is available and connected.</small></div>}</section>
+            <section className="supply-card supply-last-good"><div className="supply-card-top"><span className="supply-card-icon"><Check aria-hidden="true" /></span><span className="supply-card-kicker">WHAT GUESTS SEE</span></div><h2>Live tables</h2>{summary.lastGoodPublished ? <><p className="supply-revision">Version <code>{summary.lastGoodPublished.revisionId}</code></p><p className="supply-card-meta">Published {safeDate(summary.lastGoodPublished.publishedAt)}</p></> : <div className="supply-empty-inline"><p>No Tables have been published yet.</p><small>Checking Airtable does not publish new Tables.</small></div>}</section>
+          <section className="supply-card supply-latest-run"><div className="supply-card-top"><span className="supply-card-icon"><Database aria-hidden="true" /></span><span className="supply-card-kicker">LAST CHECK</span></div>{summary.latestRun ? <><div className="supply-run-title"><h2>{runLabel(summary.latestRun.state)}</h2><span className={`supply-run-badge ${runTone(summary.latestRun.state)}`}>{runLabel(summary.latestRun.state)}</span></div><p className="supply-card-meta">Started {safeDate(summary.latestRun.startedAt)}{summary.latestRun.finishedAt ? ` · Finished ${safeDate(summary.latestRun.finishedAt)}` : " · Still in progress"}</p><dl className="supply-counts"><div><dt>Tables checked</dt><dd>{summary.latestRun.counts.tables}</dd></div><div><dt>Venues checked</dt><dd>{summary.latestRun.counts.venues}</dd></div><div><dt>Issues</dt><dd>{summary.latestRun.conflictCount}</dd></div></dl><p className="supply-card-meta">Pages checked: {summary.latestRun.counts.tablePages} Table · {summary.latestRun.counts.venuePages} venue</p>{summary.latestRun.candidateRevisionId && <p className="supply-candidate-revision">New details ready <code>{summary.latestRun.candidateRevisionId}</code></p>}{summary.latestRun.state === "staged" && <p className="supply-candidate-note"><Clock3 aria-hidden="true" />New details are ready for staff review. They are not accepted or published yet.</p>}{summary.latestRun.safeMessage && <p className="supply-latest-message">{summary.latestRun.safeMessage}</p>}</> : <div className="supply-empty-inline"><p>Airtable hasn’t been checked yet.</p><small>Check for updates when Airtable is available and connected.</small></div>}</section>
           </div>
 
-          {summary.latestRun && summary.latestRun.conflicts.length > 0 && <section className="supply-conflicts" aria-labelledby="supply-conflicts-title"><div className="supply-conflicts-heading"><span className="supply-card-icon supply-conflict-icon"><FileWarning aria-hidden="true" /></span><div><p className="eyebrow">ACTION REQUIRED</p><h2 id="supply-conflicts-title">Review sync conflicts</h2><p>{summary.latestRun.conflictCount} issue{summary.latestRun.conflictCount === 1 ? "" : "s"} in this scan. Published supply remains unchanged.</p></div></div><ul>{summary.latestRun.conflicts.map((conflict, index) => <li key={`${conflict.entityKind}-${conflict.recordOrdinal}-${conflict.field}-${index}`}><span className="supply-conflict-kind">{conflict.entityKind === "table" ? "Table" : "Venue"} {conflict.recordOrdinal}</span><span className="supply-conflict-field">{conflict.field}{conflict.stopRole ? ` · ${conflict.stopRole}` : ""}</span><span className="supply-conflict-message">{conflict.message}</span></li>)}</ul>{summary.latestRun.conflictCount > summary.latestRun.conflicts.length && <p className="supply-truncated-note">Showing {summary.latestRun.conflicts.length} of {summary.latestRun.conflictCount} conflicts. Contact the operations owner for the remaining items.</p>}</section>}
+          {summary.latestRun && summary.latestRun.conflicts.length > 0 && <section className="supply-conflicts" aria-labelledby="supply-conflicts-title"><div className="supply-conflicts-heading"><span className="supply-card-icon supply-conflict-icon"><FileWarning aria-hidden="true" /></span><div><p className="eyebrow">NEEDS ATTENTION</p><h2 id="supply-conflicts-title">Review sync conflicts</h2><p>{summary.latestRun.conflictCount} issue{summary.latestRun.conflictCount === 1 ? "" : "s"} in this scan. Live tables are unchanged.</p></div></div><ul>{summary.latestRun.conflicts.map((conflict, index) => <li key={`${conflict.entityKind}-${conflict.recordOrdinal}-${conflict.field}-${index}`}><span className="supply-conflict-kind">{conflict.entityKind === "table" ? "Table" : "Venue"} {conflict.recordOrdinal}</span><span className="supply-conflict-field">{conflict.field}{conflict.stopRole ? ` · ${conflict.stopRole}` : ""}</span><span className="supply-conflict-message">{conflict.message}</span></li>)}</ul>{summary.latestRun.conflictCount > summary.latestRun.conflicts.length && <p className="supply-truncated-note">Showing {summary.latestRun.conflicts.length} of {summary.latestRun.conflictCount} conflicts. Contact the operations owner for the remaining items.</p>}</section>}
 
-          <section className="supply-scope-note"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Checking Airtable does not change Tables</h2><p>This check will not cancel or reschedule a Table, send invitations, change a roster, or affect paid Seats or refunds. To edit or publish Table details, use the Tables workspace.</p></div></section>
+          <section className="supply-scope-note"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Checking is safe</h2><p>Checking Airtable never changes live tables, guests or payments.</p></div></section>
         </>}
       </section>
     </div>

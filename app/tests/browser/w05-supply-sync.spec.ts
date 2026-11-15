@@ -82,7 +82,7 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables`);
     await expect(page.getByRole("heading", { name: "Manage Tables" })).toBeVisible();
-    await expect(page.getByText("Local test data", { exact: true })).toBeVisible();
+    await expect(page.getByText("Test mode", { exact: true }).first()).toBeVisible();
     const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/admin/supply/sync") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Check Airtable" }).click();
     const syncResponse = await responsePromise;
@@ -106,7 +106,7 @@ test("W05 local fixture sync stages a durable candidate without moving last-good
     expect(afterEnvelope.data?.lastGoodPublished ?? null).toEqual(baselineLastGood);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-supply-sync-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByText("Local test data", { exact: true })).toBeVisible();
+    await expect(page.getByText("Test mode", { exact: true }).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-supply-sync-390px.png"), fullPage: true });
     console.log("W05 fixture sync persisted staged state; last-good published pointer was unchanged.");
@@ -151,7 +151,7 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
       await route.fulfill({ response, body: createBody });
     });
     const createResponse = page.waitForResponse((response) => response.url().endsWith("/api/supply/drafts") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Review Table details" }).click();
+    await page.getByRole("button", { name: "Start draft" }).click();
     const created = await createResponse;
     const postedSource = JSON.parse(created.request().postData() ?? "{}") as { source?: { tableId?: string; revisionId?: string } };
     console.log("W05 candidate create identifiers", JSON.stringify({ posted: postedSource.source, candidate: candidate && { tableId: candidate.tableId, sourceRevisionId: candidate.sourceRevisionId } }));
@@ -222,16 +222,16 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
     expect(preview.status()).toBe(200);
     const previewEnvelope = await preview.json() as { ok?: boolean; data?: { valid?: boolean; canAccept?: boolean; canPublish?: boolean } };
     expect(previewEnvelope.data).toMatchObject({ valid: true, canAccept: true, canPublish: false });
-    await expect(page.getByText("Ready for review", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ready", { exact: true })).toBeVisible();
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-table-detail-draft-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-table-detail-draft-390px.png"), fullPage: true });
 
-    await page.getByRole("button", { name: "Accept revision" }).click();
+    await page.getByRole("button", { name: "Approve changes" }).click();
     await expect(page.getByRole("heading", { name: "Accept this revision?" })).toBeVisible();
     const acceptResponse = page.waitForResponse((response) => response.url().match(/\/accept$/) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Confirm acceptance" }).click();
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
     expect((await acceptResponse).status()).toBe(200);
     await expect(page.getByText("accepted", { exact: true })).toBeVisible();
 
@@ -240,12 +240,12 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
     const acceptedPreview = await acceptedPreviewResponse;
     const acceptedEnvelope = await acceptedPreview.json() as { ok?: boolean; data?: { valid?: boolean; canAccept?: boolean; canPublish?: boolean } };
     expect(acceptedEnvelope.data).toMatchObject({ valid: true, canAccept: true, canPublish: true });
-    await page.getByRole("button", { name: "Publish revision" }).click();
+    await page.getByRole("button", { name: "Publish", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Publish this revision?" })).toBeVisible();
     const publishResponse = page.waitForResponse((response) => response.url().match(/\/publish$/) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Confirm publication" }).click();
+    await page.getByRole("button", { name: "Publish", exact: true }).click();
     expect((await publishResponse).status()).toBe(200);
-    await expect(page.getByText("Revision published. The accepted supply is now the current guest read model.")).toBeVisible();
+    await expect(page.getByText("Published. Guests can see it now.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Current guest-visible revision" })).toBeVisible();
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-table-detail-published-390px.png"), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -312,8 +312,8 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
     const missingPreviewResponse = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/preview") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Preview revision" }).click();
     expect((await missingPreviewResponse).status()).toBe(200);
-    await expect(page.getByRole("button", { name: "Accept revision" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Publish revision" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Approve changes" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toBeDisabled();
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-table-source-missing-ui-injection-390px.png"), fullPage: true });
     await page.unroute(missingDetailPattern);
     await page.unroute(missingListPattern);
@@ -347,7 +347,7 @@ test("W05.2 admin can create, revise, accept and publish a local synthetic Table
     await expect(page.getByText(`${candidateTitle} · reviewed`, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create draft" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Check Airtable" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Review Table details" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Start draft" })).toHaveCount(0);
     await page.screenshot({ path: resolve(screenshotDirectory, "w05-admin-tables-disabled-unmapped-response-fault-injection-390px.png"), fullPage: true });
   } finally { await admin.close(); }
 });

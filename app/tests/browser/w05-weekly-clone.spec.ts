@@ -85,7 +85,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     const targetWeek = target.toISOString().slice(0, 10);
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/tables/weekly-clone`);
-    await expect(page.getByRole("heading", { name: "Preview and copy a week of drafts." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Copy a week" })).toBeVisible();
     await expect(page.locator("main.weekly-clone-page")).toHaveAttribute("data-client-ready", "true");
     await page.getByLabel("Source week starts Monday").fill(sourceWeek);
     await page.getByLabel("Target week starts Monday").fill(targetWeek);
@@ -121,7 +121,7 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
       await route.abort("failed");
     });
     const browserRequestFailed = page.waitForEvent("requestfailed", (request) => request.url().endsWith("/api/admin/supply/weekly-clone"));
-    await dialog.getByRole("button", { name: "Create draft clones" }).click();
+    await dialog.getByRole("button", { name: "Copy drafts" }).click();
     await browserRequestFailed;
     expect(committedResponseStatus).toBe(200);
     expect(committedOperationId).toMatch(/^[0-9a-f-]{36}$/i);

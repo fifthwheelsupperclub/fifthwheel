@@ -21,32 +21,30 @@ export function TableCancelPanel({ tableId }: Readonly<{ tableId: string }>) {
         headers: { "content-type": "application/json" }, body: JSON.stringify({ operationId: operationId.current, reason: reason.trim() }) });
       const body = await response.json().catch(() => null) as { ok?: boolean; data?: Summary; error?: { safeMessage?: string } } | null;
       if (response.ok && body?.ok && body.data) { setSummary(body.data); setState("done"); return; }
-      setMessage(body?.error?.safeMessage ?? "Table cancellation is temporarily unavailable. Try again shortly."); setState("error");
-    } catch { setMessage("The result is unknown. Try the same confirmation again; it cannot cancel twice."); setState("error"); }
+      setMessage(body?.error?.safeMessage ?? "We couldn’t cancel the table. Try again in a moment."); setState("error");
+    } catch { setMessage("We’re not sure that worked. Try again. It’s safe and won’t cancel twice."); setState("error"); }
   }
 
   return <section className="supply-danger-zone" aria-labelledby="table-cancel-title" style={{ margin: "32px auto", maxWidth: 960, padding: "0 16px" }}>
     <div className="supply-review-actions">
-      <p id="table-cancel-title"><TriangleAlert aria-hidden="true" /> <strong>Cancel this Table.</strong> Closes requests and invitations, cancels every Seat and records refunds for all payments.</p>
-      <div><button className="button button-outline" type="button" onClick={start}>Cancel Table…</button></div>
+      <p id="table-cancel-title"><TriangleAlert aria-hidden="true" /> <strong>Cancel this table.</strong> Ends requests and invitations, cancels every paid seat and owes each guest a refund.</p>
+      <div><button className="button button-outline" type="button" onClick={start}>Cancel table…</button></div>
     </div>
     {open && <div className="supply-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && state !== "working") setOpen(false); }}>
       <section className="supply-modal supply-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="table-cancel-dialog-title">
         <span className="supply-modal-icon"><CircleAlert aria-hidden="true" /></span>
-        <p className="eyebrow">CANCEL TABLE</p>
-        {state === "done" && summary ? <>
+                {state === "done" && summary ? <>
           <h2 id="table-cancel-dialog-title">Table cancelled</h2>
-          <p>{summary.cancelledSeats} Seat{summary.cancelledSeats === 1 ? "" : "s"} cancelled, {summary.closedRequests} request{summary.closedRequests === 1 ? "" : "s"} and {summary.closedInvitations} invitation{summary.closedInvitations === 1 ? "" : "s"} closed.
-            {" "}{summary.refundObligations === 0 ? "No refunds are owed." : `${summary.refundObligations} refund${summary.refundObligations === 1 ? "" : "s"} totalling ${usd(summary.refundTotalCents)} are now owed; send them from Refunds.`}</p>
-          <div className="supply-modal-actions"><a className="button button-primary" href="/admin/refunds">Open Refunds</a><button className="button button-outline" type="button" onClick={() => setOpen(false)}>Close</button></div>
+          <p>{summary.refundObligations === 0 ? `${summary.cancelledSeats} seats cancelled. No refunds to send.` : `${summary.cancelledSeats} seat${summary.cancelledSeats === 1 ? "" : "s"} cancelled, ${usd(summary.refundTotalCents)} in refunds to send.`}</p>
+          <div className="supply-modal-actions"><a className="button button-primary" href="/admin/refunds">Go to Refunds</a><button className="button button-outline" type="button" onClick={() => setOpen(false)}>Close</button></div>
         </> : <>
-          <h2 id="table-cancel-dialog-title">Cancel this Table?</h2>
-          <p>This cannot be undone. Applications and invitations close, holds are released, every paid Seat is cancelled, and the remaining balance on every payment becomes a refund you then send. Guests are not emailed automatically.</p>
-          <label className="supply-field"><span>Reason for the record (1–500 characters)</span>
+          <h2 id="table-cancel-dialog-title">Cancel this table?</h2>
+          <p>This can’t be undone. Seat requests and invitations end. Every paid seat is cancelled. Each guest is owed a full refund, which you send from Refunds. Paid guests get an email.</p>
+          <label className="supply-field"><span>Reason (only staff see this)</span>
             <textarea value={reason} maxLength={500} rows={3} onChange={(event) => setReason(event.currentTarget.value)} disabled={state === "working"} /></label>
           {message && <p role="alert" className="supply-inline-error">{message}</p>}
-          <div className="supply-modal-actions"><button className="button button-outline" type="button" onClick={() => setOpen(false)} disabled={state === "working"}>Keep Table</button>
-            <button className="button button-primary" type="button" onClick={() => void confirm()} disabled={state === "working" || reason.trim().length === 0}>{state === "working" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{state === "working" ? "Cancelling…" : "Confirm cancellation"}</button></div>
+          <div className="supply-modal-actions"><button className="button button-outline" type="button" onClick={() => setOpen(false)} disabled={state === "working"}>Keep table</button>
+            <button className="button button-primary" type="button" onClick={() => void confirm()} disabled={state === "working" || reason.trim().length === 0}>{state === "working" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{state === "working" ? "Cancelling…" : "Cancel table"}</button></div>
         </>}
       </section>
     </div>}

@@ -153,19 +153,19 @@ function draftFromProfile(profile: MemberProfileDTO): Draft {
 
 function statusLabel(status: IdentityStatus): string {
   return {
-    draft: "INCOMPLETE",
+    draft: "NOT SUBMITTED",
     submitted: "IN REVIEW",
     approved: "APPROVED",
-    resubmission_required: "CHANGES REQUESTED",
+    resubmission_required: "CHANGES NEEDED",
   }[status];
 }
 
 function statusCopy(status: IdentityStatus): string {
   return {
     draft: "Finish the required details and add a separate photo and selfie before submitting for review.",
-    submitted: "The review team is checking your profile. You can keep editing. Changes to your identity details or review photos need another review.",
-    approved: "The review team approved the profile details and photos you submitted. This is a manual review; it does not verify a government ID or check background records.",
-    resubmission_required: "Please make the correction requested by the review team, then submit your profile again.",
+    submitted: "We’re checking your profile. You can keep editing.",
+    approved: "You’re approved. You can browse and request tables.",
+    resubmission_required: "Make the change below, then submit again.",
   }[status];
 }
 
@@ -186,7 +186,7 @@ function profileValidation(draft: Draft): Record<string, string> {
   if (!draft.firstName.trim()) errors.firstName = "Enter your first name.";
   if (!draft.lastName.trim()) errors.lastName = "Enter your last name.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.dateOfBirth)) errors.dateOfBirth = "Enter your date of birth.";
-  if (!draft.identity) errors.identity = "Choose one identity.";
+  if (!draft.identity) errors.identity = "Choose how you identify.";
   if (draft.openTo.length === 0) errors.openTo = "Choose at least one group you are open to meeting.";
   const min = Number(draft.matchAgeMin);
   const max = Number(draft.matchAgeMax);
@@ -355,7 +355,7 @@ export function ProfileWorkspace() {
       const result = await readApi(response, isProfile);
       if (response.status === 409 || result.error?.code === "conflict") {
         setSaveState("conflict");
-        setFormMessage("This profile changed in another session. Reload the latest version before saving again.");
+        setFormMessage("Your profile was changed in another tab or device. Reload to see the latest, then save again.");
         return;
       }
       if (!response.ok || !result.data) {
@@ -369,7 +369,7 @@ export function ProfileWorkspace() {
       setDraft(draftFromProfile(result.data));
       setServerErrors({});
       setSaveState("saved");
-      setFormMessage("Your profile changes are saved.");
+      setFormMessage("Saved.");
     } catch {
       setSaveState("error");
       setFormMessage("Your changes could not be saved. Your entries are still here; try again.");
@@ -452,7 +452,7 @@ export function ProfileWorkspace() {
     }
 
     setFileError("");
-    setUploadState((current) => ({ ...current, [kind]: "Preparing secure upload…" }));
+    setUploadState((current) => ({ ...current, [kind]: "Uploading…" }));
     const revisions = {
       expectedProfileRevision: profile.profileRevision,
       expectedCriticalIdentityVersion: profile.criticalIdentityVersion,
@@ -495,7 +495,7 @@ export function ProfileWorkspace() {
         setFileError("The secure upload could not be verified. Request a fresh upload.");
         return;
       }
-      setUploadState((current) => ({ ...current, [kind]: "Uploading private evidence…" }));
+      setUploadState((current) => ({ ...current, [kind]: "Uploading…" }));
       const contentResponse = await fetch(uploadUrl, {
         method: "PUT",
         credentials: "same-origin",
@@ -508,7 +508,7 @@ export function ProfileWorkspace() {
         setFileError(contentResult.error?.message ?? "The upload did not finish. Start a fresh upload to retry.");
         return;
       }
-      setUploadState((current) => ({ ...current, [kind]: "Checking and protecting the image…" }));
+      setUploadState((current) => ({ ...current, [kind]: "Processing photo…" }));
       const completeResponse = await fetch("/api/member/profile/files/" + encodeURIComponent(intent.fileId) + "/complete", {
         method: "POST",
         credentials: "same-origin",
@@ -605,16 +605,16 @@ export function ProfileWorkspace() {
         <div className="product-breadcrumb">Member <span>/</span> Account <span>/</span> Profile</div>
         {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading your profile</h2><p>Your saved details and review status are being checked.</p></section>}
         {loadState === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to view your profile</h2><p>This page is available to the member account connected to your app invitation.</p><a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-        {loadState === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Member profile unavailable</h2><p>This account does not have an active member profile. If you expected access, contact the team.</p><a className="button button-outline" href="/member">Return to member home<ArrowRight aria-hidden="true" /></a></section>}
+        {loadState === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>You don’t have access yet</h2><p>If you’re on the waitlist, we’ll email you when you’re in.</p><a className="button button-outline" href="/member">Back to home<ArrowRight aria-hidden="true" /></a></section>}
         {loadState === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Your profile could not load</h2><p>Your saved information has not been changed. Try again when service is available.</p><button className="button button-outline" type="button" onClick={() => void loadProfile()}>Try again<ArrowRight aria-hidden="true" /></button></section>}
         {loadState === "ready" && profile && draft && <>
           <div className="page-heading-row profile-heading-row"><div><p className="eyebrow">ACCOUNT / PROFILE</p><h1 id="profile-heading">A good introduction<br /><em>starts with you.</em></h1><p className="page-intro">Tell us who you are and who you would like to meet. These details stay private.</p></div><span className={`status-pill ${profile.identityStatus === "approved" ? "status-pill-success" : profile.identityStatus === "resubmission_required" ? "status-pill-alert" : ""}`}>{statusLabel(profile.identityStatus)}</span></div>
           <section className="profile-review-status" aria-label="Identity review status" data-status={profile.identityStatus}>
             <span className="profile-status-icon">{profile.identityStatus === "approved" ? <BadgeCheck aria-hidden="true" /> : profile.identityStatus === "submitted" ? <Clock3 aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}</span>
-            <div><p className="eyebrow">IDENTITY REVIEW</p><h2>{profile.identityStatus === "approved" ? "Profile approved" : profile.identityStatus === "submitted" ? "Review in progress" : profile.identityStatus === "resubmission_required" ? "A correction is needed" : "Complete your profile"}</h2><p>{statusCopy(profile.identityStatus)}</p>{profile.latestCorrectionReason && profile.identityStatus === "resubmission_required" && <p className="correction-reason"><strong>Requested correction:</strong> {profile.latestCorrectionReason}</p>}</div>
+            <div><p className="eyebrow">PROFILE REVIEW</p><h2>{profile.identityStatus === "approved" ? "Approved" : profile.identityStatus === "submitted" ? "In review" : profile.identityStatus === "resubmission_required" ? "Changes needed" : "Not submitted"}</h2><p>{statusCopy(profile.identityStatus)}</p>{profile.latestCorrectionReason && profile.identityStatus === "resubmission_required" && <p className="correction-reason"><strong>Requested correction:</strong> {profile.latestCorrectionReason}</p>}</div>
           </section>
           {currentApproved && returnTo && <p className="profile-version-guidance"><Table2 aria-hidden="true" /><span>{returnTo === "/tables" ? "Your profile is approved. Continue browsing Tables." : "Your profile is approved. Continue to the Table you selected."}</span><a className="text-action" href={returnTo}>{returnTo === "/tables" ? "Continue to Tables" : "Continue to Table"}<ArrowRight aria-hidden="true" /></a></p>}
-          <p className="profile-version-guidance"><ShieldCheck aria-hidden="true" /><span>Changes to your date of birth, identity, profile photos or selfie need another review. Preference changes keep your current review, but may affect future Table invitations.</span></p>
+          <p className="profile-version-guidance"><ShieldCheck aria-hidden="true" /><span>Changing your date of birth, gender, photos or selfie means we’ll review your profile again. Other changes don’t.</span></p>
           {currentApproved && profile.files.some((file) => file.state === "deleted") && <p className="evidence-retention-note"><ShieldCheck aria-hidden="true" />We remove review images on a set schedule. Your approved profile stays approved after they are removed. Changes to your identity details need another review.</p>}
           <form className="profile-form" onSubmit={(event) => { event.preventDefault(); void saveProfile(); }} noValidate>
             <section className="profile-section" aria-labelledby="profile-basics-heading">
@@ -622,7 +622,7 @@ export function ProfileWorkspace() {
               <div className="profile-form-grid">
                 <Field id="firstName" label="First name" error={fieldMessage(serverErrors, "firstName")}><input id="firstName" name="firstName" autoComplete="given-name" maxLength={100} value={draft.firstName} onChange={(event) => updateDraft("firstName", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "firstName"))} /></Field>
                 <Field id="lastName" label="Last name" error={fieldMessage(serverErrors, "lastName")}><input id="lastName" name="lastName" autoComplete="family-name" maxLength={100} value={draft.lastName} onChange={(event) => updateDraft("lastName", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "lastName"))} /></Field>
-                <Field id="dateOfBirth" label="Date of birth" hint="You must be at least 21. Matching ages can be set from 21 to 120." error={fieldMessage(serverErrors, "dateOfBirth")}><input id="dateOfBirth" name="dateOfBirth" type="date" autoComplete="bday" value={draft.dateOfBirth} onChange={(event) => updateDraft("dateOfBirth", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "dateOfBirth"))} /></Field>
+                <Field id="dateOfBirth" label="Date of birth" hint="You must be 21 or older." error={fieldMessage(serverErrors, "dateOfBirth")}><input id="dateOfBirth" name="dateOfBirth" type="date" autoComplete="bday" value={draft.dateOfBirth} onChange={(event) => updateDraft("dateOfBirth", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "dateOfBirth"))} /></Field>
                 <Field id="neighborhood" label="Neighborhood" error={fieldMessage(serverErrors, "neighborhood")}><select id="neighborhood" name="neighborhood" value={draft.neighborhood} onChange={(event) => updateDraft("neighborhood", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "neighborhood"))}><option value="">Choose a neighborhood</option>{neighborhoods.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
               </div>
               <ChoiceGroup id="identity" legend="How do you identify?" description="Choose one option." error={fieldMessage(serverErrors, "identity")}>
@@ -631,13 +631,13 @@ export function ProfileWorkspace() {
             </section>
 
             <section className="profile-section" aria-labelledby="profile-preferences-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><ImagePlus aria-hidden="true" /></span><div><p className="eyebrow">02 / YOUR PREFERENCES</p><h2 id="profile-preferences-heading">Who you would like to meet</h2><p>Choose every group you are open to meeting. Keep your own identity separate.</p></div></div>
-              <ChoiceGroup id="openTo" legend="I’m open to meeting" description="Choose one or more. Your choices are saved exactly as selected." error={fieldMessage(serverErrors, "openTo")}>
+              <div className="profile-section-heading"><span className="profile-section-icon"><ImagePlus aria-hidden="true" /></span><div><p className="eyebrow">02 / YOUR PREFERENCES</p><h2 id="profile-preferences-heading">Who you would like to meet</h2><p>Choose all that apply.</p></div></div>
+              <ChoiceGroup id="openTo" legend="I’m open to meeting" description="Choose all that apply." error={fieldMessage(serverErrors, "openTo")}>
                 {openToOptions.map((item) => <label className="choice-card" key={item.value}><input type="checkbox" name="openTo" value={item.value} checked={draft.openTo.includes(item.value)} onChange={(event) => updateDraft("openTo", event.currentTarget.checked ? [...draft.openTo, item.value] : draft.openTo.filter((value) => value !== item.value))} /><span>{item.label}</span></label>)}
               </ChoiceGroup>
               <div className="profile-form-grid match-age-grid">
-                <Field id="matchAgeMin" label="Youngest age" hint="Whole years, 21–120." error={fieldMessage(serverErrors, "matchAgeMin")}><input id="matchAgeMin" name="matchAgeMin" type="number" inputMode="numeric" min={21} max={120} step={1} value={draft.matchAgeMin} onChange={(event) => updateDraft("matchAgeMin", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "matchAgeMin"))} /></Field>
-                <Field id="matchAgeMax" label="Oldest age" hint="Must be at least the youngest age." error={fieldMessage(serverErrors, "matchAgeMax")}><input id="matchAgeMax" name="matchAgeMax" type="number" inputMode="numeric" min={21} max={120} step={1} value={draft.matchAgeMax} onChange={(event) => updateDraft("matchAgeMax", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "matchAgeMax"))} /></Field>
+                <Field id="matchAgeMin" label="Youngest" hint="21–120" error={fieldMessage(serverErrors, "matchAgeMin")}><input id="matchAgeMin" name="matchAgeMin" type="number" inputMode="numeric" min={21} max={120} step={1} value={draft.matchAgeMin} onChange={(event) => updateDraft("matchAgeMin", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "matchAgeMin"))} /></Field>
+                <Field id="matchAgeMax" label="Oldest" hint="Must be at least the youngest age." error={fieldMessage(serverErrors, "matchAgeMax")}><input id="matchAgeMax" name="matchAgeMax" type="number" inputMode="numeric" min={21} max={120} step={1} value={draft.matchAgeMax} onChange={(event) => updateDraft("matchAgeMax", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "matchAgeMax"))} /></Field>
               </div>
               <ChoiceGroup id="nights" legend="Which nights usually work?" description="Optional. Choose any that suit you.">
                 <div className="choice-grid choice-grid-weekdays">{weekdays.map((day) => <label className="choice-card choice-card-compact" key={day}><input type="checkbox" name="nights" value={day} checked={draft.nights.includes(day)} onChange={(event) => updateDraft("nights", event.currentTarget.checked ? [...draft.nights, day] : draft.nights.filter((value) => value !== day))} /><span>{day}</span></label>)}</div>
@@ -651,13 +651,13 @@ export function ProfileWorkspace() {
             <section className="profile-section" aria-labelledby="profile-details-heading">
               <div className="profile-section-heading"><span className="profile-section-icon"><Camera aria-hidden="true" /></span><div><p className="eyebrow">03 / MORE ABOUT YOU</p><h2 id="profile-details-heading">A little more, if you like</h2><p>These details are optional and are not automated eligibility filters.</p></div></div>
               <div className="profile-form-grid">
-                <Field id="phone" label="Phone number" hint="Optional. We won’t ask you to verify it."><input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={40} value={draft.phone} onChange={(event) => updateDraft("phone", event.currentTarget.value)} /></Field>
+                <Field id="phone" label="Phone number" hint="Optional."><input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={40} value={draft.phone} onChange={(event) => updateDraft("phone", event.currentTarget.value)} /></Field>
                 <Field id="oneLiner" label="One-line introduction" hint="Optional."><input id="oneLiner" name="oneLiner" maxLength={240} value={draft.oneLiner} onChange={(event) => updateDraft("oneLiner", event.currentTarget.value)} /></Field>
               </div>
             </section>
 
             <section className="profile-section evidence-section" aria-labelledby="profile-evidence-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">04 / PHOTOS FOR REVIEW</p><h2 id="profile-evidence-heading">Photos and a separate selfie</h2><p>Only the review team can see these private images. They review them by hand; they do not verify a government ID or check background records.</p></div></div>
+              <div className="profile-section-heading"><span className="profile-section-icon"><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">04 / PHOTOS FOR REVIEW</p><h2 id="profile-evidence-heading">Photos for review</h2><p>Only Fifth Wheel staff see these. We compare your photos and selfie by hand. We don’t check ID or run background checks.</p></div></div>
               <EvidenceUpload kind="photo" title="Profile photos" description="Add at least one clear photo. Up to six." files={photoFiles} busyFile={fileBusy} uploadMessage={uploadState.photo} previewUrls={previewUrls} onUpload={(file) => void uploadFile("photo", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
               <EvidenceUpload kind="selfie" title="Private selfie" description="A separate selfie is required for the review team." files={selfieFiles} busyFile={fileBusy} uploadMessage={uploadState.selfie} previewUrls={previewUrls} onUpload={(file) => void uploadFile("selfie", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
               {fileError && <p className="form-error file-error" role="alert"><CircleAlert aria-hidden="true" />{fileError}</p>}
@@ -671,10 +671,9 @@ export function ProfileWorkspace() {
                 {saveState === "saving" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{saveState === "saving" ? "Saving…" : "Save changes"}
               </button>
               <button className="button button-primary" type="button" onClick={() => void submitForReview()} disabled={submitDisabled}>
-                {submitState === "submitting" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{submitState === "submitting" ? "Submitting…" : "Submit for identity review"}
+                {submitState === "submitting" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{submitState === "submitting" ? "Submitting…" : "Submit for review"}
               </button>
             </div>
-            <p className="profile-review-footnote">Profile review does not include government ID verification or a background check.</p>
           </form>
         </>}
       </section>
@@ -741,7 +740,7 @@ function friendlyMissingField(field: string): string {
     firstName: "First name",
     lastName: "Last name",
     dateOfBirth: "Date of birth",
-    identity: "Your identity",
+    identity: "How you identify",
     openTo: "Who you are open to meeting",
     matchAgeMin: "Youngest matching age",
     matchAgeMax: "Oldest matching age",
@@ -757,9 +756,9 @@ function friendlyMissingField(field: string): string {
 
 function fileStatusLabel(state: ProfileFileSummary["state"]): string {
   return {
-    pending_upload: "Upload pending",
-    ready: "Ready for review",
-    rejected: "Needs replacement",
+    pending_upload: "Uploading",
+    ready: "Ready",
+    rejected: "Replace this photo",
     superseded: "Replaced",
     deleted: "Removed",
   }[state];

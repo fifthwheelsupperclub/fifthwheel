@@ -119,14 +119,14 @@ async function jsonEnvelope<T>(response: Response, decode: (data: unknown) => T 
 function reasonCopy(reason: CheckoutEligibilityDTO["eligibility"]["reasonCode"]): string {
   switch (reason) {
     case "disclosure_not_configured": return "Checkout is unavailable until an approved payment disclosure is configured.";
-    case "profile_review_required": return "Your profile needs current approval before checkout can continue.";
-    case "roster_stale": return "This Table invitation needs staff review before checkout can continue.";
+    case "profile_review_required": return "Your profile needs to be reviewed again before you can pay.";
+    case "roster_stale": return "We’re checking this invitation. Check back soon.";
     case "invitation_closed": return "This Table invitation is no longer open.";
     case "table_closed": return "Checkout is closed for this Table.";
-    case "seat_exists": return "A Seat already exists for this invitation. Check the status below.";
+    case "seat_exists": return "You already have a seat at this table.";
     case "capacity_unavailable": return "Checkout capacity is not available right now.";
-    case "payment_unresolved": return "A prior payment is still being resolved. Another checkout cannot start until its status is updated.";
-    case "attempt_recovery_required": return "There is an earlier checkout to resolve before starting another.";
+    case "payment_unresolved": return "We’re still confirming an earlier payment. Don’t pay again.";
+    case "attempt_recovery_required": return "We’re still confirming an earlier payment. Don’t pay again.";
     case "provider_unavailable": return "Secure checkout is temporarily unavailable.";
     case null: return "Checkout is not available right now.";
   }
@@ -358,7 +358,7 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
   return <div className="member-checkout-workspace" aria-live="polite">
     <div className="invitation-price-line"><span>Seat price</span><strong>{price ? `$${(price.amountCents / 100).toFixed(0)} ` : "— "}<small>{price?.currency ?? "USD"}</small></strong></div>
 
-    {state === "loading" && <div className="checkout-state checkout-state-muted" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Checking checkout eligibility…</span></div>}
+    {state === "loading" && <div className="checkout-state checkout-state-muted" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading…</span></div>}
     {state === "unauthenticated" && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>Sign in to view checkout for this invitation.</p><a href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Sign in to continue</a></div>}
     {state === "forbidden" && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>This invitation is available only to its named member.</p></div>}
     {state === "not_found" && <div className="checkout-state checkout-state-warning" role="status"><AlertCircle aria-hidden="true" /><p>This invitation could not be found for this account.</p></div>}
@@ -377,10 +377,9 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
       {recovery && status && <section className={`checkout-state checkout-state-${status.tone}`} role="status">
         {status.tone === "good" ? <CheckCircle2 aria-hidden="true" /> : status.tone === "warning" ? <Clock3 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
         <div><strong>{status.title}</strong><p>{status.detail}</p>
-          <dl className="checkout-deadline"><div><dt>Checkout hold until</dt><dd>{formatDeadline(recovery.attempt.holdUntil)}</dd></div></dl>
-          {recovery.paymentState === "confirmed" && recovery.seatId && <p className="checkout-safe-seat-id">Seat status confirmed by the payment service.</p>}
+          <dl className="checkout-deadline"><div><dt>Your seat is held until</dt><dd>{formatDeadline(recovery.attempt.holdUntil)}</dd></div></dl>
           {recovery.paymentState === "unknown" || recovery.attempt.state === "unknown" || recovery.paymentState === "processing"
-            ? <button className="button button-outline" type="button" onClick={() => void loadRecovery(recovery.attempt.attemptId)} disabled={action !== "idle"}>{action === "opening" ? "Checking…" : "Refresh payment status"}<RefreshCw aria-hidden="true" /></button>
+            ? <button className="button button-outline" type="button" onClick={() => void loadRecovery(recovery.attempt.attemptId)} disabled={action !== "idle"}>{action === "opening" ? "Checking…" : "Check again"}<RefreshCw aria-hidden="true" /></button>
             : null}
         </div>
       </section>}
@@ -390,11 +389,11 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
       {disclosure && !providerReady && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>Secure checkout is unavailable until the payment service and app configuration are ready. No payment has been started.</p></div>}
       {eligibility.eligibility.status === "ready" && disclosure && providerReady && recovery?.paymentState === "not_started" && recovery.attempt.state === "open" && isLiveAttempt && <div className="checkout-state checkout-state-muted" role="status"><CreditCard aria-hidden="true" /><p>Your payment attempt is open. Continue only if you want to resume this same checkout.</p></div>}
 
-      {checkoutError && <div className="checkout-state checkout-state-error" role="alert"><AlertCircle aria-hidden="true" /><div><p>{checkoutError}</p><button className="button button-outline" type="button" onClick={() => void refreshStatus()}>Refresh status<RefreshCw aria-hidden="true" /></button></div></div>}
+      {checkoutError && <div className="checkout-state checkout-state-error" role="alert"><AlertCircle aria-hidden="true" /><div><p>{checkoutError}</p><button className="button button-outline" type="button" onClick={() => void refreshStatus()}>Check again<RefreshCw aria-hidden="true" /></button></div></div>}
       {message && state === "ready" && <p className="checkout-safe-message" role="status">{message}</p>}
 
       {clientSecret && <div className="checkout-embedded-area">
-        <div className="checkout-embedded-heading"><CreditCard aria-hidden="true" /><div><strong>Secure card checkout</strong><span>Payment is handled securely. This screen will update from your saved payment status.</span></div></div>
+        <div className="checkout-embedded-heading"><CreditCard aria-hidden="true" /><div><strong>Pay by card</strong><span>Payment is handled by Stripe. This page updates when your payment goes through.</span></div></div>
         <div className="checkout-embedded-mount" ref={checkoutMountRef} aria-label="Secure card checkout" />
       </div>}
 
@@ -402,9 +401,9 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
         && !clientSecret && <div className="checkout-actions">
           <button className="button button-primary checkout-begin" type="button" onClick={() => void begin()} disabled={!canBegin}>
             {action === "starting" || action === "opening" ? <LoaderCircle className="spin" aria-hidden="true" /> : <CreditCard aria-hidden="true" />}
-            {recovery?.attempt.state === "open" ? "Continue secure checkout" : action === "starting" ? "Starting checkout…" : "Continue to secure checkout"}
+            {recovery?.attempt.state === "open" ? "Resume payment" : action === "starting" ? "Opening payment…" : "Continue to payment"}
           </button>
-          <p>Starting checkout does not confirm a paid Seat. Your Seat is confirmed only after the payment service verifies payment.</p>
+          <p>Your seat is confirmed once your payment goes through.</p>
         </div>}
     </>}
   </div>;

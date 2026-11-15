@@ -98,8 +98,8 @@ test("W07.3 mock-only My Seats groups actual Seat states separately from unresol
     const page = await context.newPage();
     await page.goto(`${appOrigin}/my-seats`);
     await expect(page.getByRole("heading", { name: "My Seats", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Checkout status" })).toBeVisible();
-    await expect(page.getByText("Payment status unknown", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Payments in progress" })).toBeVisible();
+    await expect(page.getByText("Confirming payment", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Payment received; refund pending.", { exact: true })).toBeVisible();
     await expect(page.getByText("Amount received $25.00 · Refund $25.00 pending", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /retry|pay again|continue checkout/i })).toHaveCount(0);
@@ -107,7 +107,7 @@ test("W07.3 mock-only My Seats groups actual Seat states separately from unresol
     await expect(page.getByRole("heading", { name: "Past Seats" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Garden Table" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Autumn Table" })).toBeVisible();
-    await expect(page.getByText("Seat confirmed", { exact: true })).toBeVisible();
+    await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Start another payment|Pay again/i })).toHaveCount(0);
     await page.screenshot({ path: resolve(screenshots, "w07-my-seats-list-desktop-mock-only.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -124,10 +124,10 @@ test("W07.3 mock-only Seat detail shows persisted states, cancellation history a
     const page = await context.newPage();
     await page.goto(`${appOrigin}/my-seats/${seatId}`);
     await expect(page.locator("h1")).toHaveText("Garden Table");
-    await expect(page.getByRole("heading", { name: "Cancellation under review" })).toBeVisible();
-    await expect(page.getByText("Your Seat remains active while the team reviews your request.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cancellation requested" })).toBeVisible();
+    await expect(page.getByText("Your seat stays yours until we decide.")).toBeVisible();
     await expect(page.getByText("Receipt unavailable", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Request under review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
     await expect(page.getByText("Juniper Room", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Add to calendar" })).toHaveAttribute("href", calendarHref);
     await expect(page.getByRole("button", { name: /cancel seat|request cancellation|refund/i })).toHaveCount(0);
@@ -157,7 +157,7 @@ test("W07.3 mock-only cancelled Seat follows server calendar-unavailable state",
     const page = await context.newPage();
     await page.goto(`${appOrigin}/my-seats/${pastSeatId}`);
     await expect(page.locator("h1")).toHaveText("Autumn Table");
-    await expect(page.getByRole("heading", { name: "Seat cancelled" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cancelled" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Add to calendar" })).toHaveCount(0);
   } finally { await context.close(); }
 });

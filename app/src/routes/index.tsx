@@ -7,10 +7,10 @@ export const Route = createFileRoute("/")({ component: EntryRoute });
 type Workspace = Readonly<{ key: "member" | "admin" | "host" | "restaurant"; available: boolean }>;
 type EntryState = "loading" | "error" | "no-access" | "choose";
 const workspaceLabels = {
-  member: { label: "Member", href: "/member", description: "Your profile, requests and Seats." },
-  admin: { label: "Admin", href: "/admin", description: "Waitlist admission and staff operations." },
-  host: { label: "Host", href: "/host/assigned-tables", description: "Your assigned Table operations." },
-  restaurant: { label: "Restaurant", href: "/restaurant", description: "Your assigned venue service view." },
+  member: { label: "Your tables", href: "/member", description: "Profile, requests and seats." },
+  admin: { label: "Admin", href: "/admin", description: "Waitlist, tables, payments and guests." },
+  host: { label: "Host", href: "/host/assigned-tables", description: "Tables you’re hosting." },
+  restaurant: { label: "Restaurant", href: "/restaurant", description: "Upcoming service times." },
 } as const;
 
 function EntryRoute() {
@@ -44,19 +44,18 @@ function EntryRoute() {
     return () => { active = false; };
   }, []);
 
-  if (state === "loading") return <main className="entry-loading" role="status" aria-live="polite"><span className="entry-loader" aria-hidden="true" /><p>Checking your Fifth Wheel access…</p></main>;
+  if (state === "loading") return <main className="entry-loading" role="status" aria-live="polite"><span className="entry-loader" aria-hidden="true" /><p>Loading…</p></main>;
 
   if (state === "choose") return <main className="system-state-page workspace-entry-page" aria-labelledby="workspace-entry-title">
     <section className="system-state-card workspace-entry-card">
       <span className="system-state-icon" aria-hidden="true"><ShieldCheck /></span>
       <p className="eyebrow">FIFTH WHEEL</p>
-      <h1 id="workspace-entry-title">Choose your workspace.</h1>
-      <p className="system-state-message">Only workspaces authorized for your account are shown.</p>
+      <h1 id="workspace-entry-title">Where to?</h1>
       <div className="workspace-choice-list">{workspaces.map((workspace) => {
         const details = workspaceLabels[workspace.key];
         return workspace.available
           ? <a className="workspace-choice" key={workspace.key} href={details.href}><span className="workspace-choice-icon">{workspace.key === "admin" ? <ShieldCheck aria-hidden="true" /> : <UsersRound aria-hidden="true" />}</span><span><strong>{details.label}</strong><small>{details.description}</small></span><ArrowRight aria-hidden="true" /></a>
-          : <div className="workspace-choice workspace-choice-disabled" key={workspace.key} aria-disabled="true"><span className="workspace-choice-icon"><UsersRound aria-hidden="true" /></span><span><strong>{details.label}</strong><small>{details.description} This workspace is not available yet.</small></span></div>;
+          : <div className="workspace-choice workspace-choice-disabled" key={workspace.key} aria-disabled="true"><span className="workspace-choice-icon"><UsersRound aria-hidden="true" /></span><span><strong>{details.label}</strong><small>{details.description} Coming soon.</small></span></div>;
       })}</div>
     </section>
   </main>;
@@ -65,9 +64,9 @@ function EntryRoute() {
     <section className="system-state-card">
       <span className="system-state-icon" aria-hidden="true"><CircleAlert /></span>
       <p className="eyebrow">FIFTH WHEEL</p>
-      <h1 id="entry-error-title">No workspace is available.</h1>
-      <p className="system-state-message" role="status">This account does not currently have app admission or a staff role.</p>
-      <div className="system-state-actions"><a className="button button-primary" href="/sign-in">Return to sign in</a></div>
+      <h1 id="entry-error-title">You don’t have access yet.</h1>
+      <p className="system-state-message" role="status">If you joined the waitlist, we’ll email you when you’re in. Signed up with a different email? Sign in with that one.</p>
+      <div className="system-state-actions"><a className="button button-primary" href="/sign-in">Back to sign in</a></div>
     </section>
   </main>;
 
@@ -75,8 +74,8 @@ function EntryRoute() {
     <section className="system-state-card">
       <span className="system-state-icon" aria-hidden="true"><CircleAlert /></span>
       <p className="eyebrow">FIFTH WHEEL</p>
-      <h1 id="entry-error-title">We couldn’t check your account.</h1>
-      <p className="system-state-message" role="alert">Try again, or go to member sign in.</p>
+      <h1 id="entry-error-title">We couldn’t load your account.</h1>
+      <p className="system-state-message" role="alert">Try again.</p>
       <div className="system-state-actions"><button className="button button-outline" type="button" onClick={() => window.location.reload()}><RefreshCw aria-hidden="true" />Try again</button><a className="button button-primary" href="/sign-in">Go to sign in</a></div>
     </section>
   </main>;

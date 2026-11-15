@@ -21,14 +21,14 @@ for (const healthy of [true, false]) {
       return route.continue();
     });
     await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
     const cards = page.locator(".ops-card h2");
-    await expect(cards.first()).toContainText("Suspended Tables");
+    await expect(cards.first()).toContainText("Tables on hold");
     await expect(cards.nth(1)).toContainText("Refunds failed or unconfirmed");
-    await expect(page.getByText("The oldest queued Table invitation email has waited 22 minutes.")).toBeVisible();
-    await expect(page.getByText(healthy ? /Background worker last ran 2 minutes ago/ : /Emails and refunds may be stuck/)).toBeVisible();
+    await expect(page.getByText("The oldest invitation email has been waiting 22 minutes.")).toBeVisible();
+    await expect(page.getByText(healthy ? /Emails and refunds are sending normally/ : /Emails and refunds aren’t sending/)).toBeVisible();
     await expect(page.getByText(/queues are clear/)).toBeVisible();
-    await expect(page.locator(".ops-card").filter({ hasText: "Profiles awaiting identity review" }).getByRole("link", { name: "Open" })).toHaveAttribute("href", "/admin/identity-review");
+    await expect(page.locator(".ops-card").filter({ hasText: "Profiles waiting for review" }).getByRole("link", { name: "Open" })).toHaveAttribute("href", "/admin/identity-review");
     await expect(page.getByText(/ballot|vote choice/i)).toHaveCount(0);
     if (healthy) await page.screenshot({ path: `${shots}/w10-admin-overview-desktop-mock-only.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -62,7 +62,7 @@ test("email problems: unknown vs failed are explained and Send again / Dismiss p
   });
   await page.goto("/admin/notices");
   await expect(page.getByText("Unconfirmed", { exact: true })).toBeVisible();
-  await expect(page.getByText(/never sends an uncertain email twice on its own/)).toBeVisible();
+  await expect(page.getByText(/check Resend first/)).toBeVisible();
   await expect(page.getByText(/@/)).toHaveCount(0);
   await page.screenshot({ path: `${shots}/w10-email-problems-desktop-mock-only.png`, fullPage: true });
   await page.getByRole("button", { name: "Send again" }).click();

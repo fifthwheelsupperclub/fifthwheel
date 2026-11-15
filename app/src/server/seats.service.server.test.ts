@@ -106,7 +106,7 @@ test("cancelled Seats have no calendar export", async () => {
     calendar: { available: false, href: null } });
   const { service } = setup({ repository: { async readMySeat() { return cancelled; } } });
   assert.deepEqual(await service.calendar({ accessToken: "cookie", seatId }), { ok: false, error: {
-    code: "conflict", safeMessage: "Calendar export is available for future active Seats only.", retryable: false } });
+    code: "conflict", safeMessage: "You can add upcoming seats to your calendar.", retryable: false } });
 });
 
 test("unauthenticated, unadmitted and resolver outage fail before Seat reads", async () => {

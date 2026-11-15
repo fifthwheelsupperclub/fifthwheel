@@ -73,7 +73,7 @@ test("sends an invitation only to the local HTTP API with escaped link and attem
   assert.equal(payload.Headers["X-FifthWheel-Attempt-ID"], ids.attemptId);
   assert.equal(payload.Headers["X-FifthWheel-Idempotency-Key"], ids.idempotencyKey);
   assert.match(payload.HTML, /&amp;safeReturnTo=%2F%22%3E%3Cscript%3E/);
-  assert.match(payload.Text, /This invitation grants app access\. Table invitations are separate\./);
+  assert.match(payload.Text, /You’re off the waitlist\. Sign in, finish your profile/);
 });
 
 test("rejects a non-loopback action link without making an HTTP request", async () => {

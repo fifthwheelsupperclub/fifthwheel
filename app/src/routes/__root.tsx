@@ -38,9 +38,8 @@ function NotFoundPage() {
   return <SystemStatePage
     kind="not-found"
     icon={ArrowLeft}
-    label="PAGE NOT FOUND"
     title="This page isn’t here."
-    message="The address may have changed. Return to Fifth Wheel home to continue."
+    message="This link may be old or mistyped."
   />;
 }
 
@@ -48,9 +47,8 @@ function RouteErrorPage({ reset }: { reset: () => void }) {
   return <SystemStatePage
     kind="error"
     icon={CircleAlert}
-    label="PAGE ERROR"
     title="We couldn’t load this page."
-    message="Something unexpected interrupted this page. Try again, or return to the preview home."
+    message="Something went wrong on our end. Try again, or go to the home page."
     onRetry={reset}
   />;
 }
@@ -58,14 +56,12 @@ function RouteErrorPage({ reset }: { reset: () => void }) {
 function SystemStatePage({
   kind,
   icon: Icon,
-  label,
   title,
   message,
   onRetry,
 }: {
   kind: "error" | "not-found";
   icon: typeof CircleAlert;
-  label: string;
   title: string;
   message: string;
   onRetry?: () => void;
@@ -83,12 +79,11 @@ function SystemStatePage({
   >
     <div className="system-state-card">
       <span className="system-state-icon" aria-hidden="true"><Icon /></span>
-      <p className="eyebrow">{label}</p>
       <h1 id="system-state-title">{title}</h1>
       <p className="system-state-message" role={kind === "error" ? "alert" : undefined}>{message}</p>
       <div className="system-state-actions">
         {onRetry && <button className="button button-outline" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
-        <Link className="button button-primary" to="/"><House aria-hidden="true" />Return to preview home</Link>
+        <Link className="button button-primary" to="/"><House aria-hidden="true" />Go to home</Link>
       </div>
     <p className="system-state-footnote">FIFTH WHEEL · ATLANTA</p>
     </div>

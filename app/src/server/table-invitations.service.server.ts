@@ -24,10 +24,10 @@ function mapRepositoryError<T>(error: unknown): TableInvitationServiceResult<T> 
     switch (error.code) {
       case "forbidden": return fail("forbidden", "You do not have access to this invitation.");
       case "not_found": return fail("not_found", "This invitation could not be found.");
-      case "invalid_input": return fail("invalid_input", "Check the invitation request and try again.");
-      case "operation_conflict": return fail("operation_conflict", "This operation identifier was used for a different request.");
+      case "invalid_input": return fail("invalid_input", "Something went wrong. Reload and try again.");
+      case "operation_conflict": return fail("operation_conflict", "Something changed. Reload and try again.");
       case "attempt_not_retryable": return fail("attempt_not_retryable", "This delivery cannot be retried in its current state.");
-      case "attempt_reconciliation_required": return fail("attempt_reconciliation_required", "Delivery status must be reconciled before retrying.");
+      case "attempt_reconciliation_required": return fail("attempt_reconciliation_required", "Check status before sending again.");
       case "attempt_busy": return fail("attempt_busy", "This delivery is already being processed. Try again shortly.");
       case "configuration_invalid":
       case "request_failed":
@@ -66,7 +66,7 @@ export function createTableInvitationService(dependencies: TableInvitationServic
       if (!uuidPattern.test(input.invitationId)) return fail<MemberTableInvitationDetailDTO>("invalid_input", "Use a valid invitation link.");
       const resolution = await resolve(input.accessToken);
       if (!resolution.ok) return resolveFailure<MemberTableInvitationDetailDTO>(resolution);
-      if (!authorize(resolution.principal, { workspace: "member", action: "member:read-own" }).allowed) return fail<MemberTableInvitationDetailDTO>("forbidden", "Admitted app member access is required.");
+      if (!authorize(resolution.principal, { workspace: "member", action: "member:read-own" }).allowed) return fail<MemberTableInvitationDetailDTO>("forbidden", "You don’t have access yet.");
       try { return { ok: true as const, value: await dependencies.repository.readMemberInvitation(resolution.principal.userId, input.invitationId) }; }
       catch (error) { return mapRepositoryError<MemberTableInvitationDetailDTO>(error); }
     },
@@ -76,7 +76,7 @@ export function createTableInvitationService(dependencies: TableInvitationServic
       const resolution = await resolve(input.accessToken);
       if (!resolution.ok) return resolveFailure<AdminTableInvitationListDTO>(resolution);
       if (!authorize(resolution.principal, { workspace: "admin", action: "roster:read" }).allowed) {
-        return fail<AdminTableInvitationListDTO>("forbidden", "Only an admin may review invitation delivery.");
+        return fail<AdminTableInvitationListDTO>("forbidden", "Only admins can do this.");
       }
       try { return { ok: true as const, value: await dependencies.repository.listAdminInvitations(resolution.principal.userId, input) }; }
       catch (error) { return mapRepositoryError<AdminTableInvitationListDTO>(error); }
@@ -90,7 +90,7 @@ export function createTableInvitationService(dependencies: TableInvitationServic
       const resolution = await resolve(input.accessToken);
       if (!resolution.ok) return resolveFailure<RetryTableInvitationDeliveryResultDTO>(resolution);
       if (!authorize(resolution.principal, { workspace: "admin", action: "roster:approve" }).allowed) {
-        return fail<RetryTableInvitationDeliveryResultDTO>("forbidden", "Only an admin may retry invitation delivery.");
+        return fail<RetryTableInvitationDeliveryResultDTO>("forbidden", "Only admins can do this.");
       }
       try { return { ok: true as const, value: await dependencies.repository.retryFailedDelivery(resolution.principal.userId, input.invitationId, input.request) }; }
       catch (error) { return mapRepositoryError<RetryTableInvitationDeliveryResultDTO>(error); }
@@ -103,9 +103,9 @@ export function createTableInvitationService(dependencies: TableInvitationServic
       const resolution = await resolve(input.accessToken);
       if (!resolution.ok) return resolveFailure<ReconcileTableInvitationDeliveryResultDTO>(resolution);
       if (!authorize(resolution.principal, { workspace: "admin", action: "roster:read" }).allowed) {
-        return fail<ReconcileTableInvitationDeliveryResultDTO>("forbidden", "Only an admin may reconcile invitation delivery.");
+        return fail<ReconcileTableInvitationDeliveryResultDTO>("forbidden", "Only admins can do this.");
       }
-      if (!dependencies.reconcileUnknownDelivery) return fail<ReconcileTableInvitationDeliveryResultDTO>("temporarily_unavailable", "Delivery reconciliation is not configured.");
+      if (!dependencies.reconcileUnknownDelivery) return fail<ReconcileTableInvitationDeliveryResultDTO>("temporarily_unavailable", "Check status before sending again.");
       try { return { ok: true as const, value: await dependencies.reconcileUnknownDelivery(input.invitationId, input.request.expectedAttemptCount) }; }
       catch (error) { return mapRepositoryError<ReconcileTableInvitationDeliveryResultDTO>(error); }
     },

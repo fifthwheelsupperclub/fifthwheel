@@ -59,7 +59,7 @@ test("expired returning-member link is recoverable and creates no browser sessio
     const response = await responsePromise;
     expect(response.status()).toBe(200);
     expect(await response.json()).toEqual({ accepted: true });
-    await expect(page.getByText("Check your inbox.")).toBeVisible();
+    await expect(page.getByText("Check your email.")).toBeVisible();
 
     const message = await waitForReturningLink(email);
     // Auth issues a two-second OTP in this run. Leave enough margin for the

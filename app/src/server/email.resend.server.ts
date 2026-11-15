@@ -1,6 +1,7 @@
 /** Server-only production email adapters over Resend's REST API (fetch, no SDK). */
 
 import type { AdmissionEmailProvider, EmailSendResult, MagicLinkEmailProvider } from "./admission.contracts.server.ts";
+import { whenLabel } from "./notice-templates.server.ts";
 import type { TableInvitationMailInput, TableInvitationMailResult } from "./table-invitation.email.mailpit.server.ts";
 
 export type ResendConfig = Readonly<{
@@ -85,9 +86,9 @@ export function createResendEmail(config: ResendConfig, fetcher: typeof fetch = 
       if (!link || !emailPattern.test(input.recipientEmail) || ![input.deliveryId, input.attemptId, input.idempotencyKey].every((v) => idPattern.test(v))) {
         return { state: "failed", safeErrorCode: "resend_invalid_request", retryable: false } as const;
       }
-      return send(input.recipientEmail, "Your Fifth Wheel app invitation",
-        `You have been invited to join Fifth Wheel.\n\nThis invitation grants app access. Table invitations are separate.\n\nUse this secure sign-in link:\n${link}`,
-        `<p>You have been invited to join Fifth Wheel.</p><p>This invitation grants app access. Table invitations are separate.</p><p><a href="${escapeHtml(link)}">Sign in to Fifth Wheel</a></p>`,
+      return send(input.recipientEmail, "You’re in: welcome to Fifth Wheel",
+        `You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.\n\nSign in:\n${link}`,
+        `<p>You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.</p><p><a href="${escapeHtml(link)}">Sign in</a></p>`,
         `admission-${input.idempotencyKey}`, { "Delivery-ID": input.deliveryId, "Attempt-ID": input.attemptId });
     },
     async reconcile(input) {
@@ -119,9 +120,11 @@ export function createResendEmail(config: ResendConfig, fetcher: typeof fetch = 
         return { state: "failed", safeErrorCode: "table_mail_invalid_request" };
       }
       const link = new URL(`/sign-in?returnTo=${encodeURIComponent(`/invitations/${input.invitationId}`)}`, appOrigin).toString();
-      const result = await send(input.recipientEmail, `Your Fifth Wheel Table invitation: ${t.title}`,
-        `You have a Table invitation for ${t.title}.\n\n${t.localDate} at ${t.startLocalTime} · ${t.neighborhood}.\n\nView your Table invitation: ${link}\n\nThis is a separate Table offer; your app admission and sign-in link are unchanged.`,
-        `<p>You have a Table invitation for <strong>${escapeHtml(t.title)}</strong>.</p><p>${escapeHtml(t.localDate)} at ${escapeHtml(t.startLocalTime)} · ${escapeHtml(t.neighborhood)}.</p><p><a href="${escapeHtml(link)}">View your Table invitation</a></p><p>This is a separate Table offer; your app admission and sign-in link are unchanged.</p>`,
+      const when = whenLabel(t.localDate, t.startLocalTime);
+      const detail = `${when ? ` on ${when}` : ""} in ${t.neighborhood}`;
+      const result = await send(input.recipientEmail, `You’re invited: ${t.title}`,
+        `You’re invited to ${t.title}${detail}.\n\nPay to confirm your seat.\n\nView invitation: ${link}`,
+        `<p>You’re invited to <strong>${escapeHtml(t.title)}</strong>${escapeHtml(detail)}.</p><p>Pay to confirm your seat.</p><p><a href="${escapeHtml(link)}">View invitation</a></p>`,
         `table-${input.invitationId}-${input.attemptId}`, { "Invitation-ID": input.invitationId, "Attempt-ID": input.attemptId });
       return result.state === "accepted" ? { state: "accepted", providerMessageId: result.providerMessageId as string }
         : { state: result.state, safeErrorCode: result.safeErrorCode } as TableInvitationMailResult;

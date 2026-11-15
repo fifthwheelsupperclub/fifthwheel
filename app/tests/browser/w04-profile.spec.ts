@@ -77,12 +77,12 @@ test("W04 member profile submission and admin identity review work through the a
     await page.setViewportSize({ width: 1440, height: 1000 });
 
     const saveButton = page.getByRole("button", { name: "Save changes" });
-    await page.getByLabel("Youngest age").fill("120");
-    await page.getByLabel("Oldest age").fill("119");
+    await page.getByLabel("Youngest").fill("120");
+    await page.getByLabel("Oldest").fill("119");
     await saveButton.click();
     await expect(page.getByText("The oldest age must be at least the youngest age.")).toBeVisible();
-    await page.getByLabel("Youngest age").fill("21");
-    await page.getByLabel("Oldest age").fill("120");
+    await page.getByLabel("Youngest").fill("21");
+    await page.getByLabel("Oldest").fill("120");
     await expect(saveButton).toBeDisabled();
     await page.reload();
 
@@ -100,7 +100,7 @@ test("W04 member profile submission and admin identity review work through the a
       }
       if (await saveButton.isEnabled()) {
         await saveButton.click();
-        await expect(page.getByText("Your profile changes are saved.")).toBeVisible();
+        await expect(page.getByText("Saved.")).toBeVisible();
       }
       await page.reload();
       for (const label of ["Women", "Men", "Non-binary people"]) {
@@ -111,7 +111,7 @@ test("W04 member profile submission and admin identity review work through the a
 
     await page.getByLabel("One-line introduction").fill("Synthetic W04 member profile, for local acceptance only.");
     await saveButton.click();
-    await expect(page.getByText("Your profile changes are saved.")).toBeVisible();
+    await expect(page.getByText("Saved.")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("One-line introduction")).toHaveValue("Synthetic W04 member profile, for local acceptance only.");
 
@@ -122,8 +122,8 @@ test("W04 member profile submission and admin identity review work through the a
     await expect(page.locator(".evidence-card").nth(0).getByText("1 ready")).toBeVisible();
     await uploads.nth(1).setInputFiles({ name: "synthetic-selfie.png", mimeType: "image/png", buffer: selfie });
     await expect(page.locator(".evidence-card").nth(1).getByText("1 ready")).toBeVisible();
-    await page.getByRole("button", { name: "Submit for identity review" }).click();
-    await expect(page.getByRole("heading", { name: "Review in progress" })).toBeVisible();
+    await page.getByRole("button", { name: "Submit for review" }).click();
+    await expect(page.getByRole("heading", { name: "In review" })).toBeVisible();
     await expect(page.getByText("Your profile has been sent for review.")).toBeVisible();
     await page.screenshot({ path: resolve(screenshotDirectory, "w04-profile-submitted-desktop.png"), fullPage: true });
   } finally {
@@ -134,7 +134,7 @@ test("W04 member profile submission and admin identity review work through the a
   try {
     const page = await admin.newPage();
     await page.goto(`${appOrigin}/admin/identity-review`);
-    await expect(page.getByRole("heading", { name: /Thoughtful review, one person at a time/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Profile review" })).toBeVisible();
     await expect(page.locator(".review-queue-item")).toHaveCount(1);
     await page.screenshot({ path: resolve(screenshotDirectory, "w04-admin-identity-queue-desktop.png"), fullPage: true });
     const detailPath = await page.locator(".review-queue-item").getAttribute("href");
@@ -145,9 +145,9 @@ test("W04 member profile submission and admin identity review work through the a
     const evidenceImages = page.locator(".review-evidence-image img");
     await expect(evidenceImages).toHaveCount(2);
     await expect.poll(() => evidenceImages.evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
-    await expect(page.getByRole("button", { name: "Approve this version" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
     await page.screenshot({ path: resolve(screenshotDirectory, "w04-admin-review-detail-desktop.png"), fullPage: true });
-    await page.getByRole("button", { name: "Approve this version" }).click();
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
     await page.getByRole("button", { name: "Confirm approval" }).click();
     await expect(page.getByText("Decision saved")).toBeVisible();
   } finally {
@@ -158,7 +158,7 @@ test("W04 member profile submission and admin identity review work through the a
   try {
     const page = await returningMember.newPage();
     await page.goto(`${appOrigin}/account/profile`);
-    await expect(page.getByRole("heading", { name: "Profile approved" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Approved" })).toBeVisible();
     await expect(page.getByLabel("One-line introduction")).toHaveValue("Synthetic W04 member profile, for local acceptance only.");
   } finally {
     await returningMember.close();
@@ -177,8 +177,8 @@ test("W04 member profile submission and admin identity review work through the a
     await expect(memberPage.locator(".evidence-card").nth(0).getByText("1 ready")).toBeVisible();
     await uploads.nth(1).setInputFiles({ name: "synthetic-correction-selfie.png", mimeType: "image/png", buffer: privateSelfie });
     await expect(memberPage.locator(".evidence-card").nth(1).getByText("1 ready")).toBeVisible();
-    await memberPage.getByRole("button", { name: "Submit for identity review" }).click();
-    await expect(memberPage.getByRole("heading", { name: "Review in progress" })).toBeVisible();
+    await memberPage.getByRole("button", { name: "Submit for review" }).click();
+    await expect(memberPage.getByRole("heading", { name: "In review" })).toBeVisible();
   } catch (error) {
     await resubmittingMember.close();
     throw error;
@@ -192,23 +192,23 @@ test("W04 member profile submission and admin identity review work through the a
     const correctionPath = await page.locator(".review-queue-item").getAttribute("href");
     await page.goto(new URL(correctionPath!, appOrigin).href);
     await expect(page.getByRole("heading", { name: "W04 Synthetic" })).toBeVisible();
-    await page.getByRole("button", { name: "Request a correction" }).click();
-    await page.getByLabel("Explain what the member needs to correct").fill("Please use a recent, well-lit profile photo.");
-    await page.getByRole("button", { name: "Send correction request" }).click();
+    await page.getByRole("button", { name: "Ask for changes" }).click();
+    await page.getByLabel("What should they change?").fill("Please use a recent, well-lit profile photo.");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page.getByText("Decision saved")).toBeVisible();
   } finally {
     await correctionAdmin.close();
   }
 
   await memberPage.reload();
-  await expect(memberPage.getByRole("heading", { name: "A correction is needed" })).toBeVisible();
+  await expect(memberPage.getByRole("heading", { name: "Changes needed" })).toBeVisible();
   await expect(memberPage.getByText("Please use a recent, well-lit profile photo.")).toBeVisible();
   await memberPage.screenshot({ path: resolve(screenshotDirectory, "w04-profile-correction-requested-desktop.png"), fullPage: true });
   await memberPage.getByLabel("One-line introduction").fill("Updated after a synthetic correction request.");
   await memberPage.getByRole("button", { name: "Save changes" }).click();
-  await expect(memberPage.getByText("Your profile changes are saved.")).toBeVisible();
-  await memberPage.getByRole("button", { name: "Submit for identity review" }).click();
-  await expect(memberPage.getByRole("heading", { name: "Review in progress" })).toBeVisible();
+  await expect(memberPage.getByText("Saved.")).toBeVisible();
+  await memberPage.getByRole("button", { name: "Submit for review" }).click();
+  await expect(memberPage.getByRole("heading", { name: "In review" })).toBeVisible();
   await expect(memberPage.getByText("Your profile has been sent for review.")).toBeVisible();
 
   const finalAdmin = await localSession(browser, "W04_ADMIN_EMAIL");
@@ -218,14 +218,14 @@ test("W04 member profile submission and admin identity review work through the a
     await expect(page.locator(".review-queue-item")).toHaveCount(1);
     const resubmittedPath = await page.locator(".review-queue-item").getAttribute("href");
     await page.goto(new URL(resubmittedPath!, appOrigin).href);
-    await expect(page.getByText(/IDENTITY REVIEW \/ ATTEMPT 2/)).toBeVisible();
-    await page.getByRole("button", { name: "Approve this version" }).click();
+    await expect(page.getByText(/Review #2/)).toBeVisible();
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
 
     // A critical member edit after review load must invalidate the stale admin view.
     await memberPage.getByLabel("Date of birth").fill("1990-04-15");
     await memberPage.getByRole("button", { name: "Save changes" }).click();
-    await expect(memberPage.getByText("Your profile changes are saved.")).toBeVisible();
-    await expect(memberPage.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
+    await expect(memberPage.getByText("Saved.")).toBeVisible();
+    await expect(memberPage.getByRole("heading", { name: "Not submitted" })).toBeVisible();
     await page.getByRole("button", { name: "Confirm approval" }).click();
     await expect(page.getByText("This profile changed after you opened it. Reload the latest review before deciding.")).toBeVisible();
 
@@ -235,20 +235,20 @@ test("W04 member profile submission and admin identity review work through the a
     await expect(memberPage.locator(".evidence-card").nth(0).getByText("1 ready")).toBeVisible();
     await freshUploads.nth(1).setInputFiles({ name: "synthetic-new-version-selfie.png", mimeType: "image/png", buffer: await syntheticImage(98, 119, 85) });
     await expect(memberPage.locator(".evidence-card").nth(1).getByText("1 ready")).toBeVisible();
-    await memberPage.getByRole("button", { name: "Submit for identity review" }).click();
-    await expect(memberPage.getByRole("heading", { name: "Review in progress" })).toBeVisible();
+    await memberPage.getByRole("button", { name: "Submit for review" }).click();
+    await expect(memberPage.getByRole("heading", { name: "In review" })).toBeVisible();
 
     await page.goto(`${appOrigin}/admin/identity-review`);
     await expect(page.locator(".review-queue-item")).toHaveCount(1);
     const currentPath = await page.locator(".review-queue-item").getAttribute("href");
     await page.goto(new URL(currentPath!, appOrigin).href);
-    await expect(page.getByText(/IDENTITY REVIEW \/ ATTEMPT 3/)).toBeVisible();
-    await page.getByRole("button", { name: "Approve this version" }).click();
+    await expect(page.getByText(/Review #3/)).toBeVisible();
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
     await page.getByRole("button", { name: "Confirm approval" }).click();
     await expect(page.getByText("Decision saved")).toBeVisible();
 
     await memberPage.reload();
-    await expect(memberPage.getByRole("heading", { name: "Profile approved" })).toBeVisible();
+    await expect(memberPage.getByRole("heading", { name: "Approved" })).toBeVisible();
     await expect(memberPage.getByLabel("One-line introduction")).toHaveValue("Updated after a synthetic correction request.");
   } finally {
     await finalAdmin.close();

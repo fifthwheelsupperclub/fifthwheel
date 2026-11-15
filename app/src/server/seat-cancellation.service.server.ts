@@ -28,7 +28,7 @@ function repoFailure<T>(error: unknown): CancellationResult<T> {
     stale_version: ["stale_version", "This request changed. Refresh it before deciding.", false],
     refund_amount_exceeds_balance: ["refund_amount_exceeds_balance", "The refund amount exceeds the remaining verified payment.", false],
     decision_finalized: ["decision_finalized", "This cancellation request already has a final decision.", false],
-    operation_conflict: ["operation_conflict", "This operation ID was already used for different details.", false],
+    operation_conflict: ["operation_conflict", "Something changed. Reload and try again.", false],
   };
   const [code, safeMessage, retryable] = messages[error.code];
   return fail(code, safeMessage, retryable);
@@ -85,7 +85,7 @@ async function resolveAuthorized<T>(token: string | null | undefined, resolve: S
 export function createSeatCancellationService(deps: SeatCancellationServiceDependencies): SeatCancellationService {
   return Object.freeze({
     async listOwnCancellationRequests(input: OwnCancellationHistoryInput): Promise<CancellationResult<MemberCancellationHistoryDTO>> {
-      if (!uuid.test(input.seatId)) return fail<MemberCancellationHistoryDTO>("invalid_input", "Check the Seat link and try again.");
+      if (!uuid.test(input.seatId)) return fail<MemberCancellationHistoryDTO>("invalid_input", "Something went wrong. Reload and try again.");
       const auth = await resolveAuthorized<MemberCancellationHistoryDTO>(input.accessToken, deps.resolvePrincipal, "member");
       if (!auth.ok) return auth.result;
       try { return { ok: true as const, value: await deps.repository.listOwnCancellationRequests(auth.principal.userId, input.seatId) }; }

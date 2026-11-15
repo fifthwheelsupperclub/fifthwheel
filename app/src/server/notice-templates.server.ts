@@ -9,12 +9,13 @@ export type RenderedNotice = Readonly<{ subject: string; text: string; html: str
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 const usd = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-const when = (c: NoticeContext) => {
-  if (!c.localDate || !c.startLocalTime || !/^\d{4}-\d{2}-\d{2}$/.test(c.localDate) || !/^\d{2}:\d{2}$/.test(c.startLocalTime)) return "";
-  const date = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${c.localDate}T00:00:00Z`));
-  const [h, m] = c.startLocalTime.split(":").map(Number);
+export const whenLabel = (localDate?: string | null, startLocalTime?: string | null) => {
+  if (!localDate || !startLocalTime || !/^\d{4}-\d{2}-\d{2}$/.test(localDate) || !/^\d{2}:\d{2}$/.test(startLocalTime)) return "";
+  const date = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${localDate}T00:00:00Z`));
+  const [h, m] = startLocalTime.split(":").map(Number);
   return `${date} at ${new Intl.DateTimeFormat("en-US", { timeStyle: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, h, m)))} (Atlanta time)`;
 };
+const when = (c: NoticeContext) => whenLabel(c.localDate, c.startLocalTime);
 
 function frame(origin: string, heading: string, paragraphs: readonly string[], action: Readonly<{ label: string; href: string }>): RenderedNotice & { heading: string } {
   const text = [heading, "", ...paragraphs, "", `${action.label}: ${action.href}`, "", "Fifth Wheel · Questions? Reply to hello@fifthwheel.community", `Terms: ${origin.replace("app.", "")}/terms · Privacy: ${origin.replace("app.", "")}/privacy`].join("\n");
@@ -39,8 +40,8 @@ export function renderNotice(kind: NoticeKind, c: NoticeContext, origin: string)
     case "cancellation_decision": {
       const approved = c.decision === "approved";
       subject = approved ? `Your cancellation was approved: ${title}` : `About your cancellation request: ${title}`;
-      built = frame(origin, approved ? "Your cancellation was approved" : "We couldn’t approve your cancellation", [`Hi ${c.firstName}, we reviewed your request for ${title}.`,
-        approved ? "Your Seat is released." : "Your Seat remains confirmed.", c.reason ?? "", approved ? refund(c.refundCents) || "No refund applies to this cancellation." : ""].filter(Boolean), { label: "View My Seats", href: seats });
+      built = frame(origin, approved ? "Your cancellation was approved" : "We declined your cancellation request", [`Hi ${c.firstName}, we reviewed your request for ${title}.`,
+        approved ? "Your seat is cancelled." : "Your seat is still yours.", c.reason ?? "", approved ? refund(c.refundCents) || "No refund applies to this cancellation." : ""].filter(Boolean), { label: "View My Seats", href: seats });
       break;
     }
     case "table_cancelled":
@@ -53,7 +54,7 @@ export function renderNotice(kind: NoticeKind, c: NoticeContext, origin: string)
       break;
     case "t48_reminder":
       subject = `Reminder: your Table invitation for ${title}`;
-      built = frame(origin, "Your Table invitation is waiting", [`Hi ${c.firstName}, you’re invited to ${title}${when(c) ? ` on ${when(c)}` : ""}.`, "Your Seat isn’t confirmed until you complete payment. Spots are limited."], { label: "View your invitation", href: `${origin}/sign-in?returnTo=${encodeURIComponent(`/invitations/${c.invitationId ?? ""}`)}` });
+      built = frame(origin, "Your Table invitation is waiting", [`Hi ${c.firstName}, you’re invited to ${title}${when(c) ? ` on ${when(c)}` : ""}.`, "Your seat isn’t confirmed until you pay."], { label: "View your invitation", href: `${origin}/sign-in?returnTo=${encodeURIComponent(`/invitations/${c.invitationId ?? ""}`)}` });
       break;
   }
   return { subject, text: built.text, html: built.html };

@@ -67,12 +67,11 @@ test("W07.1 blocked checkout disclosure UI is mock-only and starts no payment", 
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/invitations/${invitationId}`);
-    await expect(page.getByRole("heading", { name: "You’re invited to this Table" })).toBeVisible();
-    await expect(page.getByText("Checking checkout eligibility…", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "You’re invited" })).toBeVisible();
+    await expect(page.getByText("Loading…", { exact: true })).toHaveCount(0);
     await expect(page.getByText(/Checkout is unavailable until an approved payment disclosure is configured\./)).toBeVisible();
     await expect(page.getByText("$25 USD", { exact: false })).toBeVisible();
     await expect(page.getByRole("button", { name: /checkout|pay now|continue to payment/i })).toHaveCount(0);
-    await expect(page.getByText(/does not confirm a paid Seat/)).toBeVisible();
 
     await page.screenshot({ path: resolve(screenshots, "w07-checkout-disclosure-blocked-desktop-mock-only.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -167,7 +166,7 @@ test("W07.1 server-ready checkout waits for the approved acknowledgment and star
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/invitations/${invitationId}`);
-    const beginButton = page.getByRole("button", { name: "Continue to secure checkout" });
+    const beginButton = page.getByRole("button", { name: "Continue to payment" });
     await expect(beginButton).toBeDisabled();
     await expect(page.getByRole("checkbox", { name: /I acknowledge this disclosure/ })).toBeVisible();
     await page.screenshot({ path: resolve(screenshots, "w07-checkout-ready-awaiting-ack-desktop-mock-only.png"), fullPage: true });
@@ -224,7 +223,7 @@ test("W07 return query is informational; member status comes from owner-scoped r
     await page.goto(`${appOrigin}/invitations/${invitationId}?checkout=return&attemptId=${attemptId}&session_id=cs_test_untrusted`);
     await expect(page.getByText("Payment status is being confirmed", { exact: true })).toBeVisible();
     expect(returnPostCount).toBe(1);
-    await expect(page.getByRole("button", { name: "Refresh payment status" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check again" })).toBeVisible();
     await expect(page.getByText("Seat confirmed", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /checkout|pay now|continue to payment/i })).toHaveCount(0);
     await page.goto(`${appOrigin}/invitations/${invitationId}?checkout=return&attemptId=${attemptId}&session_id=malformed`);

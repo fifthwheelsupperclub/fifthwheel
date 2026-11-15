@@ -37,11 +37,11 @@ test("W06.5 signed-out invitation keeps its exact destination through sign-in an
 
     await signInLink.click();
     await page.waitForURL(`${appOrigin}/sign-in?returnTo=${encodeURIComponent(invitationPath)}`);
-    await expect(page.getByText(/After sign in, we’ll return you to the page you selected/i)).toBeVisible();
+    await expect(page.getByText(/We’ll bring you back to this page after you sign in/i)).toBeVisible();
 
     await page.goto(`${appOrigin}/auth/callback?token_hash=${"a".repeat(32)}&type=magiclink&safeReturnTo=${encodeURIComponent(invitationPath)}`);
     await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
-    const continueButton = page.getByRole("button", { name: "Continue to Fifth Wheel" });
+    const continueButton = page.getByRole("button", { name: "Continue", exact: true });
     await expect(continueButton).toBeEnabled();
     await continueButton.click();
     await page.waitForURL(`${appOrigin}${invitationPath}`);

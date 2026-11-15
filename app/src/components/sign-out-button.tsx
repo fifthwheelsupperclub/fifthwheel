@@ -33,6 +33,6 @@ export function SignOutButton() {
     <button className="button button-outline account-action" type="button" onClick={() => void signOut()} disabled={busy}>
       <LogOut aria-hidden="true" />{busy ? "Signing out…" : "Sign out"}
     </button>
-    {error && <span className="sign-out-error" role="alert"><CircleAlert aria-hidden="true" />Could not sign out. Try again.</span>}
+    {error && <span className="sign-out-error" role="alert"><CircleAlert aria-hidden="true" />Couldn’t sign out. Try again.</span>}
   </span>;
 }

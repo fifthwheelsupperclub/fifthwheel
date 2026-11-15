@@ -139,7 +139,7 @@ function AuthCallbackPage() {
       <div className="auth-story-copy">
         <p className="eyebrow">A seat at the table</p>
         <h1>Your next<br />chapter <em>starts here.</em></h1>
-        <p>Confirm your secure sign-in link to enter Fifth Wheel.</p>
+        <p>One more step to sign in.</p>
       </div>
       <p className="story-stamp">FIFTH WHEEL <span>·</span> ATLANTA</p>
     </section>
@@ -148,16 +148,14 @@ function AuthCallbackPage() {
       <div className="auth-card callback-card">
         {!validCallback ? <>
           <span className="auth-icon auth-icon-error"><CircleAlert aria-hidden="true" /></span>
-          <p className="eyebrow">LINK NOT AVAILABLE</p>
-          <h2>This link can’t be used.</h2>
-          <p className="auth-intro">It may have expired, already been used, or be incomplete. Request a fresh sign-in link to continue.</p>
-          <a className="button button-primary auth-submit callback-link" href="/sign-in">Request a new link<ArrowRight aria-hidden="true" /></a>
+          <h2>This link doesn’t work.</h2>
+          <p className="auth-intro">Sign-in links work once and expire after a short time.</p>
+          <a className="button button-primary auth-submit callback-link" href="/sign-in">Send a new link<ArrowRight aria-hidden="true" /></a>
         </> : state === "session-conflict" || state === "signing-out" || state === "sign-out-error" ? <>
           <span className="auth-icon auth-icon-error"><CircleAlert aria-hidden="true" /></span>
-          <p className="eyebrow">SESSION ALREADY ACTIVE</p>
-          <h2>Sign out to use this link.</h2>
+          <h2>You’re already signed in.</h2>
           <div className="auth-feedback auth-feedback-error" role="alert">
-            <CircleAlert aria-hidden="true" /><span><strong>You are already signed in.</strong><small>Sign out before using this link. Your current sign-in is still active, and you can continue with this same link.</small></span>
+            <CircleAlert aria-hidden="true" /><span><strong>To use this link with a different account, sign out first.</strong></span>
           </div>
           <button
             className="button button-primary auth-submit"
@@ -174,11 +172,10 @@ function AuthCallbackPage() {
           <a className="button button-outline callback-link" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>
         </> : <>
           <span className="auth-icon"><MailCheck aria-hidden="true" /></span>
-          <p className="eyebrow">SECURE SIGN IN</p>
-          <h2>{state === "signed-out" || state === "signed-out-uncertain" ? "Continue with your link." : "Ready when you are."}</h2>
+                    <h2>{state === "signed-out" || state === "signed-out-uncertain" ? "Continue with your link." : "Ready when you are."}</h2>
           <p className="auth-intro">{state === "signed-out" || state === "signed-out-uncertain"
-            ? "You are signed out in this browser. Continue to use this one-time link and open your member account."
-            : "Continue to use this one-time link and open your member account. Your sign-in won’t finish until you continue."}</p>
+            ? "You’re signed out on this device. Tap Continue to finish signing in."
+            : "Tap Continue to finish signing in."}</p>
           {state === "signed-out-uncertain" && <div className="auth-feedback auth-feedback-error" role="status">
             <CircleAlert aria-hidden="true" /><span><strong>Your saved sign-in was cleared.</strong><small>We couldn’t confirm that sign-out finished on our server. You can still try this link here.</small></span>
           </div>}
@@ -189,13 +186,12 @@ function AuthCallbackPage() {
             disabled={!clientReady || state === "verifying"}
             data-client-ready={clientReady ? "true" : "false"}
           >
-            {state === "verifying" ? "Verifying link…" : "Continue to Fifth Wheel"}<ArrowRight aria-hidden="true" />
+            {state === "verifying" ? "Signing in…" : "Continue"}<ArrowRight aria-hidden="true" />
           </button>
           {state === "error" && <div className="auth-feedback auth-feedback-error" role="alert">
-            <CircleAlert aria-hidden="true" /><span><strong>This sign-in link could not be verified.</strong><small>It may have expired or already been used. Request a fresh link.</small></span>
+            <CircleAlert aria-hidden="true" /><span><strong>This link has expired or was already used.</strong><small>Send a new link and try again.</small></span>
           </div>}
           {(state === "signed-out" || state === "signed-out-uncertain") && <a className="button button-outline callback-link" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>}
-          <p className="auth-boundary"><ShieldCheck aria-hidden="true" /> App access does not include a Table invitation or payment.</p>
         </>}
       </div>
     </section>

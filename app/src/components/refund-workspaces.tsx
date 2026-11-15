@@ -82,44 +82,44 @@ function dateLabel(value: string): string {
 }
 function stateLabel(state: RefundObligationSummaryDTO["state"]): string {
   switch (state) {
-    case "open": return "Refund owed";
-    case "pending": return "Refund queued";
-    case "submitted": return "Refund processing";
-    case "unknown": return "Refund status unclear";
-    case "failed": return "Refund attempt failed";
-    case "succeeded": return "Refund complete";
+    case "open": return "Owed, not sent";
+    case "pending": return "Queued";
+    case "submitted": return "Sent to Stripe";
+    case "unknown": return "Unconfirmed";
+    case "failed": return "Failed";
+    case "succeeded": return "Refunded";
   }
 }
 function operationLabel(state: RefundOperationDTO["state"]): string {
   switch (state) {
-    case "pending": return "Queued for processing";
-    case "submitted": return "Submitted to payment provider";
-    case "unknown": return "Outcome is being checked";
-    case "failed": return "Refund attempt failed";
-    case "succeeded": return "Confirmed complete";
+    case "pending": return "Queued";
+    case "submitted": return "Sent to Stripe";
+    case "unknown": return "Checking";
+    case "failed": return "Failed";
+    case "succeeded": return "Refunded";
   }
 }
 function sourceLabel(source: RefundObligationSummaryDTO["source"]): string {
-  return source === "late_checkout_ineligible" ? "Late payment without a Seat" : "Approved cancellation";
+  return source === "late_checkout_ineligible" ? "Paid after the table filled" : "Cancellation";
 }
 function blockedCopy(reason: RefundObligationSummaryDTO["dispatchBlockedReason"]): string {
   switch (reason) {
-    case "balance_reserved": return "This amount remains reserved while the refund is under review.";
-    case "operation_in_progress": return "A refund operation is already being processed.";
-    case "manual_review": return "This refund needs review; the amount remains owed.";
-    case "settled": return "This obligation has been settled.";
-    case "provider_unavailable": return "The refund provider is not available. The obligation remains recorded.";
-    default: return "Dispatch is currently unavailable.";
+    case "balance_reserved": return "Being reviewed.";
+    case "operation_in_progress": return "Already in progress.";
+    case "manual_review": return "Needs an admin to look at it.";
+    case "settled": return "Already refunded.";
+    case "provider_unavailable": return "Can’t reach Stripe. Still owed.";
+    default: return "Sending is unavailable right now.";
   }
 }
 function safeCodeCopy(code: string | null): string | null {
   if (!code) return null;
   switch (code) {
-    case "provider_unavailable": return "The payment provider is temporarily unavailable.";
-    case "outcome_unknown": return "The provider outcome needs reconciliation.";
-    case "balance_exhausted": return "No refundable balance is currently available.";
-    case "provider_failed": return "The refund attempt failed. The amount is still owed.";
-    default: return "The last attempt needs an administrator review.";
+    case "provider_unavailable": return "Can’t reach Stripe right now.";
+    case "outcome_unknown": return "Check status with Stripe first.";
+    case "balance_exhausted": return "Nothing left to refund.";
+    case "provider_failed": return "The refund failed. It’s still owed.";
+    default: return "Needs an admin to look at it.";
   }
 }
 
@@ -148,18 +148,18 @@ export function AdminRefundsQueue() {
   useEffect(() => { void load(); }, []);
   return <RefundAdminShell active="queue"><main className="refund-page">
     <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Refunds</span></div>
-    <header className="refund-heading"><p className="eyebrow">MONEY · OPERATIONS</p><h1>Refund obligations</h1><p>Track amounts owed and queue or recover provider operations. A queued action is not a confirmed refund.</p></header>
-    {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refund obligations" detail="Reading the durable refund ledger." />}
-    {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Refund operations are available to authorized administrators only." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Frefunds">Sign in</a>} />}
-    {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="Administrator access is required" detail="This workspace is limited to authorized administrators." />}
-    {state === "error" && <RefundState icon={<AlertCircle />} title="Refund obligations are unavailable" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
-    {state === "empty" && <section className="refund-empty"><CheckCircle2 aria-hidden="true" /><h2>No refund obligations</h2><p>Amounts recorded for refund processing will appear here.</p></section>}
-    {state === "ready" && <><section className="refund-list" aria-label="Refund obligations">{items.map((item) => <RefundSummaryCard key={item.obligationId} item={item} />)}</section>{nextCursor && <button className="button button-outline refund-load-more" type="button" disabled={loadingMore} onClick={() => void load(nextCursor)}>{loadingMore ? "Loading…" : "Load more"}<ArrowRight aria-hidden="true" /></button>}</>}
+    <header className="refund-heading"><p className="eyebrow"></p><h1>Refunds</h1><p>Money we owe guests, and its status with Stripe.</p></header>
+    {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refunds…" />}
+    {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Frefunds">Sign in</a>} />}
+    {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can manage refunds." />}
+    {state === "error" && <RefundState icon={<AlertCircle />} title="We couldn’t load refunds" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    {state === "empty" && <section className="refund-empty"><CheckCircle2 aria-hidden="true" /><h2>No refunds owed.</h2></section>}
+    {state === "ready" && <><section className="refund-list" aria-label="Refund obligations">{items.map((item) => <RefundSummaryCard key={item.obligationId} item={item} />)}</section>{nextCursor && <button className="button button-outline refund-load-more" type="button" disabled={loadingMore} onClick={() => void load(nextCursor)}>{loadingMore ? "Loading…" : "Show more"}<ArrowRight aria-hidden="true" /></button>}</>}
   </main></RefundAdminShell>;
 }
 
 function RefundSummaryCard({ item }: { item: RefundObligationSummaryDTO }) {
-  return <article className="refund-summary-card"><div className="refund-summary-main"><span className="refund-icon"><Wallet aria-hidden="true" /></span><div><p className="eyebrow">{sourceLabel(item.source)} · {dateLabel(item.createdAt)}</p><h2>{item.memberName}</h2><p>{item.tableTitle}</p><div className={`refund-status status-${item.state}`}><span>{stateLabel(item.state)}</span><strong>{money(item.amountCents, item.currency)}</strong></div>{safeCodeCopy(item.latestSafeCode) && <p className="refund-safe-note">{safeCodeCopy(item.latestSafeCode)}</p>}</div></div><Link className="button button-outline" to="/admin/refunds/$obligationId" params={{ obligationId: item.obligationId }}>Review obligation<ArrowRight aria-hidden="true" /></Link></article>;
+  return <article className="refund-summary-card"><div className="refund-summary-main"><span className="refund-icon"><Wallet aria-hidden="true" /></span><div><p className="eyebrow">{sourceLabel(item.source)} · {dateLabel(item.createdAt)}</p><h2>{item.memberName}</h2><p>{item.tableTitle}</p><div className={`refund-status status-${item.state}`}><span>{stateLabel(item.state)}</span><strong>{money(item.amountCents, item.currency)}</strong></div>{safeCodeCopy(item.latestSafeCode) && <p className="refund-safe-note">{safeCodeCopy(item.latestSafeCode)}</p>}</div></div><Link className="button button-outline" to="/admin/refunds/$obligationId" params={{ obligationId: item.obligationId }}>Open<ArrowRight aria-hidden="true" /></Link></article>;
 }
 
 export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
@@ -200,40 +200,40 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
       }
       const response = await fetch(path, { method: "POST", credentials: "same-origin", cache: "no-store", headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify(body) });
       const envelope = parseEnvelope(await response.json().catch(() => null), parseAction);
-      if (!response.ok || !envelope) throw new Error("We could not confirm that the refund action was queued. Refresh to check its saved status.");
+      if (!response.ok || !envelope) throw new Error("We’re not sure that worked. Check again before trying again.");
       if (!envelope.ok) { setMessage(envelope.error.safeMessage); return; }
       setAction(null); setTargetOperation(null);
       await load();
-      setMessage(action === "reconcile" ? "Status check queued. The saved refund state will update when provider evidence is available." : "Refund action queued. This does not confirm that money was returned.");
+      setMessage(action === "reconcile" ? "Checking with Stripe. This updates when we hear back." : "Refund queued. It’ll be sent to Stripe shortly.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "The refund action could not be confirmed."); }
     finally { setBusy(false); }
   };
   return <RefundAdminShell active="detail"><main className="refund-page">
     <div className="product-breadcrumb"><Link to="/admin/refunds">Refunds</Link><span>›</span><span>Obligation</span></div>
-    {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refund details" detail="Checking the obligation ledger and its operations." />}
-    {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Refund details are available to authorized administrators only." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/admin/refunds/${obligationId}`)}`}>Sign in</a>} />}
-    {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="Administrator access is required" detail="This financial record is limited to authorized administrators." />}
-    {state === "not_found" && <RefundState icon={<Wallet />} title="Refund obligation not found" detail="This obligation is not available in the current ledger." action={<Link className="button button-outline" to="/admin/refunds">Back to Refunds</Link>} />}
-    {state === "error" && <RefundState icon={<AlertCircle />} title="Refund details are unavailable" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading…" />}
+    {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/admin/refunds/${obligationId}`)}`}>Sign in</a>} />}
+    {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can manage refunds." />}
+    {state === "not_found" && <RefundState icon={<Wallet />} title="Refund not found" action={<Link className="button button-outline" to="/admin/refunds">Back to Refunds</Link>} />}
+    {state === "error" && <RefundState icon={<AlertCircle />} title="We couldn’t load this refund" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && obligation && <>
       <header className="refund-heading"><p className="eyebrow">{sourceLabel(obligation.source)}</p><h1>{obligation.memberName}</h1><p>{obligation.tableTitle}</p></header>
       {message && <p className="refund-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
-      <section className="refund-detail-overview"><div><p className="eyebrow">OBLIGATION STATUS</p><h2>{stateLabel(obligation.state)}</h2><p>{obligation.state === "succeeded" ? "The payment provider confirmed the full refund." : obligation.state === "unknown" ? "We can’t confirm whether this refund was processed. The amount remains owed. Check its status before trying again." : obligation.state === "submitted" ? "The payment provider accepted the refund request but has not confirmed it as processed." : obligation.state === "pending" ? "The refund is in the processing queue. The payment provider has not confirmed it yet." : obligation.state === "failed" ? obligation.operations.some((operation) => operation.canRetry) ? "The refund is still owed. You can try the same refund again." : "The refund is still owed and needs administrator review before another action." : "This amount is owed and has not been queued yet."}</p></div><div className="refund-detail-amount"><span>Recorded obligation</span><strong>{money(obligation.amountCents, obligation.currency)}</strong></div></section>
-      <section className="refund-facts-grid" aria-label="Refund balance"><div><span>Verified payment</span><strong>{money(obligation.paymentAmountCents)}</strong></div><div><span>Confirmed refunded</span><strong>{money(obligation.refundedCents)}</strong></div><div><span>Total owed on this payment</span><strong>{money(obligation.reservedCents)}</strong></div><div><span>Available to refund</span><strong>{money(obligation.availableCents)}</strong></div></section>
+      <section className="refund-detail-overview"><div><p className="eyebrow">STATUS</p><h2>{stateLabel(obligation.state)}</h2><p>{obligation.state === "succeeded" ? "Stripe confirmed the full refund." : obligation.state === "unknown" ? "We don’t know if this was sent. It’s still owed. Check status before sending again." : obligation.state === "submitted" ? "Sent to Stripe. Waiting for Stripe to confirm." : obligation.state === "pending" ? "Queued. It’ll go to Stripe shortly." : obligation.state === "failed" ? obligation.operations.some((operation) => operation.canRetry) ? "Still owed. You can try again." : "Still owed. Needs an admin to look at it first." : "Owed, and not sent yet."}</p></div><div className="refund-detail-amount"><span>Refund</span><strong>{money(obligation.amountCents, obligation.currency)}</strong></div></section>
+      <section className="refund-facts-grid" aria-label="Refund balance"><div><span>Paid</span><strong>{money(obligation.paymentAmountCents)}</strong></div><div><span>Refunded so far</span><strong>{money(obligation.refundedCents)}</strong></div><div><span>Total owed</span><strong>{money(obligation.reservedCents)}</strong></div><div><span>Left to send</span><strong>{money(obligation.availableCents)}</strong></div></section>
       {obligation.latestSafeCode && <p className="refund-safe-note">{safeCodeCopy(obligation.latestSafeCode)}</p>}
-      <section className="refund-operations"><div className="refund-section-title"><div><p className="eyebrow">REFUND HISTORY</p><h2>Refund attempts</h2></div><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Refresh status</button></div>
-        {obligation.operations.length === 0 ? <p className="refund-empty-copy">No refund operation has been created. Queueing an action records intent; it does not directly send money.</p> : <ol className="refund-operation-list">{obligation.operations.map((operation) => <li key={operation.operationId}><div className="refund-operation-heading"><div><strong>{operationLabel(operation.state)}</strong><time dateTime={operation.createdAt}>{dateLabel(operation.createdAt)}</time></div><b>{money(operation.amountCents)}</b></div>{safeCodeCopy(operation.safeCode) && <p>{safeCodeCopy(operation.safeCode)}</p>}<div className="refund-operation-actions">{operation.canRetry && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("retry"); }}>Try refund again<RefreshCw aria-hidden="true" /></button>}{operation.canReconcile && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("reconcile"); }}>Check refund status<RefreshCw aria-hidden="true" /></button>}</div></li>)}</ol>}
+      <section className="refund-operations"><div className="refund-section-title"><div><h2>Attempts</h2></div><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
+        {obligation.operations.length === 0 ? <p className="refund-empty-copy">No attempts yet.</p> : <ol className="refund-operation-list">{obligation.operations.map((operation) => <li key={operation.operationId}><div className="refund-operation-heading"><div><strong>{operationLabel(operation.state)}</strong><time dateTime={operation.createdAt}>{dateLabel(operation.createdAt)}</time></div><b>{money(operation.amountCents)}</b></div>{safeCodeCopy(operation.safeCode) && <p>{safeCodeCopy(operation.safeCode)}</p>}<div className="refund-operation-actions">{operation.canRetry && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("retry"); }}>Try again<RefreshCw aria-hidden="true" /></button>}{operation.canReconcile && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("reconcile"); }}>Check status<RefreshCw aria-hidden="true" /></button>}</div></li>)}</ol>}
       </section>
-      {obligation.canDispatch && <button className="button button-primary refund-dispatch" type="button" disabled={busy} onClick={() => { setTargetOperation(null); setAction("dispatch"); }}>Queue refund for processing<ArrowRight aria-hidden="true" /></button>}
+      {obligation.canDispatch && <button className="button button-primary refund-dispatch" type="button" disabled={busy} onClick={() => { setTargetOperation(null); setAction("dispatch"); }}>Send refund<ArrowRight aria-hidden="true" /></button>}
       {!obligation.canDispatch && obligation.dispatchBlockedReason && <p className="refund-blocked-note"><Clock3 aria-hidden="true" />{blockedCopy(obligation.dispatchBlockedReason)}</p>}
-      {action && <section className="refund-confirm" role="group" aria-labelledby="refund-confirm-title"><h2 id="refund-confirm-title">{action === "dispatch" ? "Queue this refund?" : action === "retry" ? "Queue a retry?" : "Check provider status?"}</h2><p>{action === "dispatch" ? `This amount is owed and has not been queued yet. Queue up to ${money(obligation.availableCents)} for processing.` : action === "retry" ? "This queues another attempt using the same saved refund operation and provider idempotency key." : "This queues a provider status check only. It will not send a new refund."} The saved status changes only after server/provider evidence. This action does not itself confirm that money has been returned.</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => { setAction(null); setTargetOperation(null); }}>Cancel</button><button className="button button-primary" type="button" disabled={busy} onClick={() => void submitAction()}>{busy ? "Queueing…" : "Confirm and queue"}</button></div></section>}
+      {action && <section className="refund-confirm" role="group" aria-labelledby="refund-confirm-title"><h2 id="refund-confirm-title">{action === "dispatch" ? `Send ${money(obligation.availableCents)} refund?` : action === "retry" ? "Try again?" : "Check with Stripe?"}</h2><p>{action === "dispatch" ? "This sends the refund through Stripe. The status updates when Stripe confirms." : action === "retry" ? "This retries the same refund. It can’t pay out twice." : "This only checks. It won’t send another refund."}</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => { setAction(null); setTargetOperation(null); }}>Cancel</button><button className="button button-primary" type="button" disabled={busy} onClick={() => void submitAction()}>{busy ? "Working…" : action === "dispatch" ? "Send refund" : action === "retry" ? "Try again" : "Check status"}</button></div></section>}
       <div className="refund-footer-actions"><Link className="button button-outline" to="/admin/refunds"><ArrowLeft aria-hidden="true" />Back to Refunds</Link></div>
     </>}
   </main></RefundAdminShell>;
 }
 
-function RefundState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail: string; action?: ReactNode }) {
-  return <section className="refund-state" role="status"><span>{icon}</span><h2>{title}</h2><p>{detail}</p>{action}</section>;
+function RefundState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
+  return <section className="refund-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
 }
 function RefundAdminShell({ active, children }: { active: "queue" | "detail"; children: ReactNode }) {
   return <main className="product-page refund-admin-workspace"><header className="product-topbar"><a className="brand" href="/admin/refunds" aria-label="Fifth Wheel admin workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header><div className="product-layout"><StaffSidebar active="refunds" foot="Amounts remain owed until the payment provider confirms settlement." footIcon={<Wallet aria-hidden="true" />} /><section className="product-content refund-admin-content">{children}</section></div></main>;

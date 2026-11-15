@@ -13,7 +13,7 @@ const fail = <T>(code: MemberSeatErrorCode, safeMessage: string, retryable = fal
   ({ ok: false, error: { code, safeMessage, retryable } });
 function mapRepositoryFailure<T>(error: unknown): SeatReadResult<T> {
   if (error instanceof SeatRepositoryError && error.code === "not_found") return fail("not_found", "This Seat could not be found.");
-  if (error instanceof SeatRepositoryError && error.code === "invalid_input") return fail("invalid_input", "Check the Seat link and try again.");
+  if (error instanceof SeatRepositoryError && error.code === "invalid_input") return fail("invalid_input", "Something went wrong. Reload and try again.");
   if (error instanceof SeatRepositoryError && error.code === "forbidden") return fail("forbidden", "Member access is not active for this account.");
   return fail("temporarily_unavailable", "Seat information is temporarily unavailable.", true);
 }
@@ -83,7 +83,7 @@ export function createSeatService(deps: SeatServiceDependencies): SeatService {
       } catch (error) { return mapRepositoryFailure(error); }
     },
     async read(input: SeatDetailInput): Promise<SeatReadResult<MemberSeatDetailDTO>> {
-      if (!uuid.test(input.seatId)) return fail("invalid_input", "Check the Seat link and try again.");
+      if (!uuid.test(input.seatId)) return fail("invalid_input", "Something went wrong. Reload and try again.");
       const actor = await seatActor<MemberSeatDetailDTO>(input.accessToken, deps.resolvePrincipal);
       if (!actor.ok) return actor.result;
       try { return { ok: true, value: await deps.repository.readMySeat(actor.principal.userId, input.seatId) }; }
@@ -92,7 +92,7 @@ export function createSeatService(deps: SeatServiceDependencies): SeatService {
     async calendar(input: SeatDetailInput): Promise<SeatReadResult<string>> {
       const detail = await this.read(input);
       if (!detail.ok) return detail;
-      if (!detail.value.calendar.available) return fail("conflict", "Calendar export is available for future active Seats only.");
+      if (!detail.value.calendar.available) return fail("conflict", "You can add upcoming seats to your calendar.");
       const body = calendarText(detail.value, (deps.now ?? Date.now)());
       if (!body) return fail("temporarily_unavailable", "The calendar file is temporarily unavailable.", true);
       return { ok: true, value: body };

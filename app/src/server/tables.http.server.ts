@@ -108,12 +108,12 @@ export function createTablesHttpHandlers(createService: Factory, expectedOrigin:
     async listRequests(request: Request): Promise<Response> {
       const correlationId = randomUUID(); const url = new URL(request.url); const values = new Map<string, string>();
       for (const [key, value] of url.searchParams) {
-        if (!["cursor", "limit"].includes(key) || values.has(key)) return error("invalid_input", "Check the request history page.", correlationId);
+        if (!["cursor", "limit"].includes(key) || values.has(key)) return error("invalid_input", "Something went wrong. Reload and try again.", correlationId);
         values.set(key, value);
       }
       const cursor = values.get("cursor"); const limitText = values.get("limit") ?? "25";
       if (cursor && (!historyCursorPattern.test(cursor) || cursor.length > 150) || !/^(?:[1-9]\d?|50)$/.test(limitText)) {
-        return error("invalid_input", "Check the request history page.", correlationId);
+        return error("invalid_input", "Something went wrong. Reload and try again.", correlationId);
       }
       try { return serviceResponse(await createService().listRequests({ accessToken: getAccessTokenForPrincipal(request), ...(cursor ? { cursor } : {}), limit: Number(limitText) }), correlationId); }
       catch { return unavailable(); }

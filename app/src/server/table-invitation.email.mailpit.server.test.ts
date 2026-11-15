@@ -23,6 +23,8 @@ test("Mailpit Table provider accepts only loopback endpoints and never generates
   assert.equal(payload?.Text.includes(`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`), true);
   assert.equal(payload?.Text.toLowerCase().includes("magic link"), false);
   assert.equal(payload?.Text.includes("The Dinner Table"), true);
+  assert.match(payload?.Text, /on \w+day, \w+ \d{1,2} at \d{1,2}:\d{2} [AP]M \(Atlanta time\)/); // human date, not ISO
+  assert.equal(/\d{4}-\d{2}-\d{2}/.test(payload?.Text.replace(/returnTo=[^\s]*/, "")), false);
 });
 
 test("Mailpit uncertain send remains unknown and recovery requires exact Message-ID plus recipient", async () => {

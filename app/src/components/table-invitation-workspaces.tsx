@@ -114,12 +114,12 @@ function timeLabel(value: string) {
 }
 function deliveryCopy(state: TableInvitationDeliveryState): Readonly<{ label: string; detail: string; tone: DeliveryTone }> {
   switch (state) {
-    case "queued": return { label: "Email queued", detail: "The email is waiting for a delivery attempt. The invitation is active.", tone: "neutral" };
-    case "sending": return { label: "Email sending", detail: "A delivery attempt is in progress. The invitation is active.", tone: "neutral" };
-    case "accepted": return { label: "Email service accepted", detail: "The email service accepted the message, but delivery to the inbox is not confirmed.", tone: "good" };
-    case "delivered": return { label: "Delivery confirmed", detail: "The provider reports this email was delivered. The invitation remains separate from a paid Seat.", tone: "good" };
-    case "failed": return { label: "Email delivery failed", detail: "The invitation itself is still active. An administrator can queue a safe retry.", tone: "bad" };
-    case "unknown": return { label: "Email status unclear", detail: "The invitation is still active. Check the existing email attempt before trying again.", tone: "warning" };
+    case "queued": return { label: "Waiting to send", detail: "The invitation is active.", tone: "neutral" };
+    case "sending": return { label: "Sending", detail: "The invitation is active.", tone: "neutral" };
+    case "accepted": return { label: "Sent", detail: "Resend accepted it. Delivery isn’t confirmed.", tone: "good" };
+    case "delivered": return { label: "Delivered", detail: "Resend reports this email was delivered.", tone: "good" };
+    case "failed": return { label: "Not sent", detail: "The invitation is still active. Safe to send again.", tone: "bad" };
+    case "unknown": return { label: "Unconfirmed", detail: "We don’t know whether it was sent. Check status before sending again.", tone: "warning" };
   }
 }
 function invitationStateText(state: TableInvitationState) {
@@ -150,28 +150,22 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
     }
   }, [invitationId]);
   useEffect(() => { void load(); }, [load]);
-  const offerState = detail ? deliveryCopy(detail.delivery.state) : null;
 
   const content = <>
     <div className="product-breadcrumb"><Link to="/requests">Requests</Link><span>›</span>Table invitation</div>
-    {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Opening your invitation" detail="Checking this offer for your member account." />}
+    {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
     {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in with the member account connected to your invitation." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="This invitation is not available to this account" detail="Table invitations are limited to the named member. Check that you signed in with the account that received the offer." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
+    {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="This invitation is for a different account" detail="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
     {state === "not_found" && <InvitationState icon={<Ticket />} title="Invitation not found" detail="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
     {state === "error" && <InvitationState icon={<CircleAlert />} title="Invitation details are temporarily unavailable" detail={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
-    {state === "ready" && detail && offerState && <>
+    {state === "ready" && detail && <>
       <div className="invitation-member-heading"><p className="eyebrow">TABLE INVITATION</p><h1>{detail.table.title}</h1><p className="page-intro"><CalendarDays aria-hidden="true" />{dateLabel(detail.table.localDate)}<span>·</span><Clock3 aria-hidden="true" />{timeLabel(detail.table.startLocalTime)}<span>·</span><MapPin aria-hidden="true" />{detail.table.neighborhood}</p></div>
-      <section className={`invitation-member-status tone-${offerState.tone}`}>
-        <div className="invitation-status-icon">{detail.delivery.state === "delivered" || detail.delivery.state === "accepted" ? <Check aria-hidden="true" /> : detail.delivery.state === "failed" || detail.delivery.state === "unknown" ? <CircleAlert aria-hidden="true" /> : <Mail aria-hidden="true" />}</div>
-        <div><p className="eyebrow">{invitationStateText(detail.state)}</p><h2>{offerState.label}</h2><p>{offerState.detail}</p></div>
-      </section>
       <div className="invitation-member-grid">
-        <section className="invitation-member-card"><p className="eyebrow">YOUR OFFER</p><h2>You’re invited to this Table</h2><p>This Table invitation is named for your member account. It is separate from your pending Seat request and does not confirm a paid Seat.</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
-        <section className="invitation-member-card invitation-delivery-card"><p className="eyebrow">EMAIL STATUS</p><h2>{offerState.label}</h2><p>{offerState.detail}</p><dl><div><dt>Invitation created</dt><dd>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(detail.createdAt))}</dd></div><div><dt>Attempts recorded</dt><dd>{detail.delivery.attemptCount}</dd></div>{detail.delivery.lastAttemptAt && <div><dt>Last attempt</dt><dd>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(detail.delivery.lastAttemptAt))}</dd></div>}</dl></section>
+        <section className="invitation-member-card"><h2>You’re invited</h2><p>{detail.state === "active" ? `Pay to confirm your seat at ${detail.table.title}.` : invitationStateText(detail.state)}</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
       </div>
       <section className="invitation-itinerary-section"><div className="invitation-section-heading"><span><Table2 aria-hidden="true" /></span><div><p className="eyebrow">TABLE DETAILS</p><h2>Evening itinerary</h2></div></div>
         {detail.table.itineraryAvailable ? <ol className="invitation-stops">{detail.table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="invitation-stop-number">0{index + 1}</span><div><p className="eyebrow">{stop.role.toUpperCase()} · {stop.minutesFromStart === 0 ? "START" : `+${stop.minutesFromStart} MIN`}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
-          : <p className="invitation-itinerary-unavailable">The published itinerary is not currently available. Your invitation record and Table summary remain here.</p>}
+          : <p className="invitation-itinerary-unavailable">The full plan isn’t available right now. Your invitation is still here.</p>}
       </section>
       <div className="invitation-member-actions"><Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>{detail.table.itineraryAvailable && <a className="button button-primary" href={`/tables/${encodeURIComponent(detail.table.tableId)}`}>View Table details<ArrowRight aria-hidden="true" /></a>}</div>
     </>}
@@ -192,8 +186,8 @@ function InvitationPublicShell({ invitationId, children }: { invitationId: strin
   </main>;
 }
 
-function InvitationState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail: string; action?: ReactNode }) {
-  return <section className="invitation-workspace-state" role="status"><span>{icon}</span><h2>{title}</h2><p>{detail}</p>{action}</section>;
+function InvitationState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
+  return <section className="invitation-workspace-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
 }
 
 export function AdminTableInvitationDeliveryWorkspace() {
@@ -216,8 +210,8 @@ export function AdminTableInvitationDeliveryWorkspace() {
       if (!result.ok) { setState(result.error.code === "unauthenticated" ? "unauthenticated" : result.error.code === "forbidden" ? "forbidden" : "error"); setMessage(result.error.safeMessage); return; }
       setItems((current) => append ? [...current, ...result.data.items] : [...result.data.items]); setCursor(result.data.nextCursor); setState("ready");
     } catch {
-      if (append) setMessage("More delivery records could not be loaded. Current invitation states are unchanged.");
-      else { setState("error"); setMessage("Table invitation delivery status is temporarily unavailable. No delivery state was changed."); }
+      if (append) setMessage("We couldn’t load more. Nothing has changed.");
+      else { setState("error"); setMessage("We couldn’t load invitation emails. Nothing has changed."); }
     } finally { setLoadingMore(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -236,13 +230,13 @@ export function AdminTableInvitationDeliveryWorkspace() {
       if (response.ok && result?.ok) {
         clearLocalOperationId(key);
         await load();
-        setMessage("A new email attempt is queued. This page did not send the email or confirm delivery.");
+        setMessage("Queued to send again.");
       } else {
         if (result && !result.ok && !result.error.retryable) clearLocalOperationId(key);
-        setMessage(result && !result.ok ? result.error.safeMessage : "The retry outcome could not be confirmed. Refresh before retrying.");
+        setMessage(result && !result.ok ? result.error.safeMessage : "We’re not sure that worked. Refresh and try again.");
         if (response.status === 409) await load();
       }
-    } catch { setMessage("We could not confirm whether the retry was queued. Refresh this invitation before trying again."); }
+    } catch { setMessage("We’re not sure that worked. Refresh and try again."); }
     finally { setRetryId(null); }
   }
 
@@ -258,14 +252,14 @@ export function AdminTableInvitationDeliveryWorkspace() {
       if (response.ok && result?.ok) {
         await load();
         setMessage(result.data.deliveryState === "accepted"
-          ? "The email service accepted this existing attempt. No email was sent again, and delivery to the inbox is not confirmed."
-          : "The email status is still unclear. No email was sent again, and this invitation remains active.");
+          ? "Sent (checked; nothing was resent)."
+          : "Still unconfirmed. Nothing was resent.");
       } else {
-        setMessage(result && !result.ok ? result.error.safeMessage : "We could not confirm the email status. No email was sent again.");
+        setMessage(result && !result.ok ? result.error.safeMessage : "Couldn’t check. Nothing was resent.");
         if (response.status === 409) await load();
       }
     } catch {
-      setMessage("We could not confirm the email status. No email was sent again.");
+      setMessage("Couldn’t check. Nothing was resent.");
     } finally { setReconcileId(null); }
   }
 
@@ -273,28 +267,28 @@ export function AdminTableInvitationDeliveryWorkspace() {
     <header className="product-topbar"><a className="brand" href="/admin/table-invitations" aria-label="Fifth Wheel admin Table invitation delivery"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header>
     <div className="product-layout"><StaffSidebar active="invitations" foot="Retry queues delivery work; it never changes offer approval or payment state." /><section className="product-content">
       <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
-      <div className="page-heading-row table-invitation-admin-heading"><div><p className="eyebrow">OPERATIONS · EMAIL STATUS</p><h1>Table invitations</h1><p className="page-intro">Check email attempts for approved Table invitations. An email service accepting a message does not confirm it reached the inbox. This page queues retries; it does not send email itself.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
+      <div className="page-heading-row table-invitation-admin-heading"><div><h1>Invitation emails</h1><p className="page-intro">Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
-      {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading invitations" detail="Checking current delivery states." />}
-      {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Delivery recovery is available to authorized administrators." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}
-      {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="Administrator access required" detail={message || "This queue is restricted to authorized administrators."} />}
-      {state === "error" && <InvitationState icon={<CircleAlert />} title="Delivery queue unavailable" detail={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
-      {state === "ready" && items.length === 0 && <InvitationState icon={<Mail />} title="No Table invitation deliveries" detail="When a roster is approved, its invitation delivery records appear here. No sample records are shown." />}
+      {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
+      {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}
+      {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="You don’t have access to this page" detail={message || "Only admins can do this."} />}
+      {state === "error" && <InvitationState icon={<CircleAlert />} title="We couldn’t load invitation emails" detail={message || "Try again in a moment."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+      {state === "ready" && items.length === 0 && <InvitationState icon={<Mail />} title="No invitation emails yet" detail="They appear here once a roster is approved." />}
       {state === "ready" && items.length > 0 && <div className="admin-invitation-list">{items.map((item) => {
         const delivery = deliveryCopy(item.delivery.state);
         return <article className="admin-invitation-card" key={item.invitationId}>
-          <div className="admin-invitation-main"><span className="admin-invitation-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">{item.invitationState === "active" ? "ACTIVE TABLE INVITATION" : item.invitationState === "revoked" ? "REVOKED INVITATION" : "CLOSED INVITATION"}</p><h2>{item.guest.displayName}</h2><p className="table-card-meta"><Table2 aria-hidden="true" />{item.table.title}<span>·</span><CalendarDays aria-hidden="true" />{dateLabel(item.table.localDate)}<span>·</span><MapPin aria-hidden="true" />{item.table.neighborhood}</p></div></div>
-          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.delivery.lastAttemptAt))}` : " · no attempt yet"}</small></div>
-          {item.delivery.safeErrorCode && <p className="admin-invitation-safe-error">Latest safe delivery code: {item.delivery.safeErrorCode.replaceAll("_", " ")}</p>}
-          <details className="admin-invitation-attempts"><summary>Attempt history <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(attempt.startedAt))}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
-          {item.delivery.state === "failed" ? <button className="button button-outline admin-invitation-retry" type="button" onClick={() => void retry(item)} disabled={retryId === item.invitationId || item.invitationState !== "active"}>{retryId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{retryId === item.invitationId ? "Queueing retry…" : "Queue delivery retry"}</button>
-              : item.delivery.state === "unknown" ? <><p className="admin-invitation-recovery-note"><CircleAlert aria-hidden="true" />We could not confirm the email status. Check this existing attempt before trying again; this check will not send another email.</p><button className="button button-outline admin-invitation-retry" type="button" onClick={() => void reconcile(item)} disabled={reconcileId === item.invitationId}>{reconcileId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{reconcileId === item.invitationId ? "Checking email…" : "Check email status"}</button></>
+          <div className="admin-invitation-main"><span className="admin-invitation-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">{item.invitationState === "active" ? "OPEN" : item.invitationState === "revoked" ? "WITHDRAWN" : "CLOSED"}</p><h2>{item.guest.displayName}</h2><p className="table-card-meta"><Table2 aria-hidden="true" />{item.table.title}<span>·</span><CalendarDays aria-hidden="true" />{dateLabel(item.table.localDate)}<span>·</span><MapPin aria-hidden="true" />{item.table.neighborhood}</p></div></div>
+          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.delivery.lastAttemptAt))}` : " · not sent yet"}</small></div>
+          {item.delivery.safeErrorCode && <p className="admin-invitation-safe-error">Error code: {item.delivery.safeErrorCode.replaceAll("_", " ")}</p>}
+          <details className="admin-invitation-attempts"><summary>History <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(attempt.startedAt))}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
+          {item.delivery.state === "failed" ? <button className="button button-outline admin-invitation-retry" type="button" onClick={() => void retry(item)} disabled={retryId === item.invitationId || item.invitationState !== "active"}>{retryId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{retryId === item.invitationId ? "Sending…" : "Send again"}</button>
+              : item.delivery.state === "unknown" ? <><p className="admin-invitation-recovery-note"><CircleAlert aria-hidden="true" />We don’t know if this was sent. Checking won’t send another email.</p><button className="button button-outline admin-invitation-retry" type="button" onClick={() => void reconcile(item)} disabled={reconcileId === item.invitationId}>{reconcileId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{reconcileId === item.invitationId ? "Checking…" : "Check status"}</button></>
               : null}
-          {item.delivery.state === "failed" && <p className="admin-invitation-recovery-note"><Mail aria-hidden="true" />Retry queues a new delivery attempt. It does not send email inline or change the invitation.</p>}
+          {item.delivery.state === "failed" && <p className="admin-invitation-recovery-note"><Mail aria-hidden="true" /></p>}
           {item.invitationState === "active" && <RemoveGuestAction invitationId={item.invitationId} guestName={item.guest.displayName} onDone={() => void load()} />}
         </article>;
       })}</div>}
-      {state === "ready" && cursor && <div className="table-load-more"><button className="button button-outline" type="button" disabled={loadingMore} onClick={() => { setLoadingMore(true); void load(cursor, true); }}>{loadingMore ? "Loading more…" : "Load more"}<ArrowRight aria-hidden="true" /></button></div>}
+      {state === "ready" && cursor && <div className="table-load-more"><button className="button button-outline" type="button" disabled={loadingMore} onClick={() => { setLoadingMore(true); void load(cursor, true); }}>{loadingMore ? "Loading…" : "Show more"}<ArrowRight aria-hidden="true" /></button></div>}
     </section></div>
   </main>;
 }

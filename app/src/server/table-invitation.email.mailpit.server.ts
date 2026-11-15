@@ -1,4 +1,5 @@
 /** Loopback-only Table-invitation email adapter for local Mailpit acceptance tests. */
+import { whenLabel } from "./notice-templates.server.ts";
 
 export type MailpitTableInvitationConfig = Readonly<{ baseUrl: string; appOrigin: string; fromEmail: string; fromName?: string; timeoutMs?: number }>;
 export type TableInvitationMailInput = Readonly<{
@@ -61,12 +62,14 @@ export function createMailpitTableInvitationEmailProvider(config: MailpitTableIn
       const returnTo = `/invitations/${input.invitationId}`;
       const link = new URL(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`, appOrigin).toString();
       const title = escapeHtml(input.table.title); const neighborhood = escapeHtml(input.table.neighborhood);
-      const text = `You have a Table invitation for ${input.table.title}.\n\n${input.table.localDate} at ${input.table.startLocalTime} · ${input.table.neighborhood}.\n\nView your Table invitation: ${link}\n\nThis is a separate Table offer; your app admission and sign-in link are unchanged.`;
-      const html = `<p>You have a Table invitation for <strong>${title}</strong>.</p><p>${escapeHtml(input.table.localDate)} at ${escapeHtml(input.table.startLocalTime)} · ${neighborhood}.</p><p><a href="${escapeHtml(link)}">View your Table invitation</a></p><p>This is a separate Table offer; your app admission and sign-in link are unchanged.</p>`;
+      const when = whenLabel(input.table.localDate, input.table.startLocalTime);
+      const detail = `${when ? ` on ${when}` : ""} in ${input.table.neighborhood}`;
+      const text = `You’re invited to ${input.table.title}${detail}.\n\nPay to confirm your seat.\n\nView invitation: ${link}`;
+      const html = `<p>You’re invited to <strong>${title}</strong>${escapeHtml(detail)}.</p><p>Pay to confirm your seat.</p><p><a href="${escapeHtml(link)}">View invitation</a></p>`;
       let response: Response;
       try { response = await request("/api/v1/send", { method: "POST", headers: { accept: "application/json", "content-type": "application/json" },
         body: JSON.stringify({ From: { Email: config.fromEmail, ...(config.fromName ? { Name: config.fromName } : {}) },
-          To: [{ Email: input.recipientEmail }], Subject: `Your Fifth Wheel Table invitation: ${input.table.title}`,
+          To: [{ Email: input.recipientEmail }], Subject: `You’re invited: ${input.table.title}`,
           Text: text, HTML: html, Headers: { "Message-ID": messageId, "X-FifthWheel-Invitation-ID": input.invitationId,
             "X-FifthWheel-Attempt-ID": input.attemptId } }) }); }
       catch { return { state: "unknown", safeErrorCode: "mailpit_outcome_unknown" }; }

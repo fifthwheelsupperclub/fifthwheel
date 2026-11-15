@@ -267,7 +267,7 @@ export function MemberTablesWorkspace() {
     } catch (error) {
       if (sequence !== requestSequence.current) return;
       setState("error");
-      setErrorMessage(error instanceof Error ? error.message : "Published Tables are temporarily unavailable.");
+      setErrorMessage(error instanceof Error ? error.message : "Try again in a moment.");
       if (!append) setItems([]);
     } finally {
       if (sequence === requestSequence.current) setLoadingMore(false);
@@ -307,29 +307,29 @@ export function MemberTablesWorkspace() {
 
   const content = <>
     <div className="product-breadcrumb">Member <span>/</span> Tables</div>
-    <div className="tables-heading-row"><div><p className="eyebrow">FIND YOUR PEOPLE</p><h1 id="tables-heading">An evening worth<br /><em>looking forward to.</em></h1><p className="page-intro">Browse upcoming published Tables in Atlanta. A request starts a conversation; it is not an invitation or a confirmed Seat.</p></div><span className="tables-heading-mark"><Utensils aria-hidden="true" /></span></div>
+    <div className="tables-heading-row"><div><p className="eyebrow">FIND YOUR PEOPLE</p><h1 id="tables-heading">An evening worth<br /><em>looking forward to.</em></h1><p className="page-intro">Upcoming tables in Atlanta. Request a seat at any that suit you, and we’ll build each table from the requests.</p></div><span className="tables-heading-mark"><Utensils aria-hidden="true" /></span></div>
     <form className="table-filter-panel" onSubmit={applyFilters} aria-label="Filter published Tables">
-      <div className="table-filter-intro"><span><CalendarDays aria-hidden="true" /></span><div><strong>Find a night that fits</strong><small>Dates are shown in Atlanta local time.</small></div></div>
+      <div className="table-filter-intro"><span><CalendarDays aria-hidden="true" /></span><div><strong>Find a night that fits</strong><small>All times are Atlanta time.</small></div></div>
       <label>From<input type="date" value={filters.dateFrom} onChange={(event) => { const dateFrom = event.currentTarget.value; setFilters((value) => ({ ...value, dateFrom })); }} /></label>
       <label>To<input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={(event) => { const dateTo = event.currentTarget.value; setFilters((value) => ({ ...value, dateTo })); }} /></label>
       <label className="table-filter-neighborhood">Neighborhood<input type="text" maxLength={120} value={filters.neighborhood} placeholder="Any Atlanta neighborhood" onChange={(event) => { const neighborhood = event.currentTarget.value; setFilters((value) => ({ ...value, neighborhood })); }} /></label>
       <button className="button button-primary table-filter-submit" type="submit">Apply filters<ArrowRight aria-hidden="true" /></button>
     </form>
-    {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Finding upcoming Tables" detail="Checking the current published schedule." />}
+    {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Loading tables…" />}
     {state === "unauthenticated" && <TableState error title="Sign in to browse Tables" detail="Your Table search will be ready after you sign in." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "access_required" && <TableState error title="An app invitation is required" detail="Joining the waitlist does not grant app access. Sign in with the email address that received your app invitation." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Use an admitted account<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Finish your profile to browse" detail={errorMessage || "Published Tables are available to members with an approved profile."} action={<a className="button button-primary" href="/account/profile?returnTo=%2Ftables">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "error" && <TableState error title="Tables are temporarily unavailable" detail={errorMessage || "We could not verify the published schedule. No sample Tables are shown."} action={<button className="button button-outline" type="button" onClick={() => void loadTables(filters)}>Try again<ArrowRight aria-hidden="true" /></button>} />}
-    {state === "ready" && items.length === 0 && <TableState title="No upcoming Tables match yet" detail="Try a wider date range or remove the neighborhood filter. We’ll show a Table here only after staff publish it." action={<button className="button button-outline" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>} />}
+    {state === "access_required" && <TableState error title="You don’t have access yet" detail="If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <TableState error title="Finish your profile to see tables" detail={errorMessage || "We review every profile before you can browse."} action={<a className="button button-primary" href="/account/profile?returnTo=%2Ftables">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <TableState error title="We couldn’t load tables" detail={errorMessage || "Try again in a moment."} action={<button className="button button-outline" type="button" onClick={() => void loadTables(filters)}>Try again<ArrowRight aria-hidden="true" /></button>} />}
+    {state === "ready" && items.length === 0 && <TableState title="No tables match" detail="Try different dates or another neighborhood." action={<button className="button button-outline" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>} />}
     {state === "ready" && items.length > 0 && <>
-      <div className="tables-results-heading"><div><p className="eyebrow">UPCOMING IN ATLANTA</p><h2>{items.length === 1 ? "A table to consider" : "Tables to consider"}</h2></div><div className="tables-results-tools"><p>{cursor ? "More nights are available below." : "Every evening follows a three-stop itinerary."}</p>{(filters.dateFrom || filters.dateTo || filters.neighborhood.trim()) && <button className="button button-outline table-clear-filters" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>}</div></div>
+      <div className="tables-results-heading"><div><p className="eyebrow">UPCOMING IN ATLANTA</p><h2>{items.length === 1 ? "One table" : "Tables"}</h2></div><div className="tables-results-tools"><p>{cursor ? "More nights are available below." : "Each night has three stops: drinks, dinner and dessert."}</p>{(filters.dateFrom || filters.dateTo || filters.neighborhood.trim()) && <button className="button button-outline table-clear-filters" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>}</div></div>
       <div className="table-card-grid">{items.map((table) => <article className="member-table-card" key={table.tableId}>
         <div className="member-table-card-top"><span className="table-date-icon"><CalendarDays aria-hidden="true" /></span><span className="table-card-price">$25 <small>total</small></span></div>
         <p className="table-card-date">{formatLocalDate(table.localDate)}</p><h3>{table.title}</h3>
         <p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><Clock3 aria-hidden="true" />{formatTime(table.startLocalTime)}</p>
         <a className="button button-outline table-card-link" href={safeTablePath(table.tableId)}>View Table<ArrowRight aria-hidden="true" /></a>
       </article>)}</div>
-      {cursor && <div className="table-load-more"><button className="button button-outline" type="button" onClick={() => void loadTables(filters, cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading more…" : "Load more Tables"}<ChevronDown aria-hidden="true" /></button></div>}
+      {cursor && <div className="table-load-more"><button className="button button-outline" type="button" onClick={() => void loadTables(filters, cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading…" : "Show more"}<ChevronDown aria-hidden="true" /></button></div>}
     </>}
   </>;
   return state === "access_required" || state === "unauthenticated"
@@ -402,11 +402,11 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
         if (result.error.code === "profile_incomplete") setState("profile_incomplete");
         setMessage(result.error.safeMessage);
       } else {
-        setMessage("We could not confirm your request. Check Requests before trying again.");
+        setMessage("We’re not sure your request went through. Check Requests before trying again.");
       }
       setActionState("error");
     } catch {
-      setMessage("We could not confirm your request. Check Requests before trying again.");
+      setMessage("We’re not sure your request went through. Check Requests before trying again.");
       setActionState("error");
     }
   }
@@ -431,10 +431,10 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
         setActionState("idle");
         return;
       }
-      setMessage(result && !result.ok ? result.error.safeMessage : "We could not confirm withdrawal. Refresh the Table before retrying.");
+      setMessage(result && !result.ok ? result.error.safeMessage : "We’re not sure your request was withdrawn. Refresh the page to check.");
       setActionState("error");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "We could not confirm withdrawal. Refresh the Table before retrying.");
+      setMessage(error instanceof Error ? error.message : "We’re not sure your request was withdrawn. Refresh the page to check.");
       setActionState("error");
     }
   }
@@ -444,10 +444,10 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
     const absolute = new URL(path, window.location.origin).href;
     try {
       if (navigator.share) await navigator.share({ title: table?.title ?? "Fifth Wheel Table", url: absolute });
-      else { await navigator.clipboard.writeText(absolute); setShareMessage("Table link copied. Anyone who opens it follows the same sign-in and profile gates."); }
+      else { await navigator.clipboard.writeText(absolute); setShareMessage("Link copied. Friends will need their own access to request a seat."); }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setShareMessage("This link could not be shared from your browser. Copy the address to share it.");
+      setShareMessage("Couldn’t share from this browser. Copy the address bar instead.");
     }
   }
 
@@ -458,9 +458,9 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
       : state === "unauthenticated" ? <TableState error title="Sign in to continue" detail="This Table link can be opened after you sign in." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>} />
       : null}
     {state === "preview" && table && <TablePreview table={table} continueTo={safeTablePath(table.tableId)} />}
-    {state === "access_required" && <TableState error title="An app invitation is required" detail={message || "Waitlist signup does not grant access to the full Table. Sign in with an admitted app account to continue."} action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Use an admitted account<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Complete your profile first" detail={message || "A profile approved by the team is needed to view the itinerary and request a Seat."} action={<a className="button button-primary" href={`/account/profile?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Continue to your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "not_found" && <TableState error title="This Table isn’t available" detail={message || "It may have passed or is no longer published. We don’t have enough current information to show its details."} action={<a className="button button-outline" href="/tables"><ArrowLeft aria-hidden="true" />Browse upcoming Tables</a>} />}
+    {state === "access_required" && <TableState error title="You don’t have access yet" detail={message || "If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email."} action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <TableState error title="Finish your profile first" detail={message || "Finish your profile to see the plan and request a seat."} action={<a className="button button-primary" href={`/account/profile?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Continue to your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "not_found" && <TableState error title="This table isn’t available" detail={message || "It may have already happened or been removed."} action={<a className="button button-outline" href="/tables"><ArrowLeft aria-hidden="true" />Browse upcoming Tables</a>} />}
     {state === "error" && <TableState error title="Table details are temporarily unavailable" detail={message || "We couldn’t verify this published Table, so its itinerary and price are hidden."} action={<button className="button button-outline" type="button" onClick={() => void loadDetail()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
     {state === "ready" && table && table.stops && table.startLocalTime && <>
       <div className="member-table-detail-heading"><p className="eyebrow">A FIFTH WHEEL EVENING</p><p className="table-detail-date">{formatLocalDate(table.localDate)}</p><h1>{table.title}</h1><p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><Clock3 aria-hidden="true" />Starts at {formatTime(table.startLocalTime)} Atlanta time</p></div>
@@ -468,13 +468,13 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
         <section className="table-itinerary-card" aria-labelledby="itinerary-title"><div className="table-section-heading"><span><Utensils aria-hidden="true" /></span><div><p className="eyebrow">THREE STOPS, ONE GOOD NIGHT</p><h2 id="itinerary-title">Your itinerary</h2></div></div>
           <ol className="table-itinerary-list">{table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="table-itinerary-step">0{index + 1}</span><div><p className="table-stop-role">{titleCase(stop.role)}{stop.minutesFromStart === 0 ? " · Start" : ` · ${stop.minutesFromStart} min later`}</p><h3>{stop.venueName}</h3><p className="table-stop-address">{stop.venueAddress}</p>{stop.publicNotes && <p className="table-stop-note">{stop.publicNotes}</p>}</div></li>)}</ol>
         </section>
-        <aside className="table-request-card" aria-labelledby="request-card-title"><p className="eyebrow">YOUR NEXT STEP</p><h2 id="request-card-title">A seat at this Table</h2><div className="table-price"><strong>$25</strong><span>total for one Seat</span></div><p>Send a request for the team to consider. This is not a Table invitation, guaranteed place, or payment.</p>
+        <aside className="table-request-card" aria-labelledby="request-card-title"><h2 id="request-card-title">Request a seat</h2><div className="table-price"><strong>$25</strong><span>per person if you’re invited</span></div><p>We’ll look at all the requests and let you know if you’re invited. Nothing is charged now.</p>
           {table.ownRequest?.state === "pending" ? <div className="table-own-request pending"><span><Check aria-hidden="true" /></span><div><strong>Request received — awaiting review.</strong><small>The team will review your request. You can withdraw while it is pending.</small></div></div>
             : table.ownRequest?.state === "declined" ? <div className="table-own-request declined"><span><CircleAlert aria-hidden="true" /></span><div><strong>This request was declined.</strong><small>{table.ownRequest.declineReason || "See Requests for your history."}</small></div></div>
-              : table.ownRequest?.state === "withdrawn" ? <div className="table-own-request withdrawn"><span><X aria-hidden="true" /></span><div><strong>Your earlier request was withdrawn.</strong><small>You can send a new request if you are still interested.</small></div></div>
-                : table.ownRequest?.state === "closed_by_table" ? <div className="table-own-request declined"><span><CircleAlert aria-hidden="true" /></span><div><strong>This Table was cancelled.</strong><small>Any payment you made will be refunded. See Requests and My Seats for status.</small></div></div>
+              : table.ownRequest?.state === "withdrawn" ? <div className="table-own-request withdrawn"><span><X aria-hidden="true" /></span><div><strong>You withdrew your request.</strong></div></div>
+                : table.ownRequest?.state === "closed_by_table" ? <div className="table-own-request declined"><span><CircleAlert aria-hidden="true" /></span><div><strong>This table was cancelled.</strong><small>If you paid, you’ll get a full refund. Track it in My Seats.</small></div></div>
                 : null}
-          {table.ownRequest?.state !== "pending" && table.ownRequest?.state !== "closed_by_table" && <button className="button button-primary table-request-submit" type="button" onClick={() => void requestSeat()} disabled={actionState === "working"}>{actionState === "working" ? "Sending request…" : table.ownRequest?.state === "withdrawn" || table.ownRequest?.state === "declined" ? "Request again" : "Request a Seat"}<ArrowRight aria-hidden="true" /></button>}
+          {table.ownRequest?.state !== "pending" && table.ownRequest?.state !== "closed_by_table" && <button className="button button-primary table-request-submit" type="button" onClick={() => void requestSeat()} disabled={actionState === "working"}>{actionState === "working" ? "Sending…" : table.ownRequest?.state === "withdrawn" || table.ownRequest?.state === "declined" ? "Request again" : "Request a seat"}<ArrowRight aria-hidden="true" /></button>}
           {table.ownRequest?.state === "pending" && <button className="button button-outline table-request-submit" type="button" onClick={() => void withdrawRequest()} disabled={actionState === "working"}>{actionState === "working" ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}
           <button className="table-share-action" type="button" onClick={() => void shareTable()}><Share2 aria-hidden="true" />Share this Table link</button>
           {shareMessage && <p className="table-share-message" role="status">{shareMessage}</p>}
@@ -493,7 +493,7 @@ function TablePreview({ table, continueTo }: { table: TableData; continueTo: str
   return <section className="table-preview-card" aria-labelledby="table-preview-title">
     <span className="table-preview-icon"><Table2 aria-hidden="true" /></span><p className="eyebrow">SHARED TABLE PREVIEW</p><h1 id="table-preview-title">{table.title}</h1>
     <p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(table.localDate, false)}</p>
-    <p className="table-preview-boundary">Sign in with an admitted member account and complete an approved profile to see the itinerary and request a Seat. Sharing this link does not invite anyone or reserve a place.</p>
+    <p className="table-preview-boundary">Sign in to see the full plan and request a seat. New to Fifth Wheel? Join the waitlist.</p>
     <a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(continueTo)}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>
   </section>;
 }
@@ -525,7 +525,7 @@ export function MemberRequestsWorkspace() {
       setCursor(page.nextCursor); setState("ready"); setMessage("");
     } catch (error) {
       if (sequence !== loadSequence.current) return;
-      setState("error"); setMessage(error instanceof Error ? error.message : "Requests are temporarily unavailable."); if (!append) setItems([]);
+      setState("error"); setMessage(error instanceof Error ? error.message : "Nothing has changed. Try again."); if (!append) setItems([]);
     } finally { if (sequence === loadSequence.current) setLoadingMore(false); }
   }, []);
 
@@ -543,19 +543,19 @@ export function MemberRequestsWorkspace() {
       const result = await readEnvelope(response);
       if (response.ok && result?.ok) { clearOperationId(key); await loadRequests(); return; }
       if (result && !result.ok && ["not_found", "forbidden", "validation_failed", "invalid_transition", "operation_conflict", "unauthenticated"].includes(result.error.code)) clearOperationId(key);
-      setMessage(result && !result.ok ? result.error.safeMessage : "We could not confirm withdrawal. Refresh Requests before trying again.");
-    } catch { setMessage("We could not confirm withdrawal. Refresh Requests before trying again."); }
+      setMessage(result && !result.ok ? result.error.safeMessage : "We’re not sure your request was withdrawn. Refresh the page to check.");
+    } catch { setMessage("We’re not sure your request was withdrawn. Refresh the page to check."); }
     finally { setActionId(null); }
   }
 
   return <MemberWorkspaceShell active="requests">
     <div className="product-breadcrumb">Member <span>/</span> Requests</div>
-    <div className="tables-heading-row requests-heading-row"><div><p className="eyebrow">YOUR TABLE JOURNEY</p><h1 id="requests-heading">Every request,<br /><em>right here.</em></h1><p className="page-intro">Follow your requests for staff consideration. A pending request is not an invitation or a promise of a Seat.</p></div><span className="tables-heading-mark"><ClipboardList aria-hidden="true" /></span></div>
+    <div className="tables-heading-row requests-heading-row"><div><h1 id="requests-heading">Your requests</h1><p className="page-intro">Tables you’ve asked to join, and any invitations.</p></div><span className="tables-heading-mark"><ClipboardList aria-hidden="true" /></span></div>
     {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Loading your requests" detail="Checking your latest request history." />}
     {state === "unauthenticated" && <TableState error title="Sign in to view Requests" detail="Your request history is private to your admitted member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Frequests">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Requests aren’t available yet" detail={message || "Complete your profile to use member requests."} action={<a className="button button-primary" href="/account/profile">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "error" && <TableState error title="Requests are temporarily unavailable" detail={message || "Your saved requests were not changed."} action={<button className="button button-outline" type="button" onClick={() => void loadRequests()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
-    {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="When you ask the team to consider you for a Table, it will appear here. Requests do not reserve or charge for a Seat." action={<a className="button button-primary" href="/tables">Browse Tables<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <TableState error title="Finish your profile first" detail={message || "You can request seats once we’ve reviewed your profile."} action={<a className="button button-primary" href="/account/profile">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <TableState error title="We couldn’t load your requests" detail={message || "Nothing has changed. Try again."} action={<button className="button button-outline" type="button" onClick={() => void loadRequests()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
+    {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="Find a table you like and request a seat." action={<a className="button button-primary" href="/tables">Browse tables<ArrowRight aria-hidden="true" /></a>} />}
     {state === "ready" && items.length > 0 && <div className="request-history-list">{items.map((item) => <article className="request-history-card" key={item.requestId}>
       <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><p className="eyebrow">{item.tableInvitation?.state === "active" ? "SEAT REQUEST · STILL PENDING" : item.state === "pending" ? "AWAITING REVIEW" : item.state === "withdrawn" ? "WITHDRAWN" : item.state === "closed_by_table" ? "TABLE CANCELLED" : "REQUEST UPDATE"}</p><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
       <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(item.createdAt))}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
@@ -568,15 +568,15 @@ export function MemberRequestsWorkspace() {
       </section>}
       {item.table.isCurrentlyPublished
         ? <a className="request-table-link" href={safeTablePath(item.tableId)}>View Table details<ArrowRight aria-hidden="true" /></a>
-        : <p className="request-table-unavailable">This Table is no longer published. Your request history remains here.</p>}
+        : <p className="request-table-unavailable">This table is no longer available.</p>}
     </article>)}</div>}
     {message && state === "ready" && <p className="table-action-message is-error" role="alert">{message}</p>}
     {cursor && state === "ready" && <div className="table-load-more"><button className="button button-outline" type="button" onClick={() => void loadRequests(cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading more…" : "Load earlier requests"}<ChevronDown aria-hidden="true" /></button></div>}
   </MemberWorkspaceShell>;
 }
 
-function TableState({ title, detail, action, error = false, icon }: { title: string; detail: string; action?: ReactNode; error?: boolean; icon?: ReactNode }) {
+function TableState({ title, detail, action, error = false, icon }: { title: string; detail?: string; action?: ReactNode; error?: boolean; icon?: ReactNode }) {
   return <section className={`table-data-state ${error ? "is-error" : ""}`} role={error ? "alert" : icon ? "status" : undefined} aria-live={error || icon ? "polite" : undefined}>
-    <span className="table-data-icon">{icon ?? (error ? <CircleAlert aria-hidden="true" /> : <Table2 aria-hidden="true" />)}</span><h2>{title}</h2><p>{detail}</p>{action}
+    <span className="table-data-icon">{icon ?? (error ? <CircleAlert aria-hidden="true" /> : <Table2 aria-hidden="true" />)}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}
   </section>;
 }

@@ -219,7 +219,7 @@ async function clickActualEmailLink(
   const verifyResponsePromise = page.waitForResponse((response) =>
     response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   const verifyResponse = await verifyResponsePromise;
   if (!verifyResponse.ok()) {
     throw new Error(`local callback verification rejected with HTTP ${verifyResponse.status()}`);
@@ -520,7 +520,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   await page.getByRole("button", { name: "Send sign-in link" }).click();
   expect((await adminRequest).status()).toBe(200);
   expectEmailAbsentFromUrl(page, adminEmail);
-  await expect(page.getByText("Check your inbox.")).toBeVisible();
+  await expect(page.getByText("Check your email.")).toBeVisible();
 
   const adminJourney = await clickActualEmailLink(browser, adminEmail, "Your Fifth Wheel sign-in link", "Continue to Fifth Wheel");
   await expect(adminJourney.page).toHaveURL(`${appOrigin}/member`);
@@ -570,8 +570,8 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
 
   // Member identity is authenticated but lacks admin role; direct API access
   // must remain denied after the invited link activates the admission.
-  await signupRow.getByRole("button", { name: "Review app invite" }).click();
-  const dialog = adminJourney.page.getByRole("dialog", { name: "Review this app invite" });
+  await signupRow.getByRole("button", { name: "Review" }).click();
+  const dialog = adminJourney.page.getByRole("dialog", { name: /^Approve / });
   await expect(dialog).toContainText("Table invitation and Seat are separate");
   await saveMilestoneScreenshot(adminJourney.page, "w03-invitation-confirmation-desktop.png");
   const initialAdmissionRequestPromise = adminJourney.page.waitForRequest((request) =>
@@ -580,7 +580,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const initialAdmissionResponsePromise = adminJourney.page.waitForResponse((response) =>
     response.url() === `${appOrigin}/api/admin/waitlist` && response.request().method() === "POST",
   );
-  await dialog.getByRole("button", { name: "Approve app access and send" }).click();
+  await dialog.getByRole("button", { name: "Approve and send link" }).click();
   const [initialAdmissionRequest, initialAdmissionResponse] = await Promise.all([
     initialAdmissionRequestPromise,
     initialAdmissionResponsePromise,
@@ -594,7 +594,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
     ? initialAdmissionBody.value.operationId
     : null).toBe(isRecord(initialAdmissionInput) ? initialAdmissionInput.operationId : null);
   await expect(dialog.getByRole("alert")).toContainText("Email delivery failed");
-  expect(await mailpitHasRecipientMessage(memberEmail, "Your Fifth Wheel app invitation")).toBe(false);
+  expect(await mailpitHasRecipientMessage(memberEmail, "You’re in: welcome to Fifth Wheel")).toBe(false);
 
   // Replay the exact browser-submitted operation concurrently through the
   // protected route. It must reuse one admission and logical delivery and must
@@ -636,12 +636,12 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   expect(proxyBeforeRetryResponse.ok).toBe(true);
   const proxyBeforeRetry: unknown = await proxyBeforeRetryResponse.json();
   expect(proxyBeforeRetry).toMatchObject({ targetedInvitationAttempts: 1, syntheticFailedAttempts: 1, forwardedInvitationCount: 0 });
-  expect(await mailpitHasRecipientMessage(memberEmail, "Your Fifth Wheel app invitation")).toBe(false);
+  expect(await mailpitHasRecipientMessage(memberEmail, "You’re in: welcome to Fifth Wheel")).toBe(false);
 
-  await dialog.getByRole("button", { name: "Retry email" }).click();
+  await dialog.getByRole("button", { name: "Send again" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Email status unclear");
   await expect(dialog.getByRole("alert")).toContainText("Do not resend until delivery status is reconciled");
-  await dialog.getByRole("button", { name: "Check email status" }).click();
+  await dialog.getByRole("button", { name: "Check status" }).click();
   await expect(dialog.getByRole("status")).toContainText("Email service accepted the message");
   const proxyHealthResponse = await fetch(`${mailpitProxyOrigin}/__health`, { cache: "no-store" });
   expect(proxyHealthResponse.ok).toBe(true);
@@ -655,7 +655,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   // A real recipient link opened while another verified account is signed in
   // must not replace that account or activate the wrong owner. The recipient
   // can then use the same one-time link from their own signed-out context.
-  const memberInvitationMessage = await waitForMailpitMessage(memberEmail, "Your Fifth Wheel app invitation");
+  const memberInvitationMessage = await waitForMailpitMessage(memberEmail, "You’re in: welcome to Fifth Wheel");
   const wrongRecipientContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await guardPageRequests(wrongRecipientContext);
   const adminCookies = await adminContext.cookies(appOrigin);
@@ -691,10 +691,10 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   expect((await wrongRecipientContext.cookies(appOrigin)).some((cookie) => cookie.name.startsWith("fw_"))).toBe(false);
   await wrongRecipientContext.close();
 
-  const memberJourney = await clickActualEmailLink(browser, memberEmail, "Your Fifth Wheel app invitation", "Sign in to Fifth Wheel");
+  const memberJourney = await clickActualEmailLink(browser, memberEmail, "You’re in: welcome to Fifth Wheel", "Sign in");
   expect(memberJourney.linkHref).toBe(originalInvitationHref);
   await expect(memberJourney.page).toHaveURL(`${appOrigin}/member`);
-  await expect(memberJourney.page.getByText(`App access is active for ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
   await expect(memberJourney.page.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
   await expect(memberJourney.page.getByText(/Table invitations and Seats are separate/)).toBeVisible();
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
@@ -703,7 +703,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-390px.png");
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
   await memberJourney.page.reload();
-  await expect(memberJourney.page.getByText(`App access is active for ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
 
   const deniedAdminPage = await memberJourney.context.newPage();
   await deniedAdminPage.goto(`${appOrigin}/admin/waitlist`);
@@ -760,7 +760,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const returningBody = await returningResponse.json();
   expect(returningBody).toEqual(waitingLinkBody);
   expectEmailAbsentFromUrl(memberJourney.page, memberEmail);
-  await expect(memberJourney.page.getByText("Check your inbox.")).toBeVisible();
+  await expect(memberJourney.page.getByText("Check your email.")).toBeVisible();
   await memberJourney.context.unroute(`${appOrigin}/api/auth/request-link`, injectSharedContinuation);
   const immediateReturningRetry = await memberJourney.context.request.post(`${appOrigin}/api/auth/request-link`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
@@ -850,7 +850,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const recoveryPage = await recoveryContext.newPage();
   await recoveryPage.goto(`${appOrigin}/auth/callback?token_hash=short&type=magiclink&safeReturnTo=${encodeURIComponent("https://evil.example/landing")}`);
   await expect(recoveryPage.getByRole("heading", { name: "This link can’t be used." })).toBeVisible();
-  await expect(recoveryPage.getByRole("link", { name: "Request a new link" })).toHaveAttribute("href", "/sign-in");
+  await expect(recoveryPage.getByRole("link", { name: "Send a new link" })).toHaveAttribute("href", "/sign-in");
   await recoveryPage.goto(`${appOrigin}/auth/callback?token_hash=aaaaaaaaaaaaaaaa&type=magiclink&safeReturnTo=${encodeURIComponent("https://evil.example/landing")}`);
   await expect(recoveryPage.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
   const unsafeVerify = recoveryPage.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");

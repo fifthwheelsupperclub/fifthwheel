@@ -174,7 +174,7 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
     async createDraft(input: SupplyCreateInput) {
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
-      if (!isAdmin(actor)) return fail("forbidden", "Only an admin may create a supply draft.");
+      if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
       if (!mutationsAvailable()) return fail("provider_unavailable", "Draft mutations are enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.request.operationId)) return fail("invalid_input", "Use a valid operation identifier.");
       const source = input.request.source;
@@ -237,7 +237,7 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
     async acceptDraft(input: SupplyRevisionActionInput) {
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
-      if (!isAdmin(actor)) return fail("forbidden", "Only an admin may accept a supply revision.");
+      if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
       if (!mutationsAvailable()) return fail("provider_unavailable", "Acceptance is enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and revision.");
       try { return { ok: true as const, value: await dependencies.repository.acceptDraft(actor.userId, input.draftId, input.request) }; }
@@ -247,7 +247,7 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
     async publishDraft(input: SupplyRevisionActionInput) {
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
-      if (!isAdmin(actor)) return fail("forbidden", "Only an admin may publish supply.");
+      if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
       if (!mutationsAvailable()) return fail("provider_unavailable", "Publication is enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and revision.");
       try {

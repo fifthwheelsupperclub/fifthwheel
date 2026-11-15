@@ -36,7 +36,7 @@ test("member detail requires admitted member access and derives actor from verif
     admission: { state: "none", authUserId: null, emailNormalized: null },
   }), repository: repo });
   assert.deepEqual(await denied.readMemberInvitation({ accessToken: "signed-cookie", invitationId }), {
-    ok: false, error: { code: "forbidden", safeMessage: "Admitted app member access is required." },
+    ok: false, error: { code: "forbidden", safeMessage: "You don’t have access yet." },
   });
 });
 
@@ -54,7 +54,7 @@ test("admin reads and retries are role-gated; host cannot retry", async () => {
   assert.equal((await host.listAdminInvitations({ accessToken: "signed-cookie", limit: 25 })).ok, false);
   assert.deepEqual(await host.retryFailedDelivery({ accessToken: "signed-cookie", invitationId,
     request: { operationId, expectedAttemptCount: 2 } }), {
-    ok: false, error: { code: "forbidden", safeMessage: "Only an admin may retry invitation delivery." },
+    ok: false, error: { code: "forbidden", safeMessage: "Only admins can do this." },
   });
 });
 

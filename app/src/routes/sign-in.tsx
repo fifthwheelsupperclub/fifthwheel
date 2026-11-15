@@ -58,7 +58,7 @@ function SignInPage() {
       <div className="auth-story-copy">
         <p className="eyebrow">Atlanta, around the table</p>
         <h1>Good nights<br />start <em>with hello.</em></h1>
-        <p>Your invitation is the start. Sign in to see what’s next.</p>
+        <p>Sign in to see your tables.</p>
       </div>
       <p className="story-stamp">FIFTH WHEEL <span>·</span> ATLANTA</p>
     </section>
@@ -66,10 +66,10 @@ function SignInPage() {
     <section className="auth-card-wrap">
       <div className="auth-card">
         <span className="auth-icon"><Mail aria-hidden="true" /></span>
-        <p className="eyebrow">MEMBER SIGN IN</p>
+        <p className="eyebrow">SIGN IN</p>
         <h2>Welcome back.</h2>
-        <p className="auth-intro">Enter the email address connected to your app invitation. We’ll send a secure sign-in link if this account can access the app.</p>
-        {returnTo !== "/member" && <p className="auth-boundary">After sign in, we’ll return you to the page you selected.</p>}
+        <p className="auth-intro">Enter the email you used to join the waitlist. If you have access, we’ll send you a sign-in link.</p>
+        {returnTo !== "/member" && <p className="auth-boundary">We’ll bring you back to this page after you sign in.</p>}
         {signedOutUncertain && <div className="auth-feedback auth-feedback-error" role="status"><CircleAlert aria-hidden="true" /><span><strong>Your saved sign-in was cleared.</strong><small>We couldn’t confirm that sign-out finished on our server. You can still request a new link.</small></span></div>}
         <form onSubmit={requestLink} data-client-ready={clientReady ? "true" : "false"}>
           <label htmlFor="sign-in-email">Email address</label>
@@ -90,14 +90,14 @@ function SignInPage() {
         </form>
 
         {state === "accepted" && <div className="auth-feedback auth-feedback-success" role="status" aria-live="polite">
-          <ShieldCheck aria-hidden="true" /><span><strong>Check your inbox.</strong><small>If this email can access Fifth Wheel, a sign-in link is on its way.</small></span>
+          <ShieldCheck aria-hidden="true" /><span><strong>Check your email.</strong><small>If you have access, a sign-in link is on its way. It can take a minute.</small></span>
         </div>}
         {state === "error" && <div className="auth-feedback auth-feedback-error" role="alert">
-          <CircleAlert aria-hidden="true" /><span><strong>We couldn’t request a link.</strong><small>Check your connection and try again.</small></span>
+          <CircleAlert aria-hidden="true" /><span><strong>We couldn’t send a link.</strong><small>Check your connection and try again.</small></span>
         </div>}
 
         <p className="auth-footnote">New here? <a href="https://fifthwheel.community/#waitlist" target="_blank" rel="noreferrer">Join the Atlanta waitlist</a>.</p>
-        <p className="auth-boundary">Waitlist signup does not grant app access. An admin invitation is required.</p>
+        <p className="auth-boundary">Joining the waitlist doesn’t give you access right away. We’ll email you when you’re in.</p>
       </div>
     </section>
   </main>;

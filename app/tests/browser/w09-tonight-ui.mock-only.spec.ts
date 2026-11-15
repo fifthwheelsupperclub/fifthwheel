@@ -35,7 +35,7 @@ test("before voting opens there is no ballot and the page explains who can vote"
   await mkdir(shots, { recursive: true });
   await mock(context, { [`GET ${base}/tonight`]: () => tonight({ state: "wait" }) });
   await page.goto(`/tonight/${tableId}`);
-  await expect(page.getByText(/Voting opens at .* for guests who were checked in/)).toBeVisible();
+  await expect(page.getByText(/Voting opens at .* and closes at/)).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByText("Quiet corner")).toBeVisible();
   await page.screenshot({ path: `${shots}/w09-tonight-wait-desktop-mock-only.png`, fullPage: true });
@@ -80,11 +80,11 @@ test("Nobody is a real choice and a server refusal is shown, not swallowed", asy
 test("a guest who was not eligible sees no ballot and no result", async ({ page, context }) => {
   await mock(context, { [`GET ${base}/tonight`]: () => tonight({ state: "open", eligible: false }, null) });
   await page.goto(`/tonight/${tableId}`);
-  await expect(page.getByText(/Voting is limited to guests who were checked in before it opened/)).toBeVisible();
+  await expect(page.getByText(/Only guests checked in by .* can vote/)).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
 });
 
-for (const scenario of [{ name: "mutual match", match: { guestId: guestB, firstName: "Noah" }, text: "You and Noah chose each other." }, { name: "no match", match: null, text: "No mutual connection this time." }]) {
+for (const scenario of [{ name: "mutual match", match: { guestId: guestB, firstName: "Noah" }, text: "You and Noah chose each other." }, { name: "no match", match: null, text: "No mutual match this time." }]) {
   test(`closed: ${scenario.name} reveal, rating and private report`, async ({ page, context }) => {
     const seen: Array<{ path: string; body: unknown }> = [];
     let rated = false;
@@ -109,7 +109,7 @@ for (const scenario of [{ name: "mutual match", match: { guestId: guestB, firstN
     await page.getByLabel("About someone (optional)").selectOption(guestB);
     await page.getByLabel("What happened?").fill("A private concern");
     await page.getByRole("button", { name: "Send private report" }).click();
-    await expect(page.getByText(/Your report was received/)).toBeVisible();
+    await expect(page.getByText(/Report sent/)).toBeVisible();
     const report = seen.find((s) => s.path.endsWith("/conduct-report"))?.body as Record<string, unknown>;
     expect(report).toMatchObject({ subjectGuestId: guestB, body: "A private concern" });
     expect(typeof report.operationId).toBe("string");
@@ -124,7 +124,7 @@ test("expired results say unavailable, not no match; non-seat holders get a refu
     [`GET ${base}/recap`]: () => fail(404, null, "That could not be found.") });
   await page.goto(`/tonight/${tableId}`);
   await expect(page.getByText("Results from this evening are no longer available.")).toBeVisible();
-  await expect(page.getByText("No mutual connection this time.")).toHaveCount(0);
+  await expect(page.getByText("No mutual match this time.")).toHaveCount(0);
 });
 
 test("a guest without a Seat is refused", async ({ page, context }) => {
@@ -143,7 +143,7 @@ test("admin conduct reports: triage posts exact status/hold, ratings suppress sm
   }, seen);
   await page.goto("/admin/conduct-reports");
   await expect(page.getByText("A private concern")).toBeVisible();
-  await expect(page.getByText("Fewer than 3 responses")).toBeVisible();
+  await expect(page.getByText("Not enough responses yet")).toBeVisible();
   await page.getByLabel("Status").selectOption("reviewing");
   await expect.poll(() => seen.filter((s) => s.path.endsWith(reportId)).length).toBe(1);
   expect(seen.find((s) => s.path.endsWith(reportId))?.body).toEqual({ status: "reviewing", held: false });

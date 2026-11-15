@@ -38,11 +38,11 @@ test("admin decisions: blockers disable proceed, a valid Table proceeds with one
   await page.goto("/admin/table-decisions");
   await expect(page.getByRole("heading", { name: "Table decisions" })).toBeVisible();
   await expect(page.getByText("Needs 3–5 paid guests")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Record proceed" }).nth(1)).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Confirm table" }).nth(1)).toBeDisabled();
   await page.screenshot({ path: `${shots}/w08-table-decisions-desktop-mock-only.png`, fullPage: true });
-  await page.getByRole("button", { name: "Record proceed" }).first().click();
-  await page.getByRole("button", { name: "Confirm proceed" }).click();
-  await expect(page.getByText("Proceeding", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Confirm table" }).first().click();
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
   const post = seen.find((s) => s.path.endsWith("/proceed"));
   expect(Object.keys(post?.body as object)).toEqual(["operationId"]);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -119,7 +119,7 @@ test("restaurant workspace shows service counts and host contact without guest d
 test("restaurant workspace with no venue shows an empty state", async ({ page, context }) => {
   await mock(context, { "GET /api/restaurant/workspace": () => ok({ venues: [], selected: null, services: [] }) }, []);
   await page.goto("/restaurant");
-  await expect(page.getByRole("heading", { name: "No venue assigned" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No venue yet" })).toBeVisible();
 });
 
 const invitationId = "e0800000-0000-4000-8000-000000000081", candidateRequest = "e0800000-0000-4000-8000-000000000065";
@@ -128,8 +128,8 @@ const invitationItem = { invitationId, invitationState: "active", createdAt: "20
   delivery: { outboxId: "e0800000-0000-4000-8000-000000000091", state: "delivered", attemptCount: 1, queuedAt: "2026-11-10T15:00:00.000Z", nextAttemptAt: "2026-11-10T15:00:00.000Z", lastAttemptAt: "2026-11-10T15:01:00.000Z", safeErrorCode: null }, attempts: [] };
 
 for (const scenario of [
-  { name: "Yes sends one replacement", button: "Yes, remove and invite", replacement: "sent", needsReview: false, text: "One replacement invitation was queued." },
-  { name: "stale suggestion removes without sending and flags the roster", button: "Yes, remove and invite", replacement: "stale", needsReview: true, text: "no invitation was sent" },
+  { name: "Yes sends one replacement", button: "Remove and invite Riley Morgan", replacement: "sent", needsReview: false, text: "The replacement has been invited." },
+  { name: "stale suggestion removes without sending and flags the roster", button: "Remove and invite Riley Morgan", replacement: "stale", needsReview: true, text: "no invitation was sent" },
 ]) {
   test(`remove from Table: ${scenario.name}`, async ({ page, context }) => {
     const seen: Array<{ path: string; body: unknown }> = [];
@@ -143,8 +143,8 @@ for (const scenario of [
     }, seen);
     await page.goto("/admin/table-invitations");
     await page.getByRole("button", { name: "Remove from Table…" }).click();
-    await expect(page.getByText("Replace with Riley Morgan from the waitlist?")).toBeVisible();
-    await page.getByLabel(/Refund if they have paid/).fill("15");
+    await expect(page.getByText("Invite Riley Morgan instead?")).toBeVisible();
+    await page.getByLabel(/^Refund/).fill("15");
     await page.screenshot({ path: `${shots}/w08-remove-dialog-desktop-mock-only.png` });
     await page.getByRole("button", { name: scenario.button }).click();
     await expect(page.getByText(scenario.text)).toBeVisible();
@@ -165,12 +165,12 @@ test("remove from Table: No sends a null replacement and a bad refund never post
   }, seen);
   await page.goto("/admin/table-invitations");
   await page.getByRole("button", { name: "Remove from Table…" }).click();
-  await page.getByLabel(/Refund if they have paid/).fill("40");
-  await page.getByRole("button", { name: "No, remove only" }).click();
+  await page.getByLabel(/^Refund/).fill("40");
+  await page.getByRole("button", { name: "Remove only" }).click();
   await expect(page.getByText("Enter a refund between $0 and $25.")).toBeVisible();
   expect(seen.some((s) => s.path.endsWith("/remove"))).toBe(false);
-  await page.getByLabel(/Refund if they have paid/).fill("0");
-  await page.getByRole("button", { name: "No, remove only" }).click();
-  await expect(page.getByText("No replacement invitation was sent.")).toBeVisible();
+  await page.getByLabel(/^Refund/).fill("0");
+  await page.getByRole("button", { name: "Remove only" }).click();
+  await expect(page.getByText("No replacement was invited.")).toBeVisible();
   expect(seen.find((s) => s.path.endsWith("/remove"))?.body).toMatchObject({ replaceRequestId: null, refundCents: 0 });
 });

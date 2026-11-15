@@ -70,22 +70,22 @@ test("W07.5 mock-only admin refund queue and detail distinguish failure from set
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/refunds`);
-    await expect(page.getByRole("heading", { name: "Refund obligations", exact: true })).toBeVisible();
-    await expect(page.getByText("Refund attempt failed", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Refunds", exact: true })).toBeVisible();
+    await expect(page.getByText("Failed", { exact: true })).toBeVisible();
     await expect(page.getByText("Morgan Avery")).toBeVisible();
     await page.screenshot({ path: resolve(screenshots, "w07-refunds-admin-queue-desktop-mock-only.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(screenshots, "w07-refunds-admin-queue-390px-mock-only.png"), fullPage: true });
-    await page.getByRole("link", { name: "Review obligation" }).click();
-    await expect(page.getByRole("heading", { name: "Refund attempt failed" })).toBeVisible();
-    await expect(page.getByText("The refund attempt failed. The amount is still owed.").first()).toBeVisible();
-    await expect(page.getByText("The refund is still owed and needs administrator review before another action.")).toBeVisible();
-    await expect(page.getByText("This refund needs review; the amount remains owed.")).toBeVisible();
-    await expect(page.getByText("Total owed on this payment")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Try refund again" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Check refund status" })).toBeVisible();
-    await expect(page.getByText("Confirmed complete")).toHaveCount(0);
+    await page.getByRole("link", { name: "Open" }).click();
+    await expect(page.getByRole("heading", { name: "Failed" })).toBeVisible();
+    await expect(page.getByText("The refund failed. It’s still owed.").first()).toBeVisible();
+    await expect(page.getByText("Still owed. Needs an admin to look at it first.")).toBeVisible();
+    await expect(page.getByText("Needs an admin to look at it.")).toBeVisible();
+    await expect(page.getByText("Total owed")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
+    await expect(page.getByText("Refunded", { exact: true })).toHaveCount(0);
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.screenshot({ path: resolve(screenshots, "w07-refunds-admin-detail-failed-desktop-mock-only.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -101,16 +101,16 @@ test("W07.5 mock-only unknown operation queues reconciliation without offering r
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/refunds/${obligationId}`);
-    await expect(page.getByRole("heading", { name: "Refund status unclear" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Check refund status" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Try refund again" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Check refund status" }).click();
-    await expect(page.getByRole("group", { name: "Check provider status?" })).toContainText("It will not send a new refund.");
-    await page.getByRole("button", { name: "Confirm and queue" }).click();
+    await expect(page.getByRole("heading", { name: "Unconfirmed" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check status" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Check status" }).click();
+    await expect(page.getByRole("group", { name: "Check with Stripe?" })).toContainText("It won’t send another refund.");
+    await page.getByRole("button", { name: "Check status", exact: true }).last().click();
     expect(action?.path).toBe(`/api/admin/refund-operations/${operationId}/reconcile`);
     expect(action?.body).toMatchObject({ requestId: expect.any(String) });
-    await expect(page.getByRole("status")).toContainText("Status check queued");
-    await expect(page.getByRole("heading", { name: "Refund status unclear" })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("Checking with Stripe");
+    await expect(page.getByRole("heading", { name: "Unconfirmed" })).toBeVisible();
   } finally { await context.close(); }
 });
 
@@ -121,14 +121,14 @@ test("W07.5 mock-only retryable unknown outcome retries the same operation with 
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/refunds/${obligationId}`);
-    await page.getByRole("button", { name: "Try refund again" }).click();
-    await expect(page.getByRole("group", { name: "Queue a retry?" })).toContainText("same saved refund operation and provider idempotency key");
-    await page.getByRole("button", { name: "Confirm and queue" }).click();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("group", { name: "Try again?" })).toContainText("It can’t pay out twice.");
+    await page.getByRole("button", { name: "Try again", exact: true }).last().click();
     expect(action?.path).toBe(`/api/admin/refund-operations/${operationId}/retry`);
     expect(action?.body).toMatchObject({ requestId: expect.any(String) });
-    await expect(page.getByRole("status")).toContainText("Refund action queued");
-    await expect(page.getByRole("heading", { name: "Refund queued" })).toBeVisible();
-    await expect(page.getByText("Confirmed complete")).toHaveCount(0);
+    await expect(page.getByRole("status")).toContainText("Refund queued");
+    await expect(page.getByRole("heading", { name: "Queued" })).toBeVisible();
+    await expect(page.getByText("Refunded", { exact: true })).toHaveCount(0);
   } finally { await context.close(); }
 });
 
@@ -139,25 +139,25 @@ test("W07.5 mock-only dispatch is server-gated and remains pending until provide
   try {
     const page = await context.newPage();
     await page.goto(`${appOrigin}/admin/refunds/${obligationId}`);
-    await expect(page.getByRole("heading", { name: "Refund owed" })).toBeVisible();
-    await page.getByRole("button", { name: "Queue refund for processing" }).click();
-    await expect(page.getByRole("group", { name: "Queue this refund?" })).toContainText("This amount is owed and has not been queued yet.");
-    await page.getByRole("button", { name: "Confirm and queue" }).click();
+    await expect(page.getByRole("heading", { name: "Owed, not sent" })).toBeVisible();
+    await page.getByRole("button", { name: "Send refund" }).click();
+    await expect(page.getByRole("group", { name: /^Send .* refund\?$/ })).toContainText("This sends the refund through Stripe.");
+    await page.getByRole("button", { name: "Send refund", exact: true }).last().click();
     expect(action?.path).toBe(`/api/admin/refunds/${obligationId}/dispatch`);
     expect(action?.body).toMatchObject({ operationId: expect.any(String) });
-    await expect(page.getByRole("heading", { name: "Refund queued" })).toBeVisible();
-    await expect(page.getByText("Confirmed complete")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Queued" })).toBeVisible();
+    await expect(page.getByText("Refunded", { exact: true })).toHaveCount(0);
   } finally { await context.close(); }
 });
 
 test("W07.5 mock-only member Seat detail gives honest refund state and next-step copy", async ({ browser }) => {
   const states = [
-    ["open", "Refund owed", "A refund is owed. It has not been queued for processing yet."],
-    ["pending", "Refund queued", "Your refund is queued for processing. The payment provider has not confirmed it yet."],
-    ["submitted", "Refund processing", "The payment provider accepted the refund request. We’re waiting for confirmation that it has been processed."],
-    ["unknown", "Refund status unclear", "We can’t confirm whether the refund was processed yet. The amount remains owed until the provider confirms the result."],
-    ["failed", "Refund not completed", "The refund attempt failed. The amount is still owed."],
-    ["succeeded", "Refund complete", "The payment provider confirmed this refund."],
+    ["open", "Refund pending", "We’ll send your refund soon."],
+    ["pending", "Refund pending", "We’ll send your refund soon."],
+    ["submitted", "Refund on its way", "Your refund is on its way to your original payment method. Banks can take 5–10 business days."],
+    ["unknown", "Refund delayed", "Your refund is taking longer than usual. You’re still owed the full amount, and we’ll sort it out. Questions? hello@fifthwheel.community"],
+    ["failed", "Refund delayed", "Your refund is taking longer than usual. You’re still owed the full amount, and we’ll sort it out. Questions? hello@fifthwheel.community"],
+    ["succeeded", "Refunded", "Your refund has been sent."],
   ] as const;
   await mkdir(screenshots, { recursive: true });
   for (const [refundState, label, detailCopy] of states) {
@@ -191,8 +191,8 @@ test("W07.5 mock-only member Seat detail gives honest refund state and next-step
       const refundCard = page.locator(".member-seat-card").filter({ has: page.getByText("REFUND", { exact: true }) });
       await expect(refundCard.getByRole("heading", { name: label })).toBeVisible();
       await expect(refundCard.getByText(detailCopy, { exact: true })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Seat cancelled" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Request cancellation" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Cancelled" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Ask to cancel" })).toHaveCount(0);
       if (refundState === "failed") {
         await page.screenshot({ path: resolve(screenshots, "w07-refunds-member-failed-desktop-mock-only.png"), fullPage: true });
         await page.setViewportSize({ width: 390, height: 844 });

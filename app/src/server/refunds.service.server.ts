@@ -18,7 +18,7 @@ function repositoryFailure<T>(error: unknown): RefundResult<T> {
     forbidden: ["forbidden", "Admin access is required.", false],
     invalid_input: ["invalid_input", "Check the refund action and try again.", false],
     conflict: ["conflict", "This refund is already being processed or has changed.", false],
-    operation_conflict: ["operation_conflict", "This operation ID was already used for different details.", false],
+    operation_conflict: ["operation_conflict", "Something changed. Reload and try again.", false],
     balance_exhausted: ["balance_exhausted", "The remaining verified payment does not cover this refund.", false],
     not_retryable: ["not_retryable", "This refund operation cannot be retried safely.", false],
     not_reconcilable: ["not_reconcilable", "This refund operation does not have a provider result to reconcile.", false],

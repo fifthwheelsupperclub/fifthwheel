@@ -157,16 +157,16 @@ function AdminWaitlistPage() {
     if (newAdmission) {
       const uncertainAdmission = stored.admissionOperationId !== null;
       setInviteState(uncertainAdmission ? "unknown" : "idle");
-      setInviteMessage(uncertainAdmission ? "We may have approved app access already. Retry this same request before sending the email." : "");
+      setInviteMessage(uncertainAdmission ? "We’re not sure this went through. Try again. It’s safe and won’t approve twice." : "");
     } else if (item.latestDelivery?.state === "queued") {
       setInviteState("pending");
-      setInviteMessage("App access is already approved. Send the waiting email without approving access again.");
+      setInviteMessage("Already approved. Send the link without approving again.");
     } else if (item.latestDelivery?.state === "failed") {
       setInviteState("failed");
-      setInviteMessage("App access is already approved. Retry the failed email only; access will not be approved again.");
+      setInviteMessage("Already approved. Send the link again; this won’t approve twice.");
     } else {
       setInviteState("unknown");
-      setInviteMessage("App access is already approved, but we can’t confirm whether the email was accepted. Check its status before trying again.");
+      setInviteMessage("Already approved. We don’t know if the email was sent. Check status before sending again.");
     }
   }
 
@@ -196,7 +196,7 @@ function AdminWaitlistPage() {
           || !["queued", "sending"].includes(String(body.value.deliveryState))) {
           const error = isRecord(body) && isRecord(body.error) ? body.error : null;
           setInviteState(error?.code === "provider_outcome_unknown" ? "unknown" : "error");
-          setInviteMessage(typeof error?.safeMessage === "string" ? error.safeMessage : "We couldn’t confirm app access. Retry this same request; access won’t be approved twice.");
+          setInviteMessage(typeof error?.safeMessage === "string" ? error.safeMessage : "We’re not sure this went through. Try again. It’s safe and won’t approve twice.");
           void loadWaitlist(cursor);
           return;
         }
@@ -210,14 +210,14 @@ function AdminWaitlistPage() {
         });
       } catch {
         setInviteState("unknown");
-        setInviteMessage("We couldn’t confirm whether app access was approved. Retry this same request before sending the email.");
+        setInviteMessage("We’re not sure this went through. Try again. It’s safe and won’t approve twice.");
         return;
       }
     }
 
     if (!currentDeliveryId) {
       setInviteState("error");
-      setInviteMessage("We couldn’t load this email’s status. Refresh the waitlist before trying again.");
+      setInviteMessage("We couldn’t load the email status. Refresh the page and try again.");
       return;
     }
     const operationId = inviteState === "failed" ? crypto.randomUUID() : deliveryOperationId ?? crypto.randomUUID();
@@ -238,19 +238,19 @@ function AdminWaitlistPage() {
         const state = body.state as "accepted" | "failed" | "unknown";
         setInviteState(state);
         setInviteMessage(typeof body.safeMessage === "string" ? body.safeMessage : state === "accepted"
-          ? "The email service accepted the message. This does not confirm it reached the member’s inbox."
-          : state === "failed" ? "The email service did not accept the message. You can safely try again without approving app access again."
-            : "We can’t confirm whether the email was accepted. Check its status before trying again.");
+          ? "Sent. (Delivery isn’t confirmed.)"
+          : state === "failed" ? "Not sent. Safe to send again."
+            : "We don’t know if this was sent. Check status before sending again.");
       } else {
         const error = isRecord(body) && isRecord(body.error) ? body.error : null;
         const unknown = error?.code === "provider_outcome_unknown" || response.status >= 500;
         setInviteState(unknown ? "unknown" : "error");
-        setInviteMessage(typeof error?.safeMessage === "string" ? error.safeMessage : "We couldn’t confirm whether the email was accepted. Check its status before trying again.");
+        setInviteMessage(typeof error?.safeMessage === "string" ? error.safeMessage : "We don’t know if this was sent. Check status before sending again.");
       }
       void loadWaitlist(cursor);
     } catch {
       setInviteState("unknown");
-      setInviteMessage("We can’t confirm whether the email was accepted. Check its status before trying again.");
+      setInviteMessage("We don’t know if this was sent. Check status before sending again.");
     }
   }
 
@@ -271,17 +271,17 @@ function AdminWaitlistPage() {
         const state = body.state as "accepted" | "failed" | "unknown";
         setInviteState(state);
         setInviteMessage(typeof body.safeMessage === "string" ? body.safeMessage : state === "unknown"
-          ? "We still can’t confirm whether the email was accepted. Don’t send it again yet."
-          : state === "accepted" ? "The email service accepted this message. This does not confirm it reached the member’s inbox."
-            : "The email service confirmed it did not accept this message. You can safely try again.");
+          ? "Still unconfirmed. Don’t send again yet."
+          : state === "accepted" ? "Sent. (Delivery isn’t confirmed.)"
+            : "Not sent. Safe to send again.");
       } else {
         setInviteState("unknown");
-        setInviteMessage("We couldn’t check the email status. Don’t send it again until we can confirm what happened.");
+        setInviteMessage("We couldn’t check the email status. Don’t send again until we can.");
       }
       void loadWaitlist(cursor);
     } catch {
       setInviteState("unknown");
-      setInviteMessage("We couldn’t check the email status. Don’t send it again until we can confirm what happened.");
+      setInviteMessage("We couldn’t check the email status. Don’t send again until we can.");
     }
   }
 
@@ -291,12 +291,12 @@ function AdminWaitlistPage() {
       <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
     </header>
     <div className="product-layout">
-      <StaffSidebar active="waitlist" foot="App access and table invitations are separate." />
+      <StaffSidebar active="waitlist" />
 
       <section className="product-content" aria-labelledby="waitlist-heading">
         <div className="product-breadcrumb">People <span>/</span> Waitlist</div>
         <div className="page-heading-row">
-          <div><p className="eyebrow">APP ACCESS</p><h1 id="waitlist-heading">Waitlist</h1><p className="page-intro">Review signups from the website and approve app access. Table invitations come later.</p></div>
+          <div><h1 id="waitlist-heading">Waitlist</h1><p className="page-intro">People who signed up on the website. Approve them to send a sign-in link.</p></div>
           <span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{loadState === "ready" ? `${items.length} on this page` : "Live list"}</span>
         </div>
 
@@ -307,7 +307,7 @@ function AdminWaitlistPage() {
           <button className="icon-button" type="button" aria-label="Refresh waitlist" onClick={() => void loadWaitlist(cursor)} disabled={loadState === "loading"}><RefreshCw aria-hidden="true" /></button>
         </form>
 
-        {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><Clock3 aria-hidden="true" /></span><h2>Loading the waitlist</h2><p>Checking the latest signups and app access status.</p></section>}
+        {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><Clock3 aria-hidden="true" /></span><h2>Loading…</h2></section>}
         {loadState === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to continue</h2><p>This admin page requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
         {loadState === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Admin access required</h2><p>Your account is not assigned to the admin workspace.</p></section>}
         {loadState === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Waitlist unavailable</h2><p>The list could not be loaded. Try again in a moment.</p><button className="button button-outline" type="button" onClick={() => void loadWaitlist(cursor)}>Try again<RefreshCw aria-hidden="true" /></button></section>}
@@ -315,18 +315,18 @@ function AdminWaitlistPage() {
         {loadState === "ready" && items.length > 0 && <>
           <div className="waitlist-table-wrap">
             <table className="waitlist-table">
-              <thead><tr><th scope="col">Person</th><th scope="col">Neighborhood</th><th scope="col">Joined</th><th scope="col">App access</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">Person</th><th scope="col">Neighborhood</th><th scope="col">Joined</th><th scope="col">Access</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr></thead>
               <tbody>{rows.map((item) => <tr key={item.id}>
                 <td data-label="Person"><strong>{item.fullName}</strong><span>{item.emailNormalized}</span></td>
                 <td data-label="Neighborhood">{item.neighborhood}</td>
                 <td data-label="Joined">{safeDate(item.receivedAt)}</td>
-                <td data-label="App access"><AccessState item={item} /></td>
+                <td data-label="Access"><AccessState item={item} /></td>
                 <td data-label="Action">{item.admissionState === "none"
-                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Review app invite<ArrowRight aria-hidden="true" /></button>
+                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Review<ArrowRight aria-hidden="true" /></button>
                   : item.admissionState === "deleted"
-                    ? <span className="delivery-summary">App access removed</span>
+                    ? <span className="delivery-summary">Access removed</span>
                     : item.admissionState === "invited" && (item.latestDelivery?.state === "queued" || item.latestDelivery?.state === "unknown" || item.latestDelivery?.state === "failed")
-                      ? <button className="button button-outline button-small" type="button" onClick={() => openInvite(item)}>{item.latestDelivery.state === "unknown" ? "Check email status" : item.latestDelivery.state === "failed" ? "Retry email" : "Send email"}<ArrowRight aria-hidden="true" /></button>
+                      ? <button className="button button-outline button-small" type="button" onClick={() => openInvite(item)}>{item.latestDelivery.state === "unknown" ? "Check status" : item.latestDelivery.state === "failed" ? "Send again" : "Send link"}<ArrowRight aria-hidden="true" /></button>
                   : <span className="delivery-summary">{deliveryLabel(item.latestDelivery?.state, item.admissionState)}</span>}</td>
               </tr>)}</tbody>
             </table>
@@ -339,29 +339,27 @@ function AdminWaitlistPage() {
     {selected && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeInvite(); }}>
       <section ref={dialogRef} className="invite-dialog" role="dialog" aria-modal="true" aria-labelledby="invite-dialog-title" aria-describedby="invite-dialog-description" tabIndex={-1}>
         <div className="invite-dialog-head"><span className="auth-icon"><Mail aria-hidden="true" /></span><button ref={closeButtonRef} className="icon-button" type="button" aria-label="Close invitation review" onClick={closeInvite}><X aria-hidden="true" /></button></div>
-        <p className="eyebrow">APP ACCESS INVITE</p>
-        <h2 id="invite-dialog-title">Review this app invite</h2>
+        <h2 id="invite-dialog-title">Approve {selected.firstName} {selected.lastName}?</h2>
         <div className="selected-recipient"><span className="recipient-initials">{selected.firstName.slice(0, 1)}{selected.lastName.slice(0, 1)}</span><span><strong>{selected.firstName} {selected.lastName}</strong><small>{selected.emailNormalized}</small></span></div>
         <div className="access-summary">
-          <div><small>APP ACCESS</small><strong>{selected.admissionState === "invited" ? "Already approved" : "Sign-in link"}</strong><span>{selected.admissionState === "invited" ? "This member already has access to the app." : "Approves app access and sends this member a sign-in link."}</span></div>
-          <div><small>TABLE INVITATION</small><strong>Separate, later decision</strong><span>This action does not offer a Table or create a Seat.</span></div>
+          <div><strong>{selected.admissionState === "invited" ? "Already approved" : "They’ll get an email with a sign-in link."}</strong><span>{selected.admissionState === "invited" ? "This guest already has access." : "They can then complete their profile and request seats."}</span></div>
         </div>
         <p id="invite-dialog-description" className="invite-queue-note">{inviteState === "unknown" && deliveryId
-          ? "Check the email service’s status before trying again. This check will not send another email."
+          ? "Checking won’t send another email."
           : selected.admissionState === "invited"
-            ? "This sends or retries the app invite email. It does not approve app access again."
-            : "This approves app access and attempts to send a sign-in link. A Table invitation and Seat are separate steps."}</p>
+            ? "This sends the link again. It won’t approve access twice."
+            : "This approves access and sends a sign-in link."}</p>
         {inviteMessage && <div className={`auth-feedback ${inviteState === "accepted" || inviteState === "pending" ? "auth-feedback-success" : "auth-feedback-error"}`} role={inviteState === "accepted" || inviteState === "pending" ? "status" : "alert"}>
-          {inviteState === "accepted" || inviteState === "pending" ? <Check aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}<span><strong>{inviteState === "accepted" ? "Email service accepted the message" : inviteState === "pending" ? "App access already approved" : inviteState === "unknown" ? (deliveryId ? "Email status unclear" : "App access not confirmed") : inviteState === "failed" ? "Email delivery failed" : "App invite not confirmed"}</strong><small>{inviteMessage}</small></span>
+          {inviteState === "accepted" || inviteState === "pending" ? <Check aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}<span><strong>{inviteState === "accepted" ? "Sent" : inviteState === "pending" ? "Already approved" : inviteState === "unknown" ? (deliveryId ? "Email status unconfirmed" : "Approval not confirmed") : inviteState === "failed" ? "Not sent" : "Not confirmed"}</strong><small>{inviteMessage}</small></span>
         </div>}
-        <div className="dialog-actions"><button className="button button-outline" type="button" onClick={closeInvite}>Close</button><button className="button button-primary" type="button" disabled={inviteState === "admitting" || inviteState === "sending" || inviteState === "reconciling" || inviteState === "accepted"} onClick={() => { if (inviteState === "unknown" && deliveryId) void reconcileDelivery(); else void confirmInvite(); }}>{inviteState === "admitting" ? "Approving app access…" : inviteState === "sending" ? "Sending email…" : inviteState === "reconciling" ? "Checking email status…" : inviteState === "accepted" ? "Email accepted" : inviteState === "failed" ? "Retry email" : inviteState === "unknown" ? deliveryId ? "Check email status" : "Retry same request" : selected.admissionState === "invited" ? "Send app invite email" : "Approve app access and send"}<ArrowRight aria-hidden="true" /></button></div>
+        <div className="dialog-actions"><button className="button button-outline" type="button" onClick={closeInvite}>Close</button><button className="button button-primary" type="button" disabled={inviteState === "admitting" || inviteState === "sending" || inviteState === "reconciling" || inviteState === "accepted"} onClick={() => { if (inviteState === "unknown" && deliveryId) void reconcileDelivery(); else void confirmInvite(); }}>{inviteState === "admitting" ? "Approving…" : inviteState === "sending" ? "Sending…" : inviteState === "reconciling" ? "Checking…" : inviteState === "accepted" ? "Sent" : inviteState === "failed" ? "Send again" : inviteState === "unknown" ? deliveryId ? "Check status" : "Try again" : selected.admissionState === "invited" ? "Send link" : "Approve and send link"}<ArrowRight aria-hidden="true" /></button></div>
       </section>
     </div>}
   </main>;
 }
 
 function AccessState({ item }: { item: WaitlistItem }) {
-  if (item.admissionState === "activated") return <span className="status-pill status-pill-success"><Check aria-hidden="true" />Active</span>;
+  if (item.admissionState === "activated") return <span className="status-pill status-pill-success"><Check aria-hidden="true" />Signed in</span>;
   if (item.admissionState === "invited") return <span className={`status-pill ${item.latestDelivery?.state === "failed" || item.latestDelivery?.state === "unknown" ? "status-pill-warning" : "status-pill-pending"}`}><Clock3 aria-hidden="true" />Access approved</span>;
   if (item.admissionState === "deleted") return <span className="status-pill status-pill-warning"><CircleAlert aria-hidden="true" />Access removed</span>;
   return <span className="status-pill status-pill-neutral">Not approved</span>;
@@ -397,14 +395,14 @@ function persistInviteOperations(signupId: string, value: InviteOperationIds): v
 }
 
 function deliveryLabel(state: DeliveryState | undefined, admissionState: string): string {
-  if (admissionState === "activated") return "Member active";
+  if (admissionState === "activated") return "Signed in";
   switch (state) {
-    case "queued": return "Delivery pending";
-    case "sending": return "Email processing";
-    case "accepted": return "Accepted by email service";
-    case "delivered": return "Delivery confirmed";
-    case "failed": return "Email failed";
-    case "unknown": return "Email status unclear";
-    default: return "App invitation";
+    case "queued": return "Waiting to send";
+    case "sending": return "Sending";
+    case "accepted": return "Sent";
+    case "delivered": return "Delivered";
+    case "failed": return "Not sent";
+    case "unknown": return "Unconfirmed";
+    default: return "Approved";
   }
 }

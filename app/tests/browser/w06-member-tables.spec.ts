@@ -111,7 +111,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
       await expect(page.getByRole("heading", { name: "Your itinerary" })).toBeVisible();
       await expect(page.getByText("Public Bar")).toBeVisible();
       await expect(page.getByText("Internal W06 host note", { exact: false })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Request a Seat" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Request a seat", exact: true })).toBeVisible();
     });
 
     const detail = await apiJson(page, `/api/tables/${tableId}`);
@@ -121,7 +121,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     expect(JSON.stringify(detail.body)).not.toContain("venueId");
 
     await page.goto(`${appOrigin}/tables/${tableId}`);
-    await page.getByRole("button", { name: "Request a Seat" }).click();
+    await page.getByRole("button", { name: "Request a seat", exact: true }).click();
     await expect(page.getByText(/Request received — awaiting review/i)).toBeVisible();
     await page.reload();
     await expect(page.getByText(/Request received — awaiting review/i)).toBeVisible();
@@ -146,7 +146,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
 
     await screenshotPair(page, "w06-requests", async () => {
       await page.goto(`${appOrigin}/requests`);
-      await expect(page.getByRole("heading", { name: /Every request/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Your requests" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toHaveCount(2);
       await expect(page.getByText("SEAT REQUEST · PENDING", { exact: true })).toBeVisible();
       await expect(page.getByText("WITHDRAWN", { exact: true })).toBeVisible();
@@ -243,7 +243,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     await page.goto(interceptedLink);
     await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
     const verifyResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     const verifyResponse = await verifyResponsePromise;
     expect(verifyResponse.status()).toBe(200);
     await page.waitForURL(`${appOrigin}/tables/${tableId}`);
@@ -257,7 +257,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     expect([401, 403]).toContain(list.response.status());
     expect(list.body).toMatchObject({ ok: false, error: { code: expect.any(String), safeMessage: expect.any(String) } });
     await page.goto(`${appOrigin}/tables`);
-    await expect(page.getByRole("heading", { name: "An app invitation is required" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "You don’t have access yet" })).toBeVisible();
     await expect(page.getByText(/Joining the waitlist does not grant app access/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
     const detail = await apiJson(page, `/api/tables/${tableId}`);
@@ -285,8 +285,8 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     expect(deniedRequest.response.status()).toBe(409);
     expect(deniedRequest.body).toMatchObject({ ok: false, error: { code: "profile_incomplete", safeMessage: expect.any(String) } });
     await page.goto(`${appOrigin}/tables`);
-    await expect(page.getByRole("heading", { name: /Finish your profile to browse/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Finish your profile to see tables/i })).toBeVisible();
     await page.goto(`${appOrigin}/tables/${tableId}`);
-    await expect(page.getByRole("heading", { name: /Complete your profile first/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Finish your profile first/i })).toBeVisible();
   } finally { await incomplete.close(); }
 });

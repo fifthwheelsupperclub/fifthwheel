@@ -80,7 +80,7 @@ test("same admin attempt operation replay reaches the route twice but cannot sen
   assert.equal(sendCalls, 1);
   assert.equal(finishCalls, 1);
   assert.deepEqual(await replay.json(), {
-    error: { code: "conflict", safeMessage: "This send operation was already claimed. Review its delivery status before taking another action." },
+    error: { code: "conflict", safeMessage: "Something changed. Reload and try again." },
   });
 });
 

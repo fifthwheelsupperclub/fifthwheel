@@ -179,49 +179,45 @@ function money(amountCents: number, currency: string): string {
 }
 function seatStateCopy(state: MemberSeatDTO["state"]): Readonly<{ title: string; detail: string; tone: "good" | "warning" | "neutral" | "muted" }> {
   switch (state) {
-    case "confirmed": return { title: "Seat confirmed", detail: "Your Seat is saved to your account.", tone: "good" };
-    case "cancellation_requested": return { title: "Cancellation under review", detail: "Your Seat remains active while the team reviews your request.", tone: "warning" };
-    case "cancelled": return { title: "Seat cancelled", detail: "This Seat was removed from the Table.", tone: "muted" };
-    case "completed": return { title: "Evening complete", detail: "Your Table has concluded.", tone: "neutral" };
+    case "confirmed": return { title: "Confirmed", detail: "Your seat is saved to your account.", tone: "good" };
+    case "cancellation_requested": return { title: "Cancellation requested", detail: "Your seat stays yours until we decide.", tone: "warning" };
+    case "cancelled": return { title: "Cancelled", detail: "This seat was cancelled.", tone: "muted" };
+    case "completed": return { title: "Completed", detail: "This table has already happened.", tone: "neutral" };
   }
 }
 function paymentCopy(state: MemberSeatDTO["payment"]["state"]): string {
   switch (state) {
-    case "paid": return "Payment confirmed";
+    case "paid": return "Paid";
     case "refund_pending": return "Payment received; refund pending";
     case "refunded": return "Refunded";
-    case "unknown": return "Payment status unknown";
+    case "unknown": return "Confirming payment";
   }
 }
 function refundCopy(state: MemberSeatRefundDTO["state"]): string {
   switch (state) {
-    case "open": return "Refund owed";
-    case "pending": return "Refund queued";
-    case "submitted": return "Refund processing";
-    case "unknown": return "Refund status unclear";
-    case "failed": return "Refund not completed";
-    case "succeeded": return "Refund complete";
+    case "open": case "pending": return "Refund pending";
+    case "submitted": return "Refund on its way";
+    case "unknown": case "failed": return "Refund delayed";
+    case "succeeded": return "Refunded";
   }
 }
 function refundDetailCopy(state: MemberSeatRefundDTO["state"]): string {
   switch (state) {
-    case "open": return "A refund is owed. It has not been queued for processing yet.";
-    case "pending": return "Your refund is queued for processing. The payment provider has not confirmed it yet.";
-    case "submitted": return "The payment provider accepted the refund request. We’re waiting for confirmation that it has been processed.";
-    case "unknown": return "We can’t confirm whether the refund was processed yet. The amount remains owed until the provider confirms the result.";
-    case "failed": return "The refund attempt failed. The amount is still owed.";
-    case "succeeded": return "The payment provider confirmed this refund.";
+    case "open": case "pending": return "We’ll send your refund soon.";
+    case "submitted": return "Your refund is on its way to your original payment method. Banks can take 5–10 business days.";
+    case "unknown": case "failed": return "Your refund is taking longer than usual. You’re still owed the full amount, and we’ll sort it out. Questions? hello@fifthwheel.community";
+    case "succeeded": return "Your refund has been sent.";
   }
 }
 function checkoutCopy(value: MemberPendingCheckoutDTO): Readonly<{ title: string; detail: string; action: string | null; href: string | null }> {
   const invitation = `/invitations/${encodeURIComponent(value.invitationId)}`;
   switch (value.state) {
     case "refund_pending": return { title: "Payment received; refund pending.", detail: "A $25 charge was received. The refund is being handled; do not start another payment.", action: null, href: null };
-    case "checkout_open": return { title: "Checkout open", detail: `A temporary checkout hold is active until ${dateTimeLabel(value.holdUntil)}. This is not a confirmed Seat.`, action: value.nextAction === "resume_checkout" ? "Continue checkout" : null, href: value.nextAction === "resume_checkout" ? invitation : null };
-    case "processing": return { title: "Payment processing", detail: "No Seat is confirmed yet. Check the saved status before taking another payment action.", action: value.nextAction === "check_status" ? "Check payment status" : null, href: value.nextAction === "check_status" ? `${invitation}?checkout=return&attemptId=${encodeURIComponent(value.attemptId)}` : null };
-    case "unknown": return { title: "Payment status unknown", detail: "Do not start another payment while the outcome is unresolved.", action: value.nextAction === "check_status" ? "Check payment status" : null, href: value.nextAction === "check_status" ? `${invitation}?checkout=return&attemptId=${encodeURIComponent(value.attemptId)}` : null };
-    case "failed": return { title: "Checkout failed", detail: "No confirmed Seat is shown. The server will tell you whether this invitation can be retried.", action: value.nextAction === "retry_invitation" ? "Return to invitation" : null, href: value.nextAction === "retry_invitation" ? invitation : null };
-    case "expired": return { title: "Checkout window ended", detail: "Confirm the saved payment status before starting another checkout.", action: value.nextAction === "retry_invitation" ? "Return to invitation" : null, href: value.nextAction === "retry_invitation" ? invitation : null };
+    case "checkout_open": return { title: "Seat held", detail: `Pay by ${dateTimeLabel(value.holdUntil)} to confirm.`, action: value.nextAction === "resume_checkout" ? "Continue to payment" : null, href: value.nextAction === "resume_checkout" ? invitation : null };
+    case "processing": return { title: "Confirming payment", detail: "Don’t pay again. This updates on its own.", action: value.nextAction === "check_status" ? "Check again" : null, href: value.nextAction === "check_status" ? `${invitation}?checkout=return&attemptId=${encodeURIComponent(value.attemptId)}` : null };
+    case "unknown": return { title: "Confirming payment", detail: "Don’t pay again. This updates on its own.", action: value.nextAction === "check_status" ? "Check again" : null, href: value.nextAction === "check_status" ? `${invitation}?checkout=return&attemptId=${encodeURIComponent(value.attemptId)}` : null };
+    case "failed": return { title: "Payment didn’t go through", detail: "No seat is confirmed. You can go back to your invitation.", action: value.nextAction === "retry_invitation" ? "Back to invitation" : null, href: value.nextAction === "retry_invitation" ? invitation : null };
+    case "expired": return { title: "Hold ended", detail: "Go back to your invitation to start again.", action: value.nextAction === "retry_invitation" ? "Back to invitation" : null, href: value.nextAction === "retry_invitation" ? invitation : null };
   }
 }
 
@@ -271,17 +267,17 @@ export function MemberSeatsListWorkspace() {
 
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
     <div className="product-breadcrumb"><span>MEMBER WORKSPACE</span><span>·</span><span>My Seats</span></div>
-    <div className="member-seats-heading"><div><p className="eyebrow">YOUR EVENINGS</p><h1>My Seats</h1><p className="page-intro">Your payment, Seat and refund status from your member account.</p></div><button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button></div>
+    <div className="member-seats-heading"><div><p className="eyebrow">YOUR EVENINGS</p><h1>My Seats</h1><p className="page-intro">Your upcoming and past tables.</p></div><button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button></div>
     {message && <p className={`member-seat-notice ${state === "error" ? "is-error" : ""}`} role={state === "error" ? "alert" : "status"}><AlertCircle aria-hidden="true" />{message}</p>}
     {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading your Seats" detail="Checking the latest saved payment and Seat status." />}
     {state === "unauthenticated" && <SeatState icon={<ShieldCheck />} title="Sign in to view your Seats" detail="Your payment and Seat records are private to your member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fmy-seats">Sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <SeatState icon={<ShieldCheck />} title="Member access is required" detail="This workspace is available to admitted members." />}
     {state === "error" && <SeatState icon={<AlertCircle />} title="My Seats is temporarily unavailable" detail={message || "Try again shortly. No Seat or payment status has changed."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && <>
-      {pending.length > 0 && <section className="member-seat-section" aria-labelledby="checkout-status-title"><div className="member-seat-section-heading"><div><p className="eyebrow">NEEDS ATTENTION</p><h2 id="checkout-status-title">Checkout status</h2></div><span>{pending.length}</span></div><div className="member-pending-list">{pending.map((attempt) => <PendingCheckoutCard key={attempt.attemptId} value={attempt} />)}</div></section>}
+      {pending.length > 0 && <section className="member-seat-section" aria-labelledby="checkout-status-title"><div className="member-seat-section-heading"><div><h2 id="checkout-status-title">Payments in progress</h2></div><span>{pending.length}</span></div><div className="member-pending-list">{pending.map((attempt) => <PendingCheckoutCard key={attempt.attemptId} value={attempt} />)}</div></section>}
       {current.length > 0 && <SeatGroup title="Upcoming Seats" eyebrow="CURRENT" items={current} />}
       {past.length > 0 && <SeatGroup title="Past Seats" eyebrow="HISTORY" items={past} />}
-      {items.length === 0 && pending.length === 0 && <section className="member-seat-empty"><span><Ticket aria-hidden="true" /></span><p className="eyebrow">YOUR NEXT EVENING</p><h2>No Seats yet</h2><p>A Seat appears here only after the payment service verifies payment and saves your place.</p><div><a className="button button-primary" href="/tables">Browse Tables<ArrowRight aria-hidden="true" /></a><a className="button button-outline" href="/requests">View Requests</a></div></section>}
+      {items.length === 0 && pending.length === 0 && <section className="member-seat-empty"><span><Ticket aria-hidden="true" /></span><p className="eyebrow">YOUR NEXT EVENING</p><h2>No seats yet</h2><p>When you pay for an invitation, your seat shows up here.</p><div><a className="button button-primary" href="/tables">Browse Tables<ArrowRight aria-hidden="true" /></a><a className="button button-outline" href="/requests">View Requests</a></div></section>}
       {canLoadMore && <div className="member-seat-load-more"><button className="button button-outline" type="button" onClick={() => void load(cursor, true)} disabled={loadingMore}>{loadingMore ? <LoaderCircle className="member-seat-spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{loadingMore ? "Loading more…" : "Load more"}</button></div>}
     </>}
   </div></MemberWorkspaceShell>;
@@ -322,11 +318,11 @@ export function MemberSeatDetailWorkspace({ seatId }: { seatId: string }) {
       <section className={`member-seat-status tone-${seatStatus.tone}`} role="status"><span>{seatStatus.tone === "good" ? <CheckCircle2 aria-hidden="true" /> : seatStatus.tone === "warning" ? <Clock3 aria-hidden="true" /> : <Ticket aria-hidden="true" />}</span><div><p className="eyebrow">{seat.state.replaceAll("_", " ").toUpperCase()}</p><h2>{seatStatus.title}</h2><p>{seatStatus.detail}</p></div></section>
       <div className="member-seat-detail-grid">
         <section className="member-seat-card"><div className="member-seat-card-heading"><span><CreditCard aria-hidden="true" /></span><div><p className="eyebrow">PAYMENT</p><h2>{paymentCopy(seat.payment.state)}</h2></div></div><div className="member-seat-facts"><div><dt>Amount</dt><dd>{money(seat.payment.amountCents, seat.payment.currency)}</dd></div><div><dt>Paid</dt><dd>{seat.payment.paidAt ? dateTimeLabel(seat.payment.paidAt) : seat.payment.state === "unknown" ? "Status unknown" : "Not available"}</dd></div><div><dt>Receipt</dt><dd>{seat.payment.receipt.state === "available" ? <a href={seat.payment.receipt.url} target="_blank" rel="noopener noreferrer">View receipt<ArrowRight aria-hidden="true" /></a> : seat.payment.receipt.state === "unknown" ? "Receipt status unknown" : "Receipt unavailable"}</dd></div></div></section>
-        <section className="member-seat-card"><div className="member-seat-card-heading"><span><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">REFUND</p><h2>{seat.refund ? refundCopy(seat.refund.state) : "No refund is due for this Seat"}</h2></div></div>{seat.refund ? <><div className="member-seat-facts"><div><dt>Amount</dt><dd>{money(seat.refund.amountCents, seat.refund.currency)}</dd></div><div><dt>Status</dt><dd>{refundCopy(seat.refund.state)}</dd></div></div><p className="member-seat-card-copy">{refundDetailCopy(seat.refund.state)}</p></> : <p className="member-seat-card-copy">If that changes, the refund status will appear here.</p>}</section>
+        <section className="member-seat-card"><div className="member-seat-card-heading"><span><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">REFUND</p><h2>{seat.refund ? refundCopy(seat.refund.state) : "No refund is due for this seat"}</h2></div></div>{seat.refund ? <><div className="member-seat-facts"><div><dt>Amount</dt><dd>{money(seat.refund.amountCents, seat.refund.currency)}</dd></div><div><dt>Status</dt><dd>{refundCopy(seat.refund.state)}</dd></div></div><p className="member-seat-card-copy">{refundDetailCopy(seat.refund.state)}</p></> : <p className="member-seat-card-copy">If that changes, the refund status will appear here.</p>}</section>
       </div>
       <section className="member-seat-card member-seat-itinerary"><div className="member-seat-card-heading"><span><Utensils aria-hidden="true" /></span><div><p className="eyebrow">TABLE DETAILS</p><h2>Evening itinerary</h2></div></div><ol className="member-seat-stops">{seat.table.itinerary.map((stop, index) => <li key={stop.role}><span className="member-seat-step">0{index + 1}</span><div><p className="eyebrow">{stop.role.toUpperCase()} · {stop.minutesFromStart === 0 ? "START" : `+${stop.minutesFromStart} MIN`}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol></section>
       <section className="member-seat-card member-seat-cancellation"><div className="member-seat-card-heading"><span><FileText aria-hidden="true" /></span><div><p className="eyebrow">CANCELLATION HISTORY</p><h2>{cancellationTitle(seat.cancellation.status)}</h2></div></div>{seat.cancellation.history.length === 0 ? <p className="member-seat-card-copy">There are no cancellation requests for this Seat.</p> : <ol className="member-seat-cancellation-history">{seat.cancellation.history.map((entry) => <li key={entry.requestId}><div><strong>{cancellationEntryTitle(entry.status)}</strong><time dateTime={entry.requestedAt}>Requested {dateTimeLabel(entry.requestedAt)}</time>{entry.decidedAt && <time dateTime={entry.decidedAt}>Decision {dateTimeLabel(entry.decidedAt)}</time>}</div>{entry.safeReason && <p>{entry.safeReason}</p>}</li>)}</ol>}</section>
-      <div className="member-seat-detail-actions"><Link className="button button-outline" to="/my-seats"><ArrowLeft aria-hidden="true" />Back to My Seats</Link>{seat.state !== "cancelled" && seat.state !== "completed" && <Link className="button button-outline" to="/my-seats/$seatId/cancellation" params={{ seatId }}>{seat.state === "cancellation_requested" ? "View cancellation request" : "Request cancellation"}<ArrowRight aria-hidden="true" /></Link>}{seat.state !== "cancelled" && <a className="button button-outline" href={`/tonight/${encodeURIComponent(seat.table.tableId)}`}>Tonight &amp; recap</a>}{seat.calendar.available && seat.calendar.href && <a className="button button-primary" href={seat.calendar.href} download><Download aria-hidden="true" />Add to calendar</a>}<button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Refresh status</button></div>
+      <div className="member-seat-detail-actions"><Link className="button button-outline" to="/my-seats"><ArrowLeft aria-hidden="true" />Back to My Seats</Link>{seat.state !== "cancelled" && seat.state !== "completed" && <Link className="button button-outline" to="/my-seats/$seatId/cancellation" params={{ seatId }}>{seat.state === "cancellation_requested" ? "View cancellation request" : "Ask to cancel"}<ArrowRight aria-hidden="true" /></Link>}{seat.state !== "cancelled" && <a className="button button-outline" href={`/tonight/${encodeURIComponent(seat.table.tableId)}`}>Tonight</a>}{seat.calendar.available && seat.calendar.href && <a className="button button-primary" href={seat.calendar.href} download><Download aria-hidden="true" />Add to calendar</a>}<button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
     </>}
   </div></MemberWorkspaceShell>;
 }
@@ -358,15 +354,15 @@ function SeatState({ icon, title, detail, action }: { icon: ReactNode; title: st
 function cancellationTitle(status: MemberSeatCancellationDTO["status"]): string {
   switch (status) {
     case "none": return "No request";
-    case "pending": return "Request under review";
-    case "approved": return "Cancellation approved";
-    case "denied": return "Seat remains confirmed";
+    case "pending": return "Waiting for review";
+    case "approved": return "Approved";
+    case "denied": return "Declined";
   }
 }
 function cancellationEntryTitle(status: "pending" | "approved" | "denied"): string {
   switch (status) {
-    case "pending": return "Request submitted";
-    case "approved": return "Request approved";
-    case "denied": return "Request declined";
+    case "pending": return "Waiting for review";
+    case "approved": return "Approved";
+    case "denied": return "Declined";
   }
 }

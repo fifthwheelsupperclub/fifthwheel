@@ -135,18 +135,18 @@ function itemStateLabel(state: WeeklyCloneOperationDTO["items"][number]["state"]
 }
 function conflictLabel(code: string | null): string {
   const labels: Record<string, string> = {
-    source_not_draft: "Only a draft can be cloned.", source_missing: "The source draft is no longer available.", source_changed: "The source changed after this preview.",
+    source_not_draft: "Only drafts can be copied.", source_missing: "The source draft is no longer available.", source_changed: "The source changed after this preview.",
     source_week_mismatch: "The source is outside the selected week.", target_invalid: "This draft cannot be placed in the selected target week.",
-    provider_unavailable: "The supply provider is unavailable.", protected_change: "A protected Table change blocks this clone.",
-    write_unknown: "We could not confirm whether Airtable saved this draft. Check the existing change before trying again.",
-    delete_unknown: "We could not confirm whether Airtable removed this draft. Check the existing change before trying again.",
+    provider_unavailable: "Airtable is unavailable.", protected_change: "This table has guests or payments, so it can’t be copied.",
+    write_unknown: "We’re not sure this copied. Check what happened before trying again.",
+    delete_unknown: "We’re not sure this was removed. Check what happened before trying again.",
   };
-  return code ? labels[code] ?? "This source needs staff review." : "Not eligible for cloning.";
+  return code ? labels[code] ?? "This source needs staff review." : "Can’t be copied.";
 }
 function undoBlockLabel(code: string | null): string {
   const labels: Record<string, string> = {
     target_changed: "A cloned draft has changed since it was created.", active_activity: "An invitation, Seat, or other protected activity now exists.",
-    provider_unavailable: "The provider is unavailable, so the undo cannot be confirmed.", operation_unresolved: "Resolve the clone operation before undoing it.",
+    provider_unavailable: "Airtable is unavailable, so we can’t confirm the undo.", operation_unresolved: "Finish checking this copy before undoing it.",
   };
   return code ? labels[code] ?? "Undo is currently blocked." : "Undo is currently blocked.";
 }
@@ -281,16 +281,16 @@ export function AdminSupplyWeeklyClone() {
         const result = parseResponse(await response.json().catch(() => null), isOperation);
         if (response.status === 401 || response.status === 403) { setOperationState(response.status === 401 ? "unauthenticated" : "forbidden"); setActionState("error"); setActionMessage(response.status === 401 ? "Sign in with an authorized staff account to continue." : "This operation is restricted to authorized administrators."); return; }
         if (result && !result.ok) { setActionState(result.error.retryable ? "unknown" : "error"); setActionMessage(result.error.message); if (result.error.retryable) await fetchOperation(memory.operationId); return; }
-        setActionState("unknown"); setActionMessage("The server response was interrupted. Reconcile this exact operation before retrying.");
+        setActionState("unknown"); setActionMessage("We’re not sure the copy finished. Check what happened before trying again.");
         await fetchOperation(memory.operationId); return;
       }
       const result = parseResponse(await response.json().catch(() => null), isOperation);
-      if (!result?.ok) { setActionState("unknown"); setActionMessage("The clone may have started, but its result could not be read. Reconcile this exact operation."); await fetchOperation(memory.operationId); return; }
+      if (!result?.ok) { setActionState("unknown"); setActionMessage("We’re not sure the copy finished. Check what happened before trying again."); await fetchOperation(memory.operationId); return; }
       setOperation(result.data); setOperationState("ready"); setActionState("idle"); setActionMessage("");
-      if (result.data.state === "outcome_unknown" || result.data.items.some((item) => item.state === "outcome_unknown")) setActionMessage("Some provider writes need exact marker reconciliation before another attempt.");
+      if (result.data.state === "outcome_unknown" || result.data.items.some((item) => item.state === "outcome_unknown")) setActionMessage("We’re not sure the copy finished. Check what happened before trying again.");
       void loadOperationList();
     } catch {
-      setActionState("unknown"); setActionMessage("The response was lost. Reconcile this exact operation before any retry."); await fetchOperation(memory.operationId);
+      setActionState("unknown"); setActionMessage("We’re not sure the copy finished. Check what happened before trying again."); await fetchOperation(memory.operationId);
     }
   }
 
@@ -299,13 +299,13 @@ export function AdminSupplyWeeklyClone() {
     setActionState("running"); setActionMessage("");
     try {
       const response = await fetch(`${clonePath}/operations/${encodeURIComponent(activeOperationId)}/reconcile`, { method: "POST", credentials: "same-origin", cache: "no-store", headers: { accept: "application/json", "content-type": "application/json" }, body: "{}" });
-      if (!response.ok) { const result = parseResponse(await response.json().catch(() => null), isOperation); setActionState("error"); setActionMessage(result && !result.ok ? result.error.message : "The operation could not be reconciled. No new write was started."); return; }
+      if (!response.ok) { const result = parseResponse(await response.json().catch(() => null), isOperation); setActionState("error"); setActionMessage(result && !result.ok ? result.error.message : "Couldn’t check. Nothing new was copied."); return; }
       const result = parseResponse(await response.json().catch(() => null), isOperation);
       if (!result?.ok) { setActionState("unknown"); setActionMessage("The reconciliation result could not be read. Reload this operation before retrying."); await fetchOperation(activeOperationId); return; }
       setOperation(result.data); setOperationState("ready"); setActionState("idle");
-      setActionMessage(result.data.retryDisposition === "same_operation_after_no_write" ? "No clone write was found. The same operation can now be retried safely." : "The provider marker check is complete. Review the item states below.");
+      setActionMessage(result.data.retryDisposition === "same_operation_after_no_write" ? "Nothing was copied. Safe to try again." : "Check complete. See each table below.");
       void loadOperationList();
-    } catch { setActionState("unknown"); setActionMessage("Reconciliation was interrupted. Reload this operation before retrying."); await fetchOperation(activeOperationId); }
+    } catch { setActionState("unknown"); setActionMessage("Couldn’t check. Reload and try again."); await fetchOperation(activeOperationId); }
   }
 
   async function retrySameOperation() {
@@ -342,23 +342,23 @@ export function AdminSupplyWeeklyClone() {
   }
 
   return <main className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
-    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Table supply</a><span>/</span>Weekly preview &amp; clone</div>
+    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Copy a week</div>
     <header className="page-heading-row weekly-clone-heading">
-      <div><p className="eyebrow">TABLES / WEEKLY SUPPLY</p><h1 id="weekly-clone-heading">Preview and copy a week of drafts.</h1><p className="page-intro">See which unpublished Table drafts will be copied into another week. Published Tables and their activity stay unchanged.</p></div>
+      <div><h1 id="weekly-clone-heading">Copy a week</h1><p className="page-intro">Copy draft tables from one week to another. Only drafts are copied.</p></div>
       <span className="status-pill status-pill-neutral"><CalendarDays aria-hidden="true" />Atlanta calendar weeks</span>
     </header>
 
-    <aside className="weekly-clone-trust-note"><ShieldCheck aria-hidden="true" /><div><strong>Drafts only</strong><p>This copies eligible drafts only. It does not copy invitations, Seats, payments, attendance, or published Tables. Airtable changes are disabled outside the local test preview.</p></div></aside>
+    <aside className="weekly-clone-trust-note"><ShieldCheck aria-hidden="true" /><div><strong>Drafts only</strong><p>Only drafts are copied.</p></div></aside>
 
     <section className="weekly-clone-card weekly-clone-schedule" aria-labelledby="weekly-preview-title">
-      <div className="weekly-clone-section-heading"><div><p className="eyebrow">01 / READ-ONLY PREVIEW</p><h2 id="weekly-preview-title">Choose source and destination weeks</h2><p>Weeks run Monday through Sunday in Atlanta time. Each source date shifts by the exact whole-week difference.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />America/New_York</span></div>
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-preview-title">1 · Pick weeks</h2><p>Same day and time, different week.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />America/New_York</span></div>
       <form className="weekly-clone-week-form" onSubmit={loadPreview}>
-        <label className="weekly-clone-field"><span>Source week starts Monday</span><input type="date" value={sourceWeekStart} onChange={(event) => { setSourceWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-source-hint" /><small id="weekly-source-hint">The preview includes draft records scheduled within this week.</small></label>
+        <label className="weekly-clone-field"><span>Copy from (week of)</span><input type="date" value={sourceWeekStart} onChange={(event) => { setSourceWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-source-hint" /><small id="weekly-source-hint">The preview includes draft records scheduled within this week.</small></label>
         <div className="weekly-clone-shift" aria-hidden="true"><ArrowRight /></div>
-        <label className="weekly-clone-field"><span>Target week starts Monday</span><input type="date" value={targetWeekStart} onChange={(event) => { setTargetWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-target-hint" /><small id="weekly-target-hint">The weekday and local start time are preserved.</small></label>
-        <div className="weekly-clone-week-actions"><button className="button button-primary" type="submit" disabled={previewState === "loading"}>{previewState === "loading" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}Preview this week</button></div>
+        <label className="weekly-clone-field"><span>Copy to (week of)</span><input type="date" value={targetWeekStart} onChange={(event) => { setTargetWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-target-hint" /><small id="weekly-target-hint">The weekday and local start time are preserved.</small></label>
+        <div className="weekly-clone-week-actions"><button className="button button-primary" type="submit" disabled={previewState === "loading"}>{previewState === "loading" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}Preview</button></div>
       </form>
-      {previewState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading the authorized weekly plan…</div>}
+      {previewState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading…</div>}
       {(previewState === "error" || previewState === "unauthenticated" || previewState === "forbidden") && <div className="weekly-clone-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" /><span>{previewMessage}</span><button className="button button-outline" type="button" onClick={() => void loadPreview()}>Try again</button></div>}
     </section>
 
@@ -366,9 +366,9 @@ export function AdminSupplyWeeklyClone() {
       <div className="weekly-clone-section-heading"><div><p className="eyebrow">02 / REVIEW PLAN</p><h2 id="weekly-plan-title">Drafts to review</h2><p>{formatDate(preview.sourceWeekStart)} through {formatDate(addDays(preview.sourceWeekStart, 6))} → {formatDate(preview.targetWeekStart)} through {formatDate(addDays(preview.targetWeekStart, 6))} <span className="weekly-clone-delta">{dayDelta > 0 ? "+" : ""}{dayDelta} {Math.abs(dayDelta) === 1 ? "week" : "weeks"}</span></p></div><div className="weekly-clone-counts"><span><strong>{preview.eligibleCount}</strong> eligible</span><span><strong>{preview.conflictCount}</strong> need review</span></div></div>
       <div className={`weekly-clone-provider ${preview.providerState === "fixture" ? "is-fixture" : ""}`} role="status">
         {preview.providerState === "fixture" ? <Check aria-hidden="true" /> : preview.providerState === "unavailable" ? <WifiOff aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
-        <span>{preview.providerState === "fixture" ? "Synthetic local provider fixture" : preview.providerState === "disabled_unmapped" ? "Provider mapping is not configured" : preview.providerState === "ready" ? "Provider is configured; production writes are disabled in this workspace" : "Provider is unavailable"}</span>
+        <span>{preview.providerState === "fixture" ? "Test mode: changes don’t reach Airtable" : preview.providerState === "disabled_unmapped" ? "Airtable isn’t set up yet" : preview.providerState === "ready" ? "Editing is turned off here" : "Airtable is unavailable"}</span>
       </div>
-      {preview.items.length === 0 ? <div className="weekly-clone-empty"><Table2 aria-hidden="true" /><h3>No drafts found for this source week</h3><p>The preview does not invent records. Choose another week or return to Table supply.</p><a className="button button-outline" href="/admin/tables">Back to Tables<ArrowRight aria-hidden="true" /></a></div> : <div className="weekly-clone-plan-list" role="list" aria-label="Weekly clone preview items">
+      {preview.items.length === 0 ? <div className="weekly-clone-empty"><Table2 aria-hidden="true" /><h3>No drafts found for this source week</h3><p>Pick another week or go back to Tables.</p><a className="button button-outline" href="/admin/tables">Back to Tables<ArrowRight aria-hidden="true" /></a></div> : <div className="weekly-clone-plan-list" role="list" aria-label="Weekly clone preview items">
         {preview.items.map((item) => <article className={`weekly-clone-plan-item ${item.eligibility === "conflict" ? "is-conflict" : ""}`} role="listitem" key={`${item.sourceTableId}:${item.sourceRevisionId}`}>
           <span className="weekly-clone-item-icon">{item.eligibility === "eligible" ? <Copy aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span>
           <div className="weekly-clone-item-main"><h3>{item.title || "Untitled draft"}</h3><p>{formatDate(item.sourceLocalDate)} <ArrowRight aria-hidden="true" /> {formatDate(item.targetLocalDate)}</p>{item.eligibility === "conflict" && <small>{conflictLabel(item.conflictCode)}</small>}</div>
@@ -376,45 +376,45 @@ export function AdminSupplyWeeklyClone() {
         </article>)}
       </div>}
       {preview.items.length > 0 && <footer className="weekly-clone-plan-footer"><p>This preview is tied to the draft versions shown. If any draft changes, create a new preview before copying.</p><button className="button button-primary" type="button" disabled={!canClone} onClick={() => setDialog("clone")}><Copy aria-hidden="true" />Review copy</button></footer>}
-      {!previewFixtureWritesEnabled && <p className="weekly-clone-disabled-note"><WifiOff aria-hidden="true" />Clone and undo actions stay locked until the guarded fixture endpoints pass their idempotency and recovery checks. This preview is read-only.</p>}
+      {!previewFixtureWritesEnabled && <p className="weekly-clone-disabled-note"><WifiOff aria-hidden="true" />Copying is turned off here.</p>}
     </section>}
 
     <section className="weekly-clone-card weekly-clone-recent" aria-labelledby="weekly-recent-title">
-      <div className="weekly-clone-section-heading"><div><p className="eyebrow">03 / RECENT ACTIVITY</p><h2 id="weekly-recent-title">Recent draft copies</h2><p>These saved results are available if you close and reopen this page.</p></div><button className="button button-outline" type="button" disabled={operationListState === "loading"} onClick={() => void loadOperationList()}><RefreshCw aria-hidden="true" />Refresh list</button></div>
-      {operationListState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading recent operations…</div>}
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-recent-title">Recent copies</h2></div><button className="button button-outline" type="button" disabled={operationListState === "loading"} onClick={() => void loadOperationList()}><RefreshCw aria-hidden="true" />Refresh list</button></div>
+      {operationListState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading…</div>}
       {(operationListState === "error" || operationListState === "unauthenticated" || operationListState === "forbidden") && <div className="weekly-clone-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" /><span>{operationListMessage}</span><button className="button button-outline" type="button" onClick={() => void loadOperationList()}>Try again</button></div>}
-      {operationListState === "ready" && operationList?.items.length === 0 && <div className="weekly-clone-empty weekly-clone-empty-compact"><Table2 aria-hidden="true" /><h3>No weekly clone operations yet</h3><p>Completed, partial, and unresolved runs will appear here after the first operation.</p></div>}
+      {operationListState === "ready" && operationList?.items.length === 0 && <div className="weekly-clone-empty weekly-clone-empty-compact"><Table2 aria-hidden="true" /><h3>None yet</h3><p></p></div>}
       {operationListState === "ready" && operationList && operationList.items.length > 0 && <div className="weekly-clone-recent-list" role="list" aria-label="Recent weekly clone operations">{operationList.items.map((item) => <article className="weekly-clone-recent-item" role="listitem" key={item.operationId}>
         <div className="weekly-clone-recent-main"><span className={`status-pill ${item.state === "completed" || item.state === "undone" ? "status-pill-success" : item.state === "partial" || item.state.includes("unknown") || item.state === "undo_refused" ? "status-pill-warning" : "status-pill-pending"}`}>{stateLabel(item.state)}</span><strong>{formatDate(item.sourceWeekStart)} <ArrowRight aria-hidden="true" /> {formatDate(item.targetWeekStart)}</strong><small>{item.counts.created} created · {item.counts.unresolved} unresolved · {item.counts.failed} failed · updated {formatTimestamp(item.updatedAt)}</small>{item.undoState === "blocked" && <small className="weekly-clone-recent-warning">Undo blocked: {undoBlockLabel(item.undoBlockedCode)}</small>}</div>
-        <button className="button button-outline" type="button" aria-label={`Open weekly operation ${item.operationId}`} onClick={() => openOperation(item)}>Open run<ArrowRight aria-hidden="true" /></button>
+        <button className="button button-outline" type="button" aria-label={`Open weekly operation ${item.operationId}`} onClick={() => openOperation(item)}>Open<ArrowRight aria-hidden="true" /></button>
       </article>)}</div>}
-      {operationCursor && <div className="weekly-clone-load-more"><button className="button button-outline" type="button" onClick={() => void loadOperationList(operationCursor, true)}>Load older runs<ArrowRight aria-hidden="true" /></button></div>}
+      {operationCursor && <div className="weekly-clone-load-more"><button className="button button-outline" type="button" onClick={() => void loadOperationList(operationCursor, true)}>Show older<ArrowRight aria-hidden="true" /></button></div>}
     </section>
 
     {operationMemory && <section className="weekly-clone-card weekly-clone-operation" aria-labelledby="weekly-operation-title">
       <div className="weekly-clone-section-heading"><div><p className="eyebrow">COPY STATUS</p><h2 id="weekly-operation-title">Draft copy and recovery</h2><p>Run reference <code>{operationMemory.operationId}</code></p></div>
         {operation && <span className={`status-pill status-pill-${statusTone}`}>{operation.state === "running" || operation.state === "undoing" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : operation.state === "completed" || operation.state === "undone" ? <Check aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}{stateLabel(operation.state)}</span>}
       </div>
-      {operationState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading the saved operation…</div>}
-      {(operationState === "error" || operationState === "unauthenticated" || operationState === "forbidden") && <div className="weekly-clone-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" /><span>{actionMessage || "The saved operation could not be loaded."}</span><button className="button button-outline" type="button" onClick={() => void fetchOperation(operationMemory.operationId)}>Reload operation</button>{actionState === "unknown" && <button className="button button-outline" type="button" onClick={() => void reconcile()}>Reconcile exact operation</button>}</div>}
+      {operationState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading…</div>}
+      {(operationState === "error" || operationState === "unauthenticated" || operationState === "forbidden") && <div className="weekly-clone-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" /><span>{actionMessage || "Couldn’t load this copy."}</span><button className="button button-outline" type="button" onClick={() => void fetchOperation(operationMemory.operationId)}>Reload</button>{actionState === "unknown" && <button className="button button-outline" type="button" onClick={() => void reconcile()}>Check what happened</button>}</div>}
       {operation && operationState === "ready" && <>
-        {!operationFixtureWritesEnabled && <p className="weekly-clone-disabled-note"><WifiOff aria-hidden="true" />Clone and undo controls remain locked until the guarded fixture endpoints pass their retry, marker reconciliation, and safe-undo checks.</p>}
+        {!operationFixtureWritesEnabled && <p className="weekly-clone-disabled-note"><WifiOff aria-hidden="true" />Copying is turned off here.</p>}
         <div className="weekly-clone-operation-meta"><span>From week <strong>{formatDate(operation.sourceWeekStart)}</strong></span><span>To week <strong>{formatDate(operation.targetWeekStart)}</strong></span><span>Saved plan version <strong>{operation.manifestRevision}</strong></span></div>
-        <div className="weekly-clone-operation-list" role="list" aria-label="Clone operation item results">{operation.items.map((item) => <article className="weekly-clone-operation-item" role="listitem" key={`${item.sourceTableId}:${item.sourceRevisionId}`}><span className={`weekly-clone-result-mark state-${item.state}`}>{item.state === "created" || item.state === "undone" ? <Check aria-hidden="true" /> : item.state.includes("unknown") || item.state === "failed" || item.state === "undo_refused" ? <CircleAlert aria-hidden="true" /> : <LoaderCircle aria-hidden="true" />}</span><div><strong>{item.targetTableId ? "Draft clone" : "Source draft"}</strong><small>{itemStateLabel(item.state)}{item.safeCode ? ` · ${conflictLabel(item.safeCode)}` : ""}</small></div>{item.targetTableId && <a className="weekly-clone-target-id" href={`/admin/tables/${encodeURIComponent(item.targetTableId)}`}>Open cloned draft<ArrowRight aria-hidden="true" /></a>}</article>)}</div>
+        <div className="weekly-clone-operation-list" role="list" aria-label="Clone operation item results">{operation.items.map((item) => <article className="weekly-clone-operation-item" role="listitem" key={`${item.sourceTableId}:${item.sourceRevisionId}`}><span className={`weekly-clone-result-mark state-${item.state}`}>{item.state === "created" || item.state === "undone" ? <Check aria-hidden="true" /> : item.state.includes("unknown") || item.state === "failed" || item.state === "undo_refused" ? <CircleAlert aria-hidden="true" /> : <LoaderCircle aria-hidden="true" />}</span><div><strong>{item.targetTableId ? "Draft clone" : "Source draft"}</strong><small>{itemStateLabel(item.state)}{item.safeCode ? ` · ${conflictLabel(item.safeCode)}` : ""}</small></div>{item.targetTableId && <a className="weekly-clone-target-id" href={`/admin/tables/${encodeURIComponent(item.targetTableId)}`}>Open copied draft<ArrowRight aria-hidden="true" /></a>}</article>)}</div>
         {operation.undoState === "blocked" && <div className="weekly-clone-inline-state is-warning" role="status"><CircleAlert aria-hidden="true" />{undoBlockLabel(operation.undoBlockedCode)}</div>}
-        {(operation.state === "outcome_unknown" || operation.state === "undo_unknown" || operation.items.some((item) => item.state === "outcome_unknown" || item.state === "undo_unknown") || operation.retryDisposition === "reconcile_first") && <div className="weekly-clone-recovery"><div><strong>Check what happened before trying again.</strong><p>This check looks up the existing change. It will not copy or remove drafts again.</p></div><button className="button button-outline" type="button" disabled={actionState === "running"} onClick={() => void reconcile()}><RefreshCw aria-hidden="true" />Check this run</button></div>}
+        {(operation.state === "outcome_unknown" || operation.state === "undo_unknown" || operation.items.some((item) => item.state === "outcome_unknown" || item.state === "undo_unknown") || operation.retryDisposition === "reconcile_first") && <div className="weekly-clone-recovery"><div><strong>Check what happened before trying again.</strong><p>This check looks up the existing change. It will not copy or remove drafts again.</p></div><button className="button button-outline" type="button" disabled={actionState === "running"} onClick={() => void reconcile()}><RefreshCw aria-hidden="true" />Check what happened</button></div>}
         {operation.retryDisposition === "same_operation_after_no_write" && operationMemory.expectedPlanHash && <div className="weekly-clone-recovery"><div><strong>No draft copy was found for this run.</strong><p>Trying again will use the same saved plan.</p></div><button className="button button-primary" type="button" disabled={actionState === "running" || !operationFixtureWritesEnabled} onClick={() => void retrySameOperation()}><RefreshCw aria-hidden="true" />Try again</button></div>}
-        {operation.undoState === "available" && <div className="weekly-clone-undo"><div><strong>Undo this clone?</strong><p>Only unchanged cloned drafts without invitations, Seats, or protected activity can be removed.</p></div><button className="button button-outline" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => setDialog("undo")}><Undo2 aria-hidden="true" />Review undo</button></div>}
+        {operation.undoState === "available" && <div className="weekly-clone-undo"><div><strong>Undo this copy?</strong><p>Copied drafts that haven’t been edited or used will be removed.</p></div><button className="button button-outline" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => setDialog("undo")}><Undo2 aria-hidden="true" />Undo…</button></div>}
         {operation.undoRetryDisposition === "same_operation_after_no_delete" && <div className="weekly-clone-recovery"><div><strong>No drafts were removed.</strong><p>Trying again will repeat the same removal request.</p></div><button className="button button-primary" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => void runUndo()}><RefreshCw aria-hidden="true" />Try removal again</button></div>}
         {operation.undoState === "undone" && <div className="weekly-clone-inline-state is-success" role="status"><Check aria-hidden="true" />The eligible clones have been undone. Source drafts and runtime records were not changed.</div>}
       </>}
       {actionMessage && operationState === "ready" && <p className={`weekly-clone-action-message ${actionState === "error" || actionState === "unknown" ? "is-warning" : ""}`} role={actionState === "error" || actionState === "unknown" ? "alert" : "status"}>{actionState === "unknown" && <CircleAlert aria-hidden="true" />}{actionMessage}</p>}
-      {actionState === "running" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Saving and checking the durable operation…</div>}
+      {actionState === "running" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Working…</div>}
     </section>}
 
     <dialog className="weekly-clone-dialog" ref={dialogRef} aria-labelledby="weekly-clone-dialog-title" onCancel={(event) => { event.preventDefault(); setDialog(null); }} onClick={(event) => { if (event.target === dialogRef.current) setDialog(null); }}>
-      {dialog === "clone" && <><div className="weekly-clone-dialog-icon"><Copy aria-hidden="true" /></div><p className="eyebrow">CONFIRM DRAFT CLONE</p><h2 id="weekly-clone-dialog-title">Clone eligible drafts to this week?</h2><p>This will create up to <strong>{preview?.eligibleCount ?? 0} draft records</strong> for the week of {preview ? formatDate(preview.targetWeekStart) : "the selected target week"}. It will not publish them or alter invitations, Seats, payments, attendance, or existing published snapshots.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Cancel</button><button className="button button-primary" type="button" disabled={!preview || !previewFixtureWritesEnabled || actionState === "running"} onClick={() => { if (!preview) return; const memory: OperationMemory = { operationId: crypto.randomUUID(), sourceWeekStart: preview.sourceWeekStart, targetWeekStart: preview.targetWeekStart, expectedPlanHash: preview.planHash }; setDialog(null); void runClone(memory); }}><Copy aria-hidden="true" />Create draft clones</button></div></>}
-      {dialog === "undo" && operation && <><div className="weekly-clone-dialog-icon"><Undo2 aria-hidden="true" /></div><p className="eyebrow">CONFIRM UNDO</p><h2 id="weekly-clone-dialog-title">Remove unchanged weekly clones?</h2><p>The server will recheck every clone’s revision and activity before deleting anything. If any cloned record changed or gained an invitation/Seat, that item will be refused safely.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Keep clones</button><button className="button button-primary" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => void runUndo()}><Undo2 aria-hidden="true" />Confirm safe undo</button></div></>}
+      {dialog === "clone" && <><div className="weekly-clone-dialog-icon"><Copy aria-hidden="true" /></div><h2 id="weekly-clone-dialog-title">Copy {preview?.eligibleCount ?? 0} drafts to the week of {preview ? formatDate(preview.targetWeekStart) : "the selected week"}?</h2><p>They’ll be drafts. Nothing goes live.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Cancel</button><button className="button button-primary" type="button" disabled={!preview || !previewFixtureWritesEnabled || actionState === "running"} onClick={() => { if (!preview) return; const memory: OperationMemory = { operationId: crypto.randomUUID(), sourceWeekStart: preview.sourceWeekStart, targetWeekStart: preview.targetWeekStart, expectedPlanHash: preview.planHash }; setDialog(null); void runClone(memory); }}><Copy aria-hidden="true" />Copy drafts</button></div></>}
+      {dialog === "undo" && operation && <><div className="weekly-clone-dialog-icon"><Undo2 aria-hidden="true" /></div><h2 id="weekly-clone-dialog-title">Undo this copy?</h2><p>We’ll remove copied drafts that haven’t been edited or used. Anything edited stays.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Keep copies</button><button className="button button-primary" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => void runUndo()}><Undo2 aria-hidden="true" />Undo copy</button></div></>}
     </dialog>
   </main>;
 }

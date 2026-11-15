@@ -71,7 +71,7 @@ export function createInvitationDeliveryService(dependencies: InvitationDelivery
       try { claim = await dependencies.beginAttempt({ deliveryId: context.deliveryId, operationId, startedByUserId: decision.principal.userId }); }
       catch { return fail("temporarily_unavailable", "The send status is uncertain. Check its delivery history before retrying."); }
       if (!claim) return fail("conflict", "This invitation is already being sent or has a result that needs review.");
-      if (!claim.created) return fail("conflict", "This send operation was already claimed. Review its delivery status before taking another action.");
+      if (!claim.created) return fail("conflict", "Something changed. Reload and try again.");
 
       let finalState: "accepted" | "failed" | "unknown" = "unknown";
       let providerMessageId: string | undefined;

@@ -658,6 +658,12 @@ Apply as a rule in each `*.http.server.ts` / `*.service.server.ts` `safeMessage`
 
 ## E. Prioritized refactor plan
 
+### Implementation status (2026-11-14)
+
+Applied in the app: step 1 (shared staff and guest nav, `copy/states.ts`), D0–D1, D2–D5, D6–D7, D8–D13 (except the rows below). Browser tests that read changed copy were updated. Ten browser specs (w03, w04, w05, w06, w065) fail on the unmodified code too (they need local fixtures), so their copy updates are unverified.
+
+Not applied: rows waiting on decisions (D-3, D-4, D-8, D-9 Accept→Publish label split, D-11, D-12, D-13, D-14, D-15 applied, D-16, D-17, D-19, D-20), the shared `PageState` component, the guest nav footnotes and role badges, the "How it works" explainer, clock-time itineraries, payment disclosure block, the T−24 and cancellation emails' remaining wording, `scripts/check-copy.mjs`, and `/preview`.
+
 ### E1. Order of work (and why)
 
 | Step | Work | Depends on | Why this order |

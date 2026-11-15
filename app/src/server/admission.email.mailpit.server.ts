@@ -179,16 +179,15 @@ export function createMailpitAdmissionEmailProvider(
       const messageId = messageIdFor(input.deliveryId, input.attemptId);
       const escapedLink = escapeHtml(actionLink);
       const text = [
-        "You have been invited to join Fifth Wheel.",
-        "This invitation grants app access. Table invitations are separate.",
-        "Use this secure sign-in link:",
+        "You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.",
+        "Sign in:",
         actionLink,
       ].join("\n\n");
-      const html = `<p>You have been invited to join Fifth Wheel.</p><p>This invitation grants app access. Table invitations are separate.</p><p><a href="${escapedLink}">Sign in to Fifth Wheel</a></p>`;
+      const html = `<p>You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.</p><p><a href="${escapedLink}">Sign in</a></p>`;
       const payload = {
         From: { Email: config.fromEmail, ...(config.fromName ? { Name: config.fromName } : {}) },
         To: [{ Email: input.recipientEmail }],
-        Subject: "Your Fifth Wheel app invitation",
+        Subject: "You’re in: welcome to Fifth Wheel",
         Text: text,
         HTML: html,
         Headers: {

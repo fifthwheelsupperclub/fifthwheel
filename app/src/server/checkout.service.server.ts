@@ -177,7 +177,7 @@ export function createCheckoutService(deps: CheckoutServiceDependencies): Checko
     async finalizeReturn(input: Parameters<CheckoutService["finalizeReturn"]>[0]): Promise<CheckoutResult<CheckoutRecoveryDTO>> {
       if (!uuid.test(input.invitationId) || !uuid.test(input.attemptId)
         || typeof input.sessionId !== "string" || !/^cs_(?:test_|live_)[A-Za-z0-9]+$/.test(input.sessionId)) {
-        return fail("invalid_input", "Check the checkout return details and try again.");
+        return fail("invalid_input", "Something went wrong. Reload and try again.");
       }
       const resolution = await member(input.accessToken);
       if (!resolution.ok) return memberFailure(resolution);

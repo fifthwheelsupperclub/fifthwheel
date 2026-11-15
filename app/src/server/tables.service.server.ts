@@ -19,7 +19,7 @@ function failure<T>(code: TableServiceFailure["code"], safeMessage: string): Tab
 function mapRepositoryError(error: unknown): TableServiceFailure {
   if (error instanceof TablesRepositoryError) {
     switch (error.code) {
-      case "profile_incomplete": return { code: "profile_incomplete", safeMessage: "Finish identity review before browsing Tables or requesting a Seat." };
+      case "profile_incomplete": return { code: "profile_incomplete", safeMessage: "Finish your profile review first." };
       case "not_found": return { code: "not_found", safeMessage: "This Table is no longer available." };
       case "not_future": return { code: "not_future", safeMessage: "This Table is no longer available for requests." };
       case "invalid_input": return { code: "invalid_input", safeMessage: "Check the filters and try again." };
@@ -108,13 +108,13 @@ export function createTablesService(dependencies: TablesServiceDependencies): Ta
       catch (error) { return { ok: false as const, error: mapRepositoryError(error) }; }
     },
     async listRequests(input: TableRequestHistoryInput): Promise<TableServiceResult<TableRequestHistoryDTO>> {
-      if (!validHistory(input)) return failure("invalid_input", "Check the request history page.");
+      if (!validHistory(input)) return failure("invalid_input", "Something went wrong. Reload and try again.");
       let principal;
       try { principal = await resolve(input.accessToken); } catch { return failure("temporarily_unavailable", "Your requests are temporarily unavailable."); }
       const decision = validAccess(principal);
       if (!decision.allowed) {
         const code = decision.reason === "unauthenticated" || decision.reason === "email-unverified" ? "unauthenticated" : "forbidden";
-        return failure(code, code === "unauthenticated" ? "Sign in to view your requests." : "App member access is required to view requests.");
+        return failure(code, code === "unauthenticated" ? "Sign in to view your requests." : "You don’t have access yet.");
       }
       try { return { ok: true as const, value: await dependencies.repository.listMemberRequests(decision.principal.userId, { cursor: input.cursor, limit: input.limit }) }; }
       catch (error) { return { ok: false as const, error: mapRepositoryError(error) }; }
@@ -126,7 +126,7 @@ export function createTablesService(dependencies: TablesServiceDependencies): Ta
       const decision = validAccess(principal);
       if (!decision.allowed) {
         const code = decision.reason === "unauthenticated" || decision.reason === "email-unverified" ? "unauthenticated" : "forbidden";
-        return failure(code, code === "unauthenticated" ? "Sign in to withdraw this request." : "App member access is required to withdraw a request.");
+        return failure(code, code === "unauthenticated" ? "Sign in to withdraw this request." : "You don’t have access yet.");
       }
       try { return { ok: true as const, value: await dependencies.repository.withdrawRequest(decision.principal.userId, input.requestId, input.request.operationId) }; }
       catch (error) { return { ok: false as const, error: mapRepositoryError(error) }; }
