@@ -223,3 +223,10 @@
 .roster-split .roster-applicant-main strong { font-size: var(--text-base); }
 .roster-split .roster-applicant-main small { color: var(--text-muted); font-size: var(--text-sm); }
 .roster-split .roster-reasons { color: var(--warning-fg); font-size: var(--text-sm); }
+
+/* ---- Supply detail (T-20) ---- */
+.supply-danger-zone { margin: var(--space-7) 0 0; padding-top: var(--space-5); border-top: 1px solid var(--danger-line); }
+.danger-zone-title { margin: 0 0 var(--space-3); font-family: var(--display); font-size: var(--display-sm); font-weight: 400; color: var(--danger-fg); }
+.supply-modal .button-danger { background: var(--wine); border-color: var(--wine); color: var(--text); }
+.supply-detail-form .supply-editor-actions { position: sticky; bottom: 0; z-index: 4; padding: var(--space-3) 0; background: var(--bg); }
+@media (max-width: 820px) { .supply-detail-form .supply-editor-actions { bottom: 0; } }

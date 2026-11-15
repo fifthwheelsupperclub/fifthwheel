@@ -25,10 +25,11 @@ export function TableCancelPanel({ tableId }: Readonly<{ tableId: string }>) {
     } catch { setMessage("We’re not sure that worked. Try again. It’s safe and won’t cancel twice."); setState("error"); }
   }
 
-  return <section className="supply-danger-zone" aria-labelledby="table-cancel-title" style={{ margin: "32px auto", maxWidth: 960, padding: "0 16px" }}>
+  return <section className="supply-danger-zone" aria-labelledby="table-cancel-title">
+    <h2 className="danger-zone-title">Danger zone</h2>
     <div className="supply-review-actions">
       <p id="table-cancel-title"><TriangleAlert aria-hidden="true" /> <strong>Cancel this table.</strong> Ends requests and invitations, cancels every paid seat and owes each guest a refund.</p>
-      <div><button className="button button-outline" type="button" onClick={start}>Cancel table…</button></div>
+      <div><button className="button button-danger" type="button" onClick={start}>Cancel table…</button></div>
     </div>
     {open && <div className="supply-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && state !== "working") setOpen(false); }}>
       <section className="supply-modal supply-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="table-cancel-dialog-title">
@@ -44,7 +45,7 @@ export function TableCancelPanel({ tableId }: Readonly<{ tableId: string }>) {
             <textarea value={reason} maxLength={500} rows={3} onChange={(event) => setReason(event.currentTarget.value)} disabled={state === "working"} /></label>
           {message && <p role="alert" className="supply-inline-error">{message}</p>}
           <div className="supply-modal-actions"><button className="button button-outline" type="button" onClick={() => setOpen(false)} disabled={state === "working"}>Keep table</button>
-            <button className="button button-primary" type="button" onClick={() => void confirm()} disabled={state === "working" || reason.trim().length === 0}>{state === "working" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{state === "working" ? "Cancelling…" : "Cancel table"}</button></div>
+            <button className="button button-danger" type="button" onClick={() => void confirm()} disabled={state === "working" || reason.trim().length === 0}>{state === "working" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{state === "working" ? "Cancelling…" : "Cancel table"}</button></div>
         </>}
       </section>
     </div>}
