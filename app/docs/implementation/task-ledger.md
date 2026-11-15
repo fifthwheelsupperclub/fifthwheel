@@ -88,3 +88,18 @@ Evidence: DB harnesses `test-w10-ops-db.mjs` and `test-w10-notices-db.mjs` (roll
 - Same runner now continues after payment: member requests cancellation (Seat → `cancellation_requested`, rights kept) → admin approves a **full $25 refund** in the UI → refund obligation created → admin "Send refund" queues it → authenticated worker pass (`/api/internal/worker`, per-run `JOB_SECRET`/`REFUND_WORKER_SECRET`) claims and completes it → obligation `succeeded` with a real Stripe test-mode refund id (`re_…`), operation `succeeded`. Fixtures cleaned.
 - Defect found and fixed: the refund adapter sent a `currency` parameter, which Stripe rejects on `POST /v1/refunds` (every refund would have failed as `provider_rejected`). Removed; the adapter still verifies currency and amount on the response. Unit test updated.
 - Still open for W07.7: provider-failed/unknown refund recovery against Stripe, partial refund, duplicate/out-of-order/wrong-mode webhook replay, concurrent last-slot, abandoned/expired checkout, late charge, refund-queue email delivery check. Box stays unchecked.
+
+### 2026-11-15 (later) — W07.7 money scenarios, real stack + Stripe test mode
+
+`node scripts/run-w077-money-browser.mjs` (2 Tables, 10 synthetic members, signed-webhook helper using the test `whsec_`, real sandbox payments/refunds/expiry; fixtures cleaned, open sandbox sessions expired). 6/6 passed:
+
+| Scenario | Result |
+|---|---|
+| S1 webhook replay | Bad signature and `livemode:true` events rejected (≥400); same event id twice → one inbox row; new-id replay and a signed wrong-amount event on a paid session return 200 but the ledger stays 1 Seat / 1 payment / 2500 (the service re-reads the session from Stripe; the event is only a trigger). |
+| S2 partial refund + repeated cancellation | Second request while pending → 409; admin approves $12.50 → obligation 1250 → worker → real Stripe refund of 1250 → `succeeded`; request on the now-cancelled Seat → 409. |
+| S3 provider refund failure | Charge refunded out-of-band; app refund → Stripe rejects → obligation `failed` (`provider_rejected`), operator page shows Failed with no Send button. |
+| S4 abandoned checkout | Expiring the real Stripe session → real webhook → attempt `expired`, no Seat; member can start a new checkout (new session). |
+| S5 late charge | Invitation revoked mid-payment, member pays → no Seat, `late_checkout_ineligible` obligation for 2500 → sent → refund `succeeded`. (Note: a payment arriving after the 30-minute hold lapsed but with the invitation/roster still valid DOES fulfil a Seat when capacity allows — by design of the fulfilment re-check; not a defect.) |
+| S6 last-slot concurrency | Six simultaneous checkout starts for five slots → five 200s, one 409; exactly five live holds, no Seats. |
+
+Not covered (W07.7 stays unchecked): refund outcome `unknown` after a provider timeout and its reconcile path; checkout-create timeout reuse of the same operation; simultaneous webhook + browser-return race on one session; out-of-order events beyond the replay above; payment after the last slot was taken by another paid Seat (S5 used revocation as the ineligible trigger); email-outage behaviour for refund/cancellation notices; Dashboard card-only restriction (still a release-owner action).
