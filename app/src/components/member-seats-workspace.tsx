@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { PageHeader } from "./ui/page-header";
 import { Link } from "@tanstack/react-router";
 import {
   AlertCircle, ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, CreditCard,
@@ -267,7 +268,7 @@ export function MemberSeatsListWorkspace() {
 
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
     <div className="product-breadcrumb"><span>MEMBER WORKSPACE</span><span>·</span><span>My Seats</span></div>
-    <div className="member-seats-heading"><div><p className="eyebrow">YOUR EVENINGS</p><h1>My Seats</h1><p className="page-intro">Your upcoming and past tables.</p></div><button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button></div>
+    <PageHeader className="member-seats-heading" title="My Seats" description="Your upcoming and past tables." actions={<button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button>} />
     {message && <p className={`member-seat-notice ${state === "error" ? "is-error" : ""}`} role={state === "error" ? "alert" : "status"}><AlertCircle aria-hidden="true" />{message}</p>}
     {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading your Seats" detail="Checking the latest saved payment and Seat status." />}
     {state === "unauthenticated" && <SeatState icon={<ShieldCheck />} title="Sign in to view your Seats" detail="Your payment and Seat records are private to your member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fmy-seats">Sign in<ArrowRight aria-hidden="true" /></a>} />}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -205,11 +206,8 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
   const admin = actor === "admin";
   return <StaffShell actor={actor} active="queue">
     <div className="product-breadcrumb">{admin ? "People" : "Host tools"}<span>›</span>{admin ? "Seat requests" : "Assigned Tables"}</div>
-    <div className="page-heading-row roster-heading">
-      <div><h1>{admin ? "Seat requests" : "Your tables"}</h1>
-        <p className="page-intro">{admin ? "Pick a group of 3–5 for each table." : "Suggest a group for each table. An admin approves it."}</p></div>
-      <button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh Tables" disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>
-    </div>
+    <PageHeader className="roster-heading" title={admin ? "Seat requests" : "Your tables"} description={admin ? "Pick a group of 3–5 for each table." : "Suggest a group for each table. An admin approves it."}
+      actions={<button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh Tables" disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
     {state === "loading" ? <div className="roster-state" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading Tables…</span></div>
       : state === "unauthenticated" ? <WorkspaceState icon={<ShieldCheck />} title="Sign in to continue" detail="This workspace is available to authorized staff only." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Fseat-requests">Sign in<ArrowRight /></a>} />
       : state === "forbidden" ? <WorkspaceState icon={<ShieldCheck />} title="You do not have access to this workspace" detail="Ask an administrator to confirm your staff role or Table assignment." />
@@ -381,11 +379,9 @@ function RosterDetail({ actor, tableId }: { actor: Actor; tableId: string }) {
       : state === "not_found" ? <WorkspaceState icon={<Table2 />} title="Table unavailable" detail="This Table is not available in this workspace. It may no longer be published or assigned." action={<Link className="button button-outline" to={admin ? "/admin/seat-requests" : "/host/assigned-tables"}>Back to Tables<ArrowLeft /></Link>} />
       : state === "error" || !data ? <WorkspaceState icon={<CircleAlert />} title="Roster is temporarily unavailable" detail="We could not load the current applicants and proposal. Try again." action={<button className="button button-outline" onClick={() => void load()}><RefreshCw />Try again</button>} />
       : <>
-        <div className="page-heading-row roster-heading">
-          <div><p className="eyebrow">{admin ? "ROSTER REVIEW" : "HOST PROPOSAL"}</p><h1>{data.table.title}</h1>
-            <p className="page-intro">{fmtDate(data.table.localDate)} at {fmtTime(data.table.startLocalTime)} · {data.table.neighborhood}. {admin ? "Review Seat requests and approve a group that meets the Table rules." : "Suggest a group for this Table, then send it to an administrator for approval."}</p></div>
-          <button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh roster" disabled={busy !== null}><RefreshCw aria-hidden="true" /></button>
-        </div>
+        <PageHeader className="roster-heading" eyebrow={admin ? "ROSTER REVIEW" : "HOST PROPOSAL"} title={data.table.title}
+          description={<>{fmtDate(data.table.localDate)} at {fmtTime(data.table.startLocalTime)} · {data.table.neighborhood}. {admin ? "Review Seat requests and approve a group that meets the Table rules." : "Suggest a group for this Table, then send it to an administrator for approval."}</>}
+          actions={<button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh roster" disabled={busy !== null}><RefreshCw aria-hidden="true" /></button>} />
         {notice && <div className={`roster-notice ${notice.tone}`} role={notice.tone === "bad" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{notice.text}</div>}
         {data.table.readOnlyReason && <div className="roster-notice bad" role="status"><CircleAlert aria-hidden="true" />{readOnlyLabels[data.table.readOnlyReason]}</div>}
         {!data.table.readOnlyReason && stale && <div className="roster-notice bad" role="alert"><CircleAlert aria-hidden="true" />This roster uses older Table details. Reload and start a new roster before continuing.</div>}

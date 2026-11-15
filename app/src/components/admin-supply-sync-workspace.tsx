@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { ArrowRight, Ban, Check, CircleAlert, Clock3, Database, FileWarning, LoaderCircle, RefreshCw, ShieldCheck, Table2, WifiOff } from "lucide-react";
 import type { SupplyProviderState, SupplySyncAdminSummaryDTO, SupplySyncConflict, SupplySyncError, SupplySyncResponse, SupplySyncRunDTO } from "../supply.contract.ts";
@@ -199,10 +200,8 @@ export function AdminSupplySyncWorkspace() {
 
   return <AppShell role="admin" active="tables" className="supply-workspace" contentClassName="supply-content" labelledBy="supply-title">
         <div className="product-breadcrumb">Tables <span>/</span> Check Airtable</div>
-        <div className="page-heading-row supply-heading">
-          <div><p className="eyebrow">AIRTABLE</p><h1 id="supply-title">Check Airtable</h1><p className="page-intro">See what’s new in Airtable before adding it. Nothing goes live from here.</p></div>
-          <span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{summary?.latestRun ? "Last check " + safeDate(summary.latestRun.startedAt) : "No check yet"}</span>
-        </div>
+        <PageHeader className="supply-heading" eyebrow="AIRTABLE" titleId="supply-title" title="Check Airtable" description="See what’s new in Airtable before adding it. Nothing goes live from here."
+          status={<span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{summary?.latestRun ? "Last check " + safeDate(summary.latestRun.startedAt) : "No check yet"}</span>} />
 
         {view === "loading" && <section className="supply-state" role="status" aria-live="polite"><span className="supply-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><div><h2>Loading…</h2></div></section>}
         {view === "unauthenticated" && <section className="supply-state supply-state-error" role="alert"><span className="supply-state-icon"><CircleAlert aria-hidden="true" /></span><div><h2>Sign in to see this page</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></div></section>}

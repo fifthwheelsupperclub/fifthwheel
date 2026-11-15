@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageState } from "../components/ui/page-state";
 import { AppShell } from "../components/app-shell";
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleAlert, ClipboardList, House, Table2, Ticket, UserRound } from "lucide-react";
@@ -50,10 +51,10 @@ function MemberHomePage() {
 
   return <AppShell role="guest" active="home" contentClassName="member-home-content" labelledBy="member-home-heading">
         <div className="product-breadcrumb">Member <span>/</span> Home</div>
-        {state === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><span className="entry-loader small" /></span><h2>Loading…</h2></section>}
-        {state === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to continue</h2><p>Use the email address connected to your app invitation.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-        {state === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>You don’t have access yet</h2><p>If you’re on the waitlist, we’ll email you when you’re in.</p><a className="button button-outline" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a></section>}
-        {state === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Your home is unavailable</h2><p>We couldn’t verify your member access. Try again shortly.</p><button className="button button-outline" type="button" onClick={() => void loadHome()}>Try again<ArrowRight aria-hidden="true" /></button></section>}
+        {state === "loading" && <PageState variant="loading" title="Loading…" />}
+        {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Use the email address connected to your app invitation." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {state === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you’re on the waitlist, we’ll email you when you’re in." action={<a className="button button-outline" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {state === "error" && <PageState variant="error" title="Your home is unavailable" message="We couldn’t verify your member access. Try again shortly." action={<button className="button button-outline" type="button" onClick={() => void loadHome()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
         {state === "ready" && member && <>
           <div className="page-heading-row member-home-heading"><div><p className="eyebrow">YOUR FIFTH WHEEL</p><h1 id="member-home-heading">A lovely evening<br /><em>takes shape here.</em></h1><p className="page-intro">Signed in as <strong>{member.email}</strong>.</p></div></div>
         <section className="member-next-step">

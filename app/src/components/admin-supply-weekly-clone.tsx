@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, LoaderCircle, RefreshCw, ShieldCheck, Table2, Undo2, WifiOff } from "lucide-react";
 import type {
@@ -344,10 +345,8 @@ export function AdminSupplyWeeklyClone() {
 
   return <AppShell role="admin" active="tables"><div className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
     <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Copy a week</div>
-    <header className="page-heading-row weekly-clone-heading">
-      <div><h1 id="weekly-clone-heading">Copy a week</h1><p className="page-intro">Copy draft tables from one week to another. Only drafts are copied.</p></div>
-      <span className="status-pill status-pill-neutral"><CalendarDays aria-hidden="true" />Atlanta calendar weeks</span>
-    </header>
+    <PageHeader className="weekly-clone-heading" titleId="weekly-clone-heading" title="Copy a week" description="Copy draft tables from one week to another. Only drafts are copied."
+      status={<span className="status-pill status-pill-neutral"><CalendarDays aria-hidden="true" />Atlanta calendar weeks</span>} />
 
     <aside className="weekly-clone-trust-note"><ShieldCheck aria-hidden="true" /><div><strong>Drafts only</strong><p>Only drafts are copied.</p></div></aside>
 

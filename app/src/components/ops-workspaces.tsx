@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Button } from "./ui/button";
+import { ConfirmDialog } from "./ui/confirm-dialog";
+import { Field } from "./ui/field";
+import { StatusBadge } from "./ui/status-badge";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { type StaffNavKey } from "./staff-nav";
 import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
@@ -59,7 +64,7 @@ export function AdminTableDecisions() {
     if (result.ok) { setConfirm(null); await reload(); } else setMessage(result.reason === "group_invalid" ? "This paid group no longer meets the rules, so it cannot proceed." : result.message);
   }
   return <Status area="admin-decisions" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-decisions">
-    <header className="ops-heading"><h1>Table decisions</h1><p>Tables starting in the next 24 hours. Guests can’t pay for these until you decide. Confirm tables with 3–5 paid guests. Cancel any with fewer than 3.</p></header>
+    <PageHeader title="Table decisions" description="Tables starting in the next 24 hours. Guests can’t pay for these until you decide. Confirm tables with 3–5 paid guests. Cancel any with fewer than 3." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No decisions needed</h2><p>Tables show up here 24 hours before they start.</p></section>
       : <ul className="ops-list">{load.data.items.map((t) => <li className="ops-card" key={t.tableId}>
@@ -88,7 +93,7 @@ export function HostTableAttendance({ tableId }: Readonly<{ tableId: string }>) 
     if (result.ok) await reload(); else setMessage(result.reason === "table_not_proceeding" ? "Check-in opens once an admin confirms this table." : result.status === 0 ? fallback : result.message);
   }
   return <Status area="host" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="host">
-    <header className="ops-heading"><p className="eyebrow">ATTENDANCE</p><h1>{load.data.table.title}</h1><p><MapPin aria-hidden="true" />{load.data.table.neighborhood} · {when(load.data.table.localDate, load.data.table.startLocalTime)}</p></header>
+    <PageHeader back={{ href: "/host/assigned-tables", label: "Your tables" }} title={load.data.table.title} description={<>{load.data.table.neighborhood} · {when(load.data.table.localDate, load.data.table.startLocalTime)}</>} />
     {!load.data.canCheckIn && <p className="ops-alert" role="status"><Clock3 aria-hidden="true" />Check-in opens once staff record that this Table is proceeding. A suspended or cancelled Table cannot check guests in.</p>}
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.guests.length === 0 ? <section className="ops-state"><h2>No paid guests yet</h2><p>Only guests with a paid Seat appear here.</p></section>
@@ -114,7 +119,7 @@ export function AdminStaffAssignments() {
     if (result.ok) await reload(); else setMessage(result.message);
   }
   return <Status area="admin-staff" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-staff">
-    <header className="ops-heading"><h1>Staff assignments</h1><p>Choose which tables each host sees, and which venues each restaurant sees.</p></header>
+    <PageHeader title="Staff assignments" description="Choose which tables each host sees, and which venues each restaurant sees." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.staff.length === 0 ? <section className="ops-state"><h2>No hosts or restaurants yet</h2><p>Add the role first; they’ll appear here.</p></section>
       : <ul className="ops-list">{load.data.staff.map((s) => <li className="ops-card ops-card-stack" key={s.userId}>
@@ -138,7 +143,7 @@ export function RestaurantWorkspace() {
   const [venueId, setVenueId] = useState<string | null>(null);
   const { load, reload } = useLoad<Workspace>(venueId ? `/api/restaurant/workspace?venueId=${encodeURIComponent(venueId)}` : "/api/restaurant/workspace");
   return <Status area="restaurant" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="restaurant">
-    <header className="ops-heading"><h1>Upcoming service times</h1><p>Party size and timing for your venue.</p></header>
+    <PageHeader title="Upcoming service times" description="Party size and timing for your venue." />
     {load.data.venues.length > 1 && <label className="ops-venue">Venue<select value={load.data.selected ?? ""} onChange={(event) => setVenueId(event.currentTarget.value)}>{load.data.venues.map((v) => <option key={v.venueId} value={v.venueId}>{v.name}</option>)}</select></label>}
     {load.data.selected === null ? <section className="ops-state"><UtensilsCrossed aria-hidden="true" /><h2>No venue yet</h2><p>Ask Fifth Wheel to add your venue.</p></section>
       : load.data.services.length === 0 ? <section className="ops-state"><h2>No upcoming services</h2><p>When a Table includes your venue, its service time appears here.</p></section>
@@ -220,22 +225,31 @@ export function AdminConductReports() {
   const reports = useLoad<{ items: Report[] }>("/api/admin/conduct-reports");
   const ratings = useLoad<Aggregates>("/api/admin/rating-aggregates");
   const [message, setMessage] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<Report | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  async function remove(r: Report) {
+    setDeleting(true); setMessage("");
+    const result = await call(`/api/admin/conduct-reports/${r.reportId}/delete`, {});
+    setDeleting(false); setPendingDelete(null);
+    if (result.ok) await reports.reload(); else setMessage(result.reason === "case_held" ? "This report is on hold." : result.reason === "review_not_due" ? "Not due for deletion yet." : result.message);
+  }
   async function update(r: Report, status: Report["status"], held: boolean) {
     setMessage("");
     const result = await call(`/api/admin/conduct-reports/${r.reportId}`, { status, held });
     if (result.ok) await reports.reload(); else setMessage(result.message);
   }
   return <Status area="admin-feedback" load={reports.load} retry={() => void reports.reload()}>{reports.load.state === "ready" && <Shell area="admin-feedback">
-    <header className="ops-heading"><h1>Conduct reports</h1><p>Only admins can see reports.</p></header>
+    <PageHeader title="Conduct reports" description="Only admins can see reports." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {reports.load.data.items.length === 0 ? <section className="ops-state"><h2>No reports</h2><p>Reports from guests who attended appear here.</p></section>
       : <ul className="ops-list">{reports.load.data.items.map((r) => <li className="ops-card ops-card-stack" key={r.reportId}>
-        <div><h2>{r.tableTitle}</h2><p className="ops-meta"><span className={`status-pill ${r.status === "new" ? "status-pill-warning" : ""}`}>{r.status}</span>{r.held && <span className="status-pill status-pill-warning">On hold</span>}<span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))}</span></p>
+        <div><h2>{r.tableTitle}</h2><p className="ops-meta"><StatusBadge tone={r.status === "new" ? "pending" : r.status === "resolved" ? "success" : "neutral"}>{r.status === "new" ? "New" : r.status === "reviewing" ? "Reviewing" : "Resolved"}</StatusBadge>{r.held && <StatusBadge tone="warning">On hold</StatusBadge>}<span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))}</span></p>
           <p>From {r.author}{r.subject ? ` about ${r.subject}` : ""}</p><p className="ops-report-body">{r.body}</p></div>
-        <div className="ops-actions"><label className="ops-field">Status<select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></label>
+        <div className="ops-actions"><Field label="Status" className="ops-field"><select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></Field>
           <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Keep (don’t delete)</label>
-          {!r.held && Date.now() - new Date(r.createdAt).getTime() > 365 * 86_400_000 && <button className="button button-outline" type="button" onClick={() => { if (window.confirm("Delete this report permanently? This cannot be undone.")) void (async () => { setMessage(""); const result = await call(`/api/admin/conduct-reports/${r.reportId}/delete`, {}); if (result.ok) await reports.reload(); else setMessage(result.reason === "case_held" ? "This report is on hold." : result.reason === "review_not_due" ? "Not due for deletion yet." : result.message); })(); }}>Delete</button>}</div></li>)}</ul>}
-    <header className="ops-heading ops-heading-gap"><h1>Ratings</h1><p>Averages show once 3 or more guests respond.</p></header>
+          {!r.held && Date.now() - new Date(r.createdAt).getTime() > 365 * 86_400_000 && <Button variant="danger" onClick={() => setPendingDelete(r)}>Delete report…</Button>}</div></li>)}</ul>}
+    <ConfirmDialog open={pendingDelete !== null} title="Delete report?" confirmLabel="Delete report" destructive busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={() => pendingDelete && void remove(pendingDelete)}>This permanently deletes the report from {pendingDelete?.tableTitle}. This can’t be undone.</ConfirmDialog>
+    <PageHeader title="Ratings" description="Averages show once 3 or more guests respond." />
     {ratings.load.state === "ready" && (ratings.load.data.tables.length === 0 ? <section className="ops-state"><h2>No ratings yet</h2></section>
       : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{t.localDate} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
         <span className="status-pill">{t.overallAverage === null ? "Not enough responses yet" : `${t.overallAverage.toFixed(2)} overall`}</span></li>)}</ul>)}
@@ -274,7 +288,7 @@ export function AdminOverview() {
     const clear = queues.filter((q) => (counts[q.key] ?? 0) === 0);
     const oldest = counts.oldestPendingDeliveryMinutes;
     return <Shell area="admin-overview">
-      <header className="ops-heading"><h1>Today</h1><p>What needs attention, most urgent first.</p></header>
+      <PageHeader title="Today" description="What needs attention, most urgent first." />
       <p className={`ops-alert ${heartbeat.healthy ? "ops-ok" : ""}`} role={heartbeat.healthy ? "status" : "alert"}>{heartbeat.healthy ? <CheckCircle2 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
         {heartbeat.lastRunAt === null ? "Emails and refunds aren’t sending. Tell the operations owner now." : heartbeat.healthy ? `Emails and refunds are sending normally. (Last checked ${heartbeat.ageMinutes ?? 0} min ago.)` : "Emails and refunds aren’t sending. Tell the operations owner now."}</p>
       {typeof oldest === "number" && oldest >= 15 && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />The oldest invitation email has been waiting {oldest} minutes.</p>}
@@ -299,7 +313,7 @@ export function AdminNoticeProblems() {
     if (result.ok) await reload(); else setMessage(result.message);
   }
   return <Status area="admin-notices" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-notices">
-    <header className="ops-heading"><h1>Guest emails</h1><p>Emails that didn’t send, or that we couldn’t confirm. For unconfirmed ones, check Resend first. If it didn’t go out, send again. If it did, dismiss.</p></header>
+    <PageHeader title="Guest emails" description="Emails that didn’t send, or that we couldn’t confirm. For unconfirmed ones, check Resend first. If it didn’t go out, send again. If it did, dismiss." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No email problems</h2></section>
       : <ul className="ops-list">{load.data.items.map((n) => <li className="ops-card" key={n.noticeId}>

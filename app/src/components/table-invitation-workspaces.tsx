@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, LoaderCircle, Mail, MapPin, RefreshCw, ShieldCheck, Table2, Ticket, UserRound, UsersRound } from "lucide-react";
@@ -264,7 +265,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
 
   return <AppShell role="admin" active="invitations" className="table-invitation-admin-page">
       <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
-      <div className="page-heading-row table-invitation-admin-heading"><div><h1>Invitation emails</h1><p className="page-intro">Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
+      <PageHeader className="table-invitation-admin-heading" title="Invitation emails" description="Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox." actions={<button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
       {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
       {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}

@@ -2,6 +2,7 @@ import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/r
 import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, CircleAlert, House, RotateCcw } from "lucide-react";
 import css from "../styles.css?url";
+import componentsCss from "../styles/components.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,6 +14,8 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: css },
+      // Loaded after styles.css so shared components win ties with legacy page rules.
+      { rel: "stylesheet", href: componentsCss },
       { rel: "preload", href: "/fonts/fraunces-roman-latin.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
       { rel: "preload", href: "/fonts/inter-latin.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
     ],

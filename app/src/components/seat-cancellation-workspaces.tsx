@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Ticket, UserRound, Wallet } from "lucide-react";
@@ -171,7 +172,7 @@ export function MemberSeatCancellationWorkspace({ seatId }: { seatId: string }) 
     {state === "not_found" && <CancellationState icon={<Ticket />} title="Seat not found" detail="This Seat is not available to the current account." action={<Link className="button button-outline" to="/my-seats">Back to My Seats</Link>} />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="Cancellation status is unavailable" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>
-      <header className="cancellation-heading"><h1>Ask to cancel</h1><p>We’ll review your request and let you know here and by email.</p></header>
+      <PageHeader title="Ask to cancel" description="We’ll review your request and let you know here and by email." />
       {pendingRequest && <section className="cancellation-retention-note" role="note"><CheckCircle2 aria-hidden="true" /><div>{data.seatState === "completed" ? <><strong>The Table is complete.</strong><p>Your cancellation request remains under review.</p></> : data.seatState === "cancelled" ? <><strong>The Table and your Seat have been cancelled.</strong><p>Your cancellation request remains under review.</p></> : <><strong>Your seat is still yours until we decide.</strong><p>You can still come and vote.</p></>}</div></section>}
       {message && <p className="cancellation-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       {data.items.length > 0 && <section className="cancellation-request-card"><p className="eyebrow">REQUEST HISTORY</p><h2>{pendingRequest ? "Request history" : "Previous requests"}</h2><ol className="cancellation-history">{data.items.map((item) => <li key={item.requestId}><div className="cancellation-history-heading"><strong>{stateTitle(item.state)}</strong><time dateTime={item.requestedAt}>{dateLabel(item.requestedAt)}</time></div>{item.memberReason && <div className="cancellation-reason"><strong>Your note</strong><p>{item.memberReason}</p></div>}{item.memberSafeReason && <div className="cancellation-reason"><strong>Team response</strong><p>{item.memberSafeReason}</p></div>}{item.state === "approved" && <ApprovedRefundMessage refundCents={item.refundCents} />}</li>)}</ol></section>}
@@ -205,7 +206,7 @@ export function AdminCancellationsQueue() {
   useEffect(() => { void load(); }, [load]);
   return <AdminCancellationShell active="queue"><div className="cancellation-admin-page">
     <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Cancellations</span></div>
-    <header className="cancellation-heading"><p className="eyebrow"></p><h1>Cancellation requests</h1><p>Decide whether to cancel each seat and how much to refund.</p></header>
+    <PageHeader title="Cancellation requests" description="Decide whether to cancel each seat and how much to refund." />
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Fcancellations">Sign in</a>} />}
     {state === "forbidden" && <CancellationState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can decide cancellations and refunds." />}
@@ -262,7 +263,7 @@ export function AdminCancellationDetail({ requestId }: { requestId: string }) {
     {state === "not_found" && <CancellationState icon={<Ticket />} title="Request not found" detail="It may have been removed or is outside this workspace." action={<Link className="button button-outline" to="/admin/cancellations">Back to queue</Link>} />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="We couldn’t load this request" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>
-      <header className="cancellation-heading"><p className="eyebrow">REQUEST</p><h1>{data.member.displayName}</h1><p>{data.table.title} · {data.table.localDate} · {data.table.startLocalTime}</p></header>
+      <PageHeader title={data.member.displayName} description={<>{data.table.title} · {data.table.localDate} · {data.table.startLocalTime}</>} />
       {message && <p className="cancellation-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       <section className="cancellation-admin-context"><div><p className="eyebrow">SEAT</p><h2>{data.seat.state.replaceAll("_", " ")}</h2><p>Paid {money(data.seat.amountCents)} · Refundable {money(data.refundBalance.refundAvailableCents)}</p></div><div><p className="eyebrow">REQUESTED</p><p>{dateLabel(data.request.requestedAt)}</p></div>{data.request.memberReason && <div className="cancellation-admin-member-note"><p className="eyebrow">THEIR NOTE</p><p>{data.request.memberReason}</p></div>}</section>
       {data.request.memberSafeReason && <section className="cancellation-admin-context"><div><p className="eyebrow">YOUR REPLY</p><p>{data.request.memberSafeReason}</p></div></section>}

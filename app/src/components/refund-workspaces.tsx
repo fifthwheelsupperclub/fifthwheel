@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
@@ -147,7 +148,7 @@ export function AdminRefundsQueue() {
   useEffect(() => { void load(); }, []);
   return <RefundAdminShell active="queue"><div className="refund-page">
     <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Refunds</span></div>
-    <header className="refund-heading"><p className="eyebrow"></p><h1>Refunds</h1><p>Money we owe guests, and its status with Stripe.</p></header>
+    <PageHeader title="Refunds" description="Money we owe guests, and its status with Stripe." />
     {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refunds…" />}
     {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Frefunds">Sign in</a>} />}
     {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can manage refunds." />}
@@ -215,7 +216,7 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
     {state === "not_found" && <RefundState icon={<Wallet />} title="Refund not found" action={<Link className="button button-outline" to="/admin/refunds">Back to Refunds</Link>} />}
     {state === "error" && <RefundState icon={<AlertCircle />} title="We couldn’t load this refund" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && obligation && <>
-      <header className="refund-heading"><p className="eyebrow">{sourceLabel(obligation.source)}</p><h1>{obligation.memberName}</h1><p>{obligation.tableTitle}</p></header>
+      <PageHeader eyebrow={sourceLabel(obligation.source)} title={obligation.memberName} description={obligation.tableTitle} />
       {message && <p className="refund-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       <section className="refund-detail-overview"><div><p className="eyebrow">STATUS</p><h2>{stateLabel(obligation.state)}</h2><p>{obligation.state === "succeeded" ? "Stripe confirmed the full refund." : obligation.state === "unknown" ? "We don’t know if this was sent. It’s still owed. Check status before sending again." : obligation.state === "submitted" ? "Sent to Stripe. Waiting for Stripe to confirm." : obligation.state === "pending" ? "Queued. It’ll go to Stripe shortly." : obligation.state === "failed" ? obligation.operations.some((operation) => operation.canRetry) ? "Still owed. You can try again." : "Still owed. Needs an admin to look at it first." : "Owed, and not sent yet."}</p></div><div className="refund-detail-amount"><span>Refund</span><strong>{money(obligation.amountCents, obligation.currency)}</strong></div></section>
       <section className="refund-facts-grid" aria-label="Refund balance"><div><span>Paid</span><strong>{money(obligation.paymentAmountCents)}</strong></div><div><span>Refunded so far</span><strong>{money(obligation.refundedCents)}</strong></div><div><span>Total owed</span><strong>{money(obligation.reservedCents)}</strong></div><div><span>Left to send</span><strong>{money(obligation.availableCents)}</strong></div></section>

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { PageHeader } from "./ui/page-header";
+import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, CircleAlert, Clock3, FileCheck2, LoaderCircle, RefreshCw, ShieldCheck, Table2, UserRoundCheck, UsersRound } from "lucide-react";
@@ -143,13 +145,13 @@ export function IdentityReviewQueue() {
 
   return <AdminReviewShell active="queue">
     <div className="product-breadcrumb">Guests <span>/</span> Identity review</div>
-    <div className="page-heading-row"><div><h1 id="identity-review-heading">Profile review</h1><p className="page-intro">Check each guest’s photos and selfie match their details.</p></div><span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{state === "ready" ? items.length + " pending" : "Review queue"}</span></div>
-    {state === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading…</h2></section>}
-    {state === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to review profiles</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-    {state === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>You don’t have access to profile review</h2><p>Ask an admin if you think you should.</p><a className="button button-outline" href="/admin/waitlist">Return to the admin workspace<ArrowRight aria-hidden="true" /></a></section>}
-    {state === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>We couldn’t load the queue</h2><p>{message}</p><button className="button button-outline" type="button" onClick={() => void loadQueue()}>Try again<RefreshCw aria-hidden="true" /></button></section>}
+    <PageHeader titleId="identity-review-heading" title="Profile review" description="Check each guest’s photos and selfie match their details." status={<span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{state === "ready" ? items.length + " pending" : "Review queue"}</span>} />
+    {state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to review profiles" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="You don’t have access to profile review" message="Ask an admin if you think you should." action={<a className="button button-outline" href="/admin/waitlist">Return to the admin workspace<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <PageState variant="error" title="We couldn’t load the queue" message={message} action={<button className="button button-outline" type="button" onClick={() => void loadQueue()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && (items.length === 0
-      ? <section className="empty-review-state"><span className="data-state-icon"><BadgeCheck aria-hidden="true" /></span><h2>Nothing to review</h2><p>New profiles appear here when guests submit them.</p></section>
+      ? <PageState variant="empty" title="Nothing to review" message="New profiles appear here when guests submit them." />
       : <>
         <section className="review-queue" aria-label="Submitted identity reviews">
           {items.map((item) => <a className="review-queue-item" href={"/admin/identity-review/" + encodeURIComponent(item.guestId)} key={item.guestId + "-" + item.reviewId}>
@@ -272,12 +274,12 @@ export function IdentityReviewDetail({ guestId }: Readonly<{ guestId: string }>)
 
   return <AdminReviewShell active="detail">
     <div className="product-breadcrumb"><a href="/admin/identity-review"><ArrowLeft aria-hidden="true" />Profile review</a><span>/</span>Review detail</div>
-    {state === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading…</h2></section>}
-    {state === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to continue</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-    {state === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>You don’t have access to profile review</h2><p>Ask an admin if you think you should.</p><a className="button button-outline" href="/admin/identity-review">Return to the review queue<ArrowRight aria-hidden="true" /></a></section>}
-    {state === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Review detail unavailable</h2><p>{message}</p><button className="button button-outline" type="button" onClick={() => void loadDetail()}>Reload review<RefreshCw aria-hidden="true" /></button></section>}
+    {state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="You don’t have access to profile review" message="Ask an admin if you think you should." action={<a className="button button-outline" href="/admin/identity-review">Return to the review queue<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <PageState variant="error" title="Review detail unavailable" message={message} action={<button className="button button-outline" type="button" onClick={() => void loadDetail()}>Reload review<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && detail && profile && <>
-      <div className="page-heading-row review-detail-heading"><div><p className="eyebrow">Review #{detail.attemptNumber}</p><h1 id="identity-review-detail-heading">{profile.firstName} {profile.lastName}</h1><p className="page-intro">Submitted {formatDate(detail.submittedAt)}</p></div><span className={"status-pill " + (reviewCurrent ? "status-pill-neutral" : "status-pill-alert")}>{reviewCurrent ? "CURRENT" : "OUT OF DATE"}</span></div>
+      <PageHeader className="review-detail-heading" eyebrow={`Review #${detail.attemptNumber}`} titleId="identity-review-detail-heading" title={`${profile.firstName} ${profile.lastName}`} description={`Submitted ${formatDate(detail.submittedAt)}`} status={<span className={"status-pill " + (reviewCurrent ? "status-pill-neutral" : "status-pill-alert")}>{reviewCurrent ? "CURRENT" : "OUT OF DATE"}</span>} />
       {detail.correctionReason && <section className="review-history-note"><p className="eyebrow">PREVIOUS CORRECTION</p><p>{detail.correctionReason}</p></section>}
       {!reviewCurrent && <div className="review-conflict-banner" role="alert"><CircleAlert aria-hidden="true" /><span>{profile.firstName} changed their profile since submitting. Refresh to see the latest.</span><button className="text-action" type="button" onClick={() => void loadDetail()}>Refresh review</button></div>}
       <div className="review-detail-grid">
