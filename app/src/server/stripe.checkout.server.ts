@@ -79,7 +79,6 @@ export function createStripeEmbeddedCheckoutProvider(config: StripeCheckoutConfi
       const body = new URLSearchParams({
         mode: "payment",
         ui_mode: "embedded_page",
-        "payment_method_types[0]": "card",
         "line_items[0][price_data][currency]": "usd",
         "line_items[0][price_data][unit_amount]": "2500",
         "line_items[0][price_data][product_data][name]": "Fifth Wheel Seat",

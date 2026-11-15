@@ -29,7 +29,7 @@ test("creates only card-only embedded USD 25 checkout with server invitation ret
   const form = new URLSearchParams(String(init.body));
   assert.equal(form.get("mode"), "payment");
   assert.equal(form.get("ui_mode"), "embedded_page");
-  assert.equal(form.get("payment_method_types[0]"), "card");
+  assert.equal(form.has("payment_method_types[0]"), false); // rejected by current Stripe API; methods are set in the Dashboard
   assert.equal(form.get("line_items[0][price_data][unit_amount]"), "2500");
   assert.equal(form.get("line_items[0][price_data][currency]"), "usd");
   const returnUrl = new URL(form.get("return_url")!);

@@ -73,3 +73,12 @@ Evidence: DB harnesses `test-w10-ops-db.mjs` and `test-w10-notices-db.mjs` (roll
 - **W11.5:** [policy copy inventory](policy-copy-inventory.md) lists every cancellation, refund and retention statement, where it disagrees (Terms §7 is silent on refunding a cancelled evening), and the decisions only you can make.
 - **W12.4:** [receipts](w12-verification-receipts.md). A clean replay of all migrations from empty was attempted and exposed one syntax error (fixed); weekly-clone undo was found broken by the payment slice's foreign key (fixed). 317/317 unit tests, every database harness and five real-stack browser runners pass on the freshly replayed database.
 - **W12.1–W12.3, W12.5:** a complete guest journey on a real stack through payment, vote and recap has not run (no Stripe, and a few screens are verified only with intercepted APIs). The W05 browser suite needs updating. The acceptance ledger addendum records every scenario honestly.
+
+## 2026-11-15 — W07 real-stack checkout journey (Stripe test mode)
+
+- New guarded runner `node scripts/run-w07-checkout-browser.mjs` (needs `.env.test.local` Stripe TEST keys and `stripe listen` forwarding the four `checkout.session.*` events to `127.0.0.1:8086/api/webhooks/stripe`). Passed: invitation → disclosure → embedded Stripe Checkout (card 4242) → `checkout.session.completed` webhook `processed:paid_fulfilled` → one confirmed Seat, $25 USD payment row → My Seats shows it. Fixtures and Auth users cleaned; Stripe sandbox objects remain.
+- Defects found by this run (all mock-only suites had passed over them) and fixed:
+  1. Stripe now rejects `payment_method_types` on Checkout Session create (every checkout returned `provider_unavailable`). Parameter removed; payment methods are controlled in the Stripe Dashboard.
+  2. **No HTTP routes existed for My Seats** (`/api/me/seats`, `/api/me/seats/$seatId`, `.../calendar.ics`); the screen showed "temporarily unavailable". Added `seats.http.server.ts`, `seats-runtime.server.ts`, three routes, 3 unit tests (320/320 pass).
+- **Open, needs the release owner:** the sandbox Dashboard currently offers Link, Cash App Pay, Klarna and Bank in addition to Card. The Seat contract is card-only; restrict methods in Dashboard → Settings → Payment methods (live mode too) before launch.
+- Not yet run: cancellation request/approval → refund → provider settlement, duplicate/out-of-order/wrong-mode webhook replay, concurrent last-slot, abandoned/expired checkout, late charge. W07.7 stays unchecked.

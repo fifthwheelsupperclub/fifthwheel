@@ -68,6 +68,7 @@ import { Route as ApiAuthVerifyLinkRouteImport } from './routes/api/auth/verify-
 import { Route as ApiCurationAssignedTablesRouteImport } from './routes/api/curation/assigned-tables'
 import { Route as ApiInternalWorkerRouteImport } from './routes/api/internal/worker'
 import { Route as ApiMeRequestsRouteImport } from './routes/api/me/requests'
+import { Route as ApiMeSeatsRouteImport } from './routes/api/me/seats'
 import { Route as ApiMemberHomeRouteImport } from './routes/api/member/home'
 import { Route as ApiMemberProfileRouteImport } from './routes/api/member/profile'
 import { Route as ApiRestaurantWorkspaceRouteImport } from './routes/api/restaurant/workspace'
@@ -90,6 +91,7 @@ import { Route as ApiAdminStaffAssignmentsVenueRouteImport } from './routes/api/
 import { Route as ApiAdminSupplySyncRouteImport } from './routes/api/admin/supply/sync'
 import { Route as ApiAdminSupplyWeeklyCloneRouteImport } from './routes/api/admin/supply/weekly-clone'
 import { Route as ApiMeCheckoutAttemptsAttemptIdRouteImport } from './routes/api/me/checkout-attempts.$attemptId'
+import { Route as ApiMeSeatsSeatIdRouteImport } from './routes/api/me/seats.$seatId'
 import { Route as ApiMeTableInvitationsInvitationIdRouteImport } from './routes/api/me/table-invitations.$invitationId'
 import { Route as ApiMemberProfileFilesRouteImport } from './routes/api/member/profile.files'
 import { Route as ApiMemberProfileSubmitRouteImport } from './routes/api/member/profile.submit'
@@ -121,6 +123,7 @@ import { Route as ApiHostCancellationsRequestIdFlagRouteImport } from './routes/
 import { Route as ApiHostTablesTableIdAttendanceRouteImport } from './routes/api/host/tables.$tableId.attendance'
 import { Route as ApiHostTablesTableIdCheckInRouteImport } from './routes/api/host/tables.$tableId.check-in'
 import { Route as ApiMeRequestsRequestIdWithdrawRouteImport } from './routes/api/me/requests.$requestId.withdraw'
+import { Route as ApiMeSeatsSeatIdCalendarDoticsRouteImport } from './routes/api/me/seats.$seatId.calendar[.]ics'
 import { Route as ApiMeSeatsSeatIdCancellationRequestsRouteImport } from './routes/api/me/seats.$seatId.cancellation-requests'
 import { Route as ApiMeTableInvitationsInvitationIdCheckoutRouteImport } from './routes/api/me/table-invitations.$invitationId.checkout'
 import { Route as ApiMeTablesTableIdBallotRouteImport } from './routes/api/me/tables.$tableId.ballot'
@@ -445,6 +448,11 @@ const ApiMeRequestsRoute = ApiMeRequestsRouteImport.update({
   path: '/api/me/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMeSeatsRoute = ApiMeSeatsRouteImport.update({
+  id: '/api/me/seats',
+  path: '/api/me/seats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMemberHomeRoute = ApiMemberHomeRouteImport.update({
   id: '/api/member/home',
   path: '/api/member/home',
@@ -566,6 +574,11 @@ const ApiMeCheckoutAttemptsAttemptIdRoute =
     path: '/api/me/checkout-attempts/$attemptId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiMeSeatsSeatIdRoute = ApiMeSeatsSeatIdRouteImport.update({
+  id: '/$seatId',
+  path: '/$seatId',
+  getParentRoute: () => ApiMeSeatsRoute,
+} as any)
 const ApiMeTableInvitationsInvitationIdRoute =
   ApiMeTableInvitationsInvitationIdRouteImport.update({
     id: '/api/me/table-invitations/$invitationId',
@@ -747,11 +760,17 @@ const ApiMeRequestsRequestIdWithdrawRoute =
     path: '/$requestId/withdraw',
     getParentRoute: () => ApiMeRequestsRoute,
   } as any)
+const ApiMeSeatsSeatIdCalendarDoticsRoute =
+  ApiMeSeatsSeatIdCalendarDoticsRouteImport.update({
+    id: '/calendar.ics',
+    path: '/calendar.ics',
+    getParentRoute: () => ApiMeSeatsSeatIdRoute,
+  } as any)
 const ApiMeSeatsSeatIdCancellationRequestsRoute =
   ApiMeSeatsSeatIdCancellationRequestsRouteImport.update({
-    id: '/api/me/seats/$seatId/cancellation-requests',
-    path: '/api/me/seats/$seatId/cancellation-requests',
-    getParentRoute: () => rootRouteImport,
+    id: '/cancellation-requests',
+    path: '/cancellation-requests',
+    getParentRoute: () => ApiMeSeatsSeatIdRoute,
   } as any)
 const ApiMeTableInvitationsInvitationIdCheckoutRoute =
   ApiMeTableInvitationsInvitationIdCheckoutRouteImport.update({
@@ -925,6 +944,7 @@ export interface FileRoutesByFullPath {
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
   '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
+  '/api/me/seats': typeof ApiMeSeatsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
@@ -949,6 +969,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
+  '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
   '/api/me/table-invitations/$invitationId': typeof ApiMeTableInvitationsInvitationIdRouteWithChildren
   '/api/member/profile/files': typeof ApiMemberProfileFilesRouteWithChildren
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
@@ -980,6 +1001,7 @@ export interface FileRoutesByFullPath {
   '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
   '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
+  '/api/me/seats/$seatId/calendar.ics': typeof ApiMeSeatsSeatIdCalendarDoticsRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
   '/api/me/tables/$tableId/ballot': typeof ApiMeTablesTableIdBallotRoute
@@ -1054,6 +1076,7 @@ export interface FileRoutesByTo {
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
   '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
+  '/api/me/seats': typeof ApiMeSeatsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
@@ -1078,6 +1101,7 @@ export interface FileRoutesByTo {
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
+  '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
   '/api/me/table-invitations/$invitationId': typeof ApiMeTableInvitationsInvitationIdRouteWithChildren
   '/api/member/profile/files': typeof ApiMemberProfileFilesRouteWithChildren
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
@@ -1109,6 +1133,7 @@ export interface FileRoutesByTo {
   '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
   '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
+  '/api/me/seats/$seatId/calendar.ics': typeof ApiMeSeatsSeatIdCalendarDoticsRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
   '/api/me/tables/$tableId/ballot': typeof ApiMeTablesTableIdBallotRoute
@@ -1189,6 +1214,7 @@ export interface FileRoutesById {
   '/api/curation/assigned-tables': typeof ApiCurationAssignedTablesRoute
   '/api/internal/worker': typeof ApiInternalWorkerRoute
   '/api/me/requests': typeof ApiMeRequestsRouteWithChildren
+  '/api/me/seats': typeof ApiMeSeatsRouteWithChildren
   '/api/member/home': typeof ApiMemberHomeRoute
   '/api/member/profile': typeof ApiMemberProfileRouteWithChildren
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
@@ -1213,6 +1239,7 @@ export interface FileRoutesById {
   '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
+  '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
   '/api/me/table-invitations/$invitationId': typeof ApiMeTableInvitationsInvitationIdRouteWithChildren
   '/api/member/profile/files': typeof ApiMemberProfileFilesRouteWithChildren
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
@@ -1244,6 +1271,7 @@ export interface FileRoutesById {
   '/api/host/tables/$tableId/attendance': typeof ApiHostTablesTableIdAttendanceRoute
   '/api/host/tables/$tableId/check-in': typeof ApiHostTablesTableIdCheckInRoute
   '/api/me/requests/$requestId/withdraw': typeof ApiMeRequestsRequestIdWithdrawRoute
+  '/api/me/seats/$seatId/calendar.ics': typeof ApiMeSeatsSeatIdCalendarDoticsRoute
   '/api/me/seats/$seatId/cancellation-requests': typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   '/api/me/table-invitations/$invitationId/checkout': typeof ApiMeTableInvitationsInvitationIdCheckoutRouteWithChildren
   '/api/me/tables/$tableId/ballot': typeof ApiMeTablesTableIdBallotRoute
@@ -1325,6 +1353,7 @@ export interface FileRouteTypes {
     | '/api/curation/assigned-tables'
     | '/api/internal/worker'
     | '/api/me/requests'
+    | '/api/me/seats'
     | '/api/member/home'
     | '/api/member/profile'
     | '/api/restaurant/workspace'
@@ -1349,6 +1378,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
+    | '/api/me/seats/$seatId'
     | '/api/me/table-invitations/$invitationId'
     | '/api/member/profile/files'
     | '/api/member/profile/submit'
@@ -1380,6 +1410,7 @@ export interface FileRouteTypes {
     | '/api/host/tables/$tableId/attendance'
     | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
+    | '/api/me/seats/$seatId/calendar.ics'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
     | '/api/me/tables/$tableId/ballot'
@@ -1454,6 +1485,7 @@ export interface FileRouteTypes {
     | '/api/curation/assigned-tables'
     | '/api/internal/worker'
     | '/api/me/requests'
+    | '/api/me/seats'
     | '/api/member/home'
     | '/api/member/profile'
     | '/api/restaurant/workspace'
@@ -1478,6 +1510,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
+    | '/api/me/seats/$seatId'
     | '/api/me/table-invitations/$invitationId'
     | '/api/member/profile/files'
     | '/api/member/profile/submit'
@@ -1509,6 +1542,7 @@ export interface FileRouteTypes {
     | '/api/host/tables/$tableId/attendance'
     | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
+    | '/api/me/seats/$seatId/calendar.ics'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
     | '/api/me/tables/$tableId/ballot'
@@ -1588,6 +1622,7 @@ export interface FileRouteTypes {
     | '/api/curation/assigned-tables'
     | '/api/internal/worker'
     | '/api/me/requests'
+    | '/api/me/seats'
     | '/api/member/home'
     | '/api/member/profile'
     | '/api/restaurant/workspace'
@@ -1612,6 +1647,7 @@ export interface FileRouteTypes {
     | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
+    | '/api/me/seats/$seatId'
     | '/api/me/table-invitations/$invitationId'
     | '/api/member/profile/files'
     | '/api/member/profile/submit'
@@ -1643,6 +1679,7 @@ export interface FileRouteTypes {
     | '/api/host/tables/$tableId/attendance'
     | '/api/host/tables/$tableId/check-in'
     | '/api/me/requests/$requestId/withdraw'
+    | '/api/me/seats/$seatId/calendar.ics'
     | '/api/me/seats/$seatId/cancellation-requests'
     | '/api/me/table-invitations/$invitationId/checkout'
     | '/api/me/tables/$tableId/ballot'
@@ -1713,6 +1750,7 @@ export interface RootRouteChildren {
   ApiCurationAssignedTablesRoute: typeof ApiCurationAssignedTablesRoute
   ApiInternalWorkerRoute: typeof ApiInternalWorkerRoute
   ApiMeRequestsRoute: typeof ApiMeRequestsRouteWithChildren
+  ApiMeSeatsRoute: typeof ApiMeSeatsRouteWithChildren
   ApiMemberHomeRoute: typeof ApiMemberHomeRoute
   ApiMemberProfileRoute: typeof ApiMemberProfileRouteWithChildren
   ApiRestaurantWorkspaceRoute: typeof ApiRestaurantWorkspaceRoute
@@ -1740,7 +1778,6 @@ export interface RootRouteChildren {
   ApiHostCancellationsRequestIdFlagRoute: typeof ApiHostCancellationsRequestIdFlagRoute
   ApiHostTablesTableIdAttendanceRoute: typeof ApiHostTablesTableIdAttendanceRoute
   ApiHostTablesTableIdCheckInRoute: typeof ApiHostTablesTableIdCheckInRoute
-  ApiMeSeatsSeatIdCancellationRequestsRoute: typeof ApiMeSeatsSeatIdCancellationRequestsRoute
   ApiMeTablesTableIdBallotRoute: typeof ApiMeTablesTableIdBallotRoute
   ApiMeTablesTableIdConductReportRoute: typeof ApiMeTablesTableIdConductReportRoute
   ApiMeTablesTableIdRatingRoute: typeof ApiMeTablesTableIdRatingRoute
@@ -2164,6 +2201,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMeRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/me/seats': {
+      id: '/api/me/seats'
+      path: '/api/me/seats'
+      fullPath: '/api/me/seats'
+      preLoaderRoute: typeof ApiMeSeatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/member/home': {
       id: '/api/member/home'
       path: '/api/member/home'
@@ -2317,6 +2361,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/me/checkout-attempts/$attemptId'
       preLoaderRoute: typeof ApiMeCheckoutAttemptsAttemptIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/me/seats/$seatId': {
+      id: '/api/me/seats/$seatId'
+      path: '/$seatId'
+      fullPath: '/api/me/seats/$seatId'
+      preLoaderRoute: typeof ApiMeSeatsSeatIdRouteImport
+      parentRoute: typeof ApiMeSeatsRoute
     }
     '/api/me/table-invitations/$invitationId': {
       id: '/api/me/table-invitations/$invitationId'
@@ -2535,12 +2586,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMeRequestsRequestIdWithdrawRouteImport
       parentRoute: typeof ApiMeRequestsRoute
     }
+    '/api/me/seats/$seatId/calendar.ics': {
+      id: '/api/me/seats/$seatId/calendar.ics'
+      path: '/calendar.ics'
+      fullPath: '/api/me/seats/$seatId/calendar.ics'
+      preLoaderRoute: typeof ApiMeSeatsSeatIdCalendarDoticsRouteImport
+      parentRoute: typeof ApiMeSeatsSeatIdRoute
+    }
     '/api/me/seats/$seatId/cancellation-requests': {
       id: '/api/me/seats/$seatId/cancellation-requests'
-      path: '/api/me/seats/$seatId/cancellation-requests'
+      path: '/cancellation-requests'
       fullPath: '/api/me/seats/$seatId/cancellation-requests'
       preLoaderRoute: typeof ApiMeSeatsSeatIdCancellationRequestsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ApiMeSeatsSeatIdRoute
     }
     '/api/me/table-invitations/$invitationId/checkout': {
       id: '/api/me/table-invitations/$invitationId/checkout'
@@ -2993,6 +3051,32 @@ const ApiMeRequestsRouteWithChildren = ApiMeRequestsRoute._addFileChildren(
   ApiMeRequestsRouteChildren,
 )
 
+interface ApiMeSeatsSeatIdRouteChildren {
+  ApiMeSeatsSeatIdCalendarDoticsRoute: typeof ApiMeSeatsSeatIdCalendarDoticsRoute
+  ApiMeSeatsSeatIdCancellationRequestsRoute: typeof ApiMeSeatsSeatIdCancellationRequestsRoute
+}
+
+const ApiMeSeatsSeatIdRouteChildren: ApiMeSeatsSeatIdRouteChildren = {
+  ApiMeSeatsSeatIdCalendarDoticsRoute: ApiMeSeatsSeatIdCalendarDoticsRoute,
+  ApiMeSeatsSeatIdCancellationRequestsRoute:
+    ApiMeSeatsSeatIdCancellationRequestsRoute,
+}
+
+const ApiMeSeatsSeatIdRouteWithChildren =
+  ApiMeSeatsSeatIdRoute._addFileChildren(ApiMeSeatsSeatIdRouteChildren)
+
+interface ApiMeSeatsRouteChildren {
+  ApiMeSeatsSeatIdRoute: typeof ApiMeSeatsSeatIdRouteWithChildren
+}
+
+const ApiMeSeatsRouteChildren: ApiMeSeatsRouteChildren = {
+  ApiMeSeatsSeatIdRoute: ApiMeSeatsSeatIdRouteWithChildren,
+}
+
+const ApiMeSeatsRouteWithChildren = ApiMeSeatsRoute._addFileChildren(
+  ApiMeSeatsRouteChildren,
+)
+
 interface ApiMemberProfileFilesFileIdRouteChildren {
   ApiMemberProfileFilesFileIdCompleteRoute: typeof ApiMemberProfileFilesFileIdCompleteRoute
   ApiMemberProfileFilesFileIdContentRoute: typeof ApiMemberProfileFilesFileIdContentRoute
@@ -3227,6 +3311,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCurationAssignedTablesRoute: ApiCurationAssignedTablesRoute,
   ApiInternalWorkerRoute: ApiInternalWorkerRoute,
   ApiMeRequestsRoute: ApiMeRequestsRouteWithChildren,
+  ApiMeSeatsRoute: ApiMeSeatsRouteWithChildren,
   ApiMemberHomeRoute: ApiMemberHomeRoute,
   ApiMemberProfileRoute: ApiMemberProfileRouteWithChildren,
   ApiRestaurantWorkspaceRoute: ApiRestaurantWorkspaceRoute,
@@ -3263,8 +3348,6 @@ const rootRouteChildren: RootRouteChildren = {
     ApiHostCancellationsRequestIdFlagRoute,
   ApiHostTablesTableIdAttendanceRoute: ApiHostTablesTableIdAttendanceRoute,
   ApiHostTablesTableIdCheckInRoute: ApiHostTablesTableIdCheckInRoute,
-  ApiMeSeatsSeatIdCancellationRequestsRoute:
-    ApiMeSeatsSeatIdCancellationRequestsRoute,
   ApiMeTablesTableIdBallotRoute: ApiMeTablesTableIdBallotRoute,
   ApiMeTablesTableIdConductReportRoute: ApiMeTablesTableIdConductReportRoute,
   ApiMeTablesTableIdRatingRoute: ApiMeTablesTableIdRatingRoute,
