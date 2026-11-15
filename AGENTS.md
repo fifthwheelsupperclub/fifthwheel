@@ -40,3 +40,7 @@ Use `skills/evolve-team-practice` only after an observed outcome, explicit human
 ## Completion
 
 Lead with the outcome. Name unresolved assumptions and evidence debt. Link produced artifacts. Do not report success until the relevant validators, tests, renders, or direct file inspections pass.
+
+## Project resources
+
+For project-specific facts, read `agent-context/INDEX.md` and then only the relevant linked resources.

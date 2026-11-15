@@ -51,7 +51,8 @@ A person Fifth Wheel may waitlist, invite, seat, or show on a ballot. Distinguis
 | Register / sign in | Guest | Email is on the waitlist, or a profile already exists | Account exists; signup links by `waitlist.profile_id` | Unknown emails do not get a code. Staff sign in with `is_admin` on the same profile. |
 | Complete profile | Guest | Signed in | Profile usable for curation | Unverified guests may be blocked; not proven in production |
 | Verify identity | Guest | Signed in | Verification recorded | Failure path not modeled |
-| Pay for seat | Guest | Invitation or published table (assumed) | Seat confirmed | Stripe failure leaves seat unconfirmed |
+| Browse and request a Seat | Verified Guest with approved profile | Published future Table | One active Seat request is recorded; this does not grant an Invitation or Seat | Duplicate active request is prevented; a full Table may collect requests without promising availability |
+| Pay for seat | Guest | Named Table Invitation after staff roster approval, verified identity and approved complete profile | Seat confirmed after verified payment | Stripe failure leaves seat unconfirmed; an application or published Table alone does not grant payment access |
 
 ## States and transitions
 
@@ -67,6 +68,15 @@ Exact state names in code are not copied here.
 ## Permissions and rules
 
 Guests see only eligible attendees on a ballot and only mutual interest after voting (`decision-voting-window-mutual-only`). Staff see waitlist and table composition. Do not treat matching tenets as guest-facing attributes until named in UI.
+
+The browse/request and separate invitation/payment gates follow [app/docs/PRD.md](../../app/docs/PRD.md), R02/A04/A05 and R03/R04.
+
+- A Guest has exactly one identity and a non-empty `open_to` set containing one or more of `woman`, `man`, and `non_binary`. Preserve all seven possible sets exactly. Mutual openness is checked against each pair's identities and preference sets; equal preference sets are not required.
+- An active Seat request requires verified email and a current complete approved profile. Calculate the Guest's age on the Table's Atlanta-local date; age must be at least 21 and the matching-age range must be valid.
+- DOB, identity, photo, or selfie changes require renewed profile review. Preference changes revalidate future offers. A roster proposal tied to an older profile version is stale and cannot be approved without revalidation.
+- App admission, profile approval, Seat request, roster selection, Table invitation, and paid Seat are distinct states. A request or app admission never grants Table-invitation or payment authority.
+
+These profile and curation preconditions follow [app/docs/PRD.md](../../app/docs/PRD.md), R01–R04, A01/A02/A05/A06/A32.
 
 ## Mental-model notes
 

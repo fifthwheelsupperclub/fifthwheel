@@ -1,0 +1,20 @@
+# Drains the Table-invitation and refund queues every 5 minutes. Secrets: APP_URL, JOB_SECRET, optional HEARTBEAT_URL.
+# HEARTBEAT_URL (e.g. a healthchecks.io ping URL) is pinged only after a 200, so a stopped or failing worker alerts independently of GitHub.
+name: app-worker
+on:
+  schedule: [{ cron: "*/5 * * * *" }]
+  workflow_dispatch:
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run worker pass
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          JOB_SECRET: ${{ secrets.JOB_SECRET }}
+          HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 10 \
+            -X POST -H "Authorization: Bearer ${JOB_SECRET}" "${APP_URL}/api/internal/worker"
+          if [ -n "${HEARTBEAT_URL}" ]; then curl --silent --max-time 20 "${HEARTBEAT_URL}" > /dev/null; fi

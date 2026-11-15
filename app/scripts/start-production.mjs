@@ -1,0 +1,33 @@
+// Production entry: serves dist/client assets and hands everything else to the built TanStack Start fetch handler.
+import { createServer } from "node:http";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { Readable } from "node:stream";
+import { extname, join, normalize, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const root = resolve(import.meta.dirname, "..");
+const clientDir = join(root, "dist", "client");
+const { default: app } = await import(pathToFileURL(join(root, "dist", "server", "server.js")).href);
+const port = Number(process.env.PORT ?? 10000);
+const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".ico": "image/x-icon", ".json": "application/json", ".txt": "text/plain" };
+
+createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    const file = normalize(join(clientDir, decodeURIComponent(url.pathname)));
+    if (req.method === "GET" && file.startsWith(clientDir + "/") && existsSync(file) && statSync(file).isFile()) {
+      res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream", "cache-control": url.pathname.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "public, max-age=300" });
+      createReadStream(file).pipe(res);
+      return;
+    }
+    const body = req.method === "GET" || req.method === "HEAD" ? undefined : Readable.toWeb(req);
+    const response = await app.fetch(new Request(url, { method: req.method, headers: req.headers, body, duplex: "half" }));
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    const cookies = response.headers.getSetCookie?.() ?? [];
+    if (cookies.length) res.setHeader("set-cookie", cookies);
+    if (response.body) Readable.fromWeb(response.body).pipe(res); else res.end();
+  } catch {
+    if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" });
+    res.end("Server error");
+  }
+}).listen(port, "0.0.0.0", () => console.log(`fifthwheel app listening on ${port}`));

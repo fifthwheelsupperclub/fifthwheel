@@ -1,0 +1,14 @@
+# Fifthwheel product review — targeted recheck
+
+Reviewer: Allie, independent product critic. Date: 2026-11-11.
+
+**Verdict: Proceed for development. Both original product findings are resolved. No material regression identified in the reviewed revisions.** This is documentation readiness, not implementation verification or production release approval.
+
+Scope: rechecked F1 and F2 against the current PRD, Architecture, Flow/UI brief and Backlog. Direct file inspection only; no packet edits, production access or tests. The original review remains the baseline rather than being overwritten.
+
+| Finding | Status | Current evidence | Assessment |
+| --- | --- | --- | --- |
+| F1 — Pending cancellation versus confirmed-paid attendance/voting predicates | Resolved | `app/docs/refactor/PRD.md`, **R05**, defines active paid to include confirmed, cancellation_requested and completed, preserves paid counts/capacity/check-in/voting rights, and A13 covers a pending request at snapshot followed by denial. `architecture.md`, **§3 Core schema contract / Shared paid-participant predicate**, explicitly applies that predicate to later “confirmed paid” wording; lifecycle/time gates prevent treating completed historical participation as new check-in authority. **§8 Scheduling** uses active_paid for snapshot. `tasks-checklist.md`, **B05.3** and **B06.1**, require pending-cancellation fixtures. | Eligibility no longer depends on interpreting a literal confirmed status. A pending request preserves participation; approved removal invalidates it. Tests remain implementation obligations. |
+| F2 — Unspecified identity/open-to domain | Resolved | `app/docs/refactor/PRD.md`, **D13 / R01**, specifies one required identity and one Women/Men/Everyone preference, including the permitted identity sets and mutual membership rule. `architecture.md`, **§3 / D13 matching normalization**, defines enums, API restrictions, exact legacy string normalization and quarantine rather than inferred or broadened preferences. `flow-ui-brief.md`, **§4 / Profile and manual review**, uses the same single-choice menus. `tasks-checklist.md`, **B03.2**, requires identity/preference, non-binary, invalid-value, normalization and API-rejection fixtures. | This is now an explicit product choice with a bounded implementation contract. Non-binary-specific and arbitrary preference combinations remain a deliberate scope restriction, not an unresolved spec defect. |
+
+No unresolved finding remains from this review. External provider/configuration evidence, retention/copy confirmation, actual acceptance execution and exact authorization for live actions remain the packet's existing release gates. The retained menu's inclusion tradeoff is documented; this reviewer does not reinterpret it as authority to change the human's chosen scope.

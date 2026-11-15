@@ -10,11 +10,11 @@ related_decisions: [decision-staff-approve-before-invites, decision-seat-confirm
 reversibility: reversible
 ---
 
-# Replace a removed guest from the waitlist in one prompt
+# Replace a removed guest in one prompt
 
 ## Context
 
-Cancellations and no-shows can drop a table below a valid composition. The product must keep a waitlist that can suggest a replacement.
+Cancellations and no-shows can drop a table below a valid composition. The product must keep a pool of eligible people who can be suggested as a replacement.
 
 ## Options considered
 
@@ -24,11 +24,11 @@ Cancellations and no-shows can drop a table below a valid composition. The produ
 
 ## Decision and rationale
 
-Removal flow: Remove guest → “Replace with [Guest Name] from the waitlist?” → Yes/No. Yes approves the suggested waitlisted guest and sends the new invitation in the same workflow. No removes the guest without inviting a replacement. Suggested replacements must preserve valid table composition. Revalidate when a seat is added, removed, or replaced. Source: Linear Pre-MVP description.
+Removal flow: Remove guest → “Invite [Guest Name] instead?” → Yes/No. Yes approves the suggested guest and sends the new invitation in the same workflow. No removes the guest without inviting a replacement. Suggested replacements must preserve valid table composition. Revalidate when a seat is added, removed, or replaced. Source: Linear Pre-MVP description, which phrased the prompt as “Replace with [Guest Name] from the waitlist?”.
 
 ## Consequences
 
-The waitlist is both a marketing signup list and a replacement pool. Those may still be two systems (`evidence-marketing-site-code`). Build work: `FIF-31`, `FIF-32`.
+Terminology (2026-11-14, language refactor D-21): “waitlist” means only website signups without app access. In UI copy the replacement pool is called “people who requested this table”. The shipped pool is pending seat requests for the table (`replacement_candidates`). Whether waitlist signups should also be eligible is still open (see `objects/waitlist-signup.md`). Build work: `FIF-31`, `FIF-32`.
 
 ## Revisit trigger
 

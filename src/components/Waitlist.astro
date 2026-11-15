@@ -84,14 +84,16 @@
               </div>
               <div class="field">
                 <label for="f-birth-year">Year</label>
-                <select
+                <input
                   id="f-birth-year"
                   name="birth_year"
+                  type="number"
+                  inputmode="numeric"
                   autocomplete="bday-year"
+                  min="1"
+                  step="1"
                   required
-                >
-                  <option value="">Year</option>
-                </select>
+                />
               </div>
             </div>
             <p class="hint" id="birthdate-hint">
@@ -157,6 +159,7 @@
                   type="number"
                   inputmode="numeric"
                   min="21"
+                  max="120"
                   step="1"
                   required
                 />
@@ -169,6 +172,7 @@
                   type="number"
                   inputmode="numeric"
                   min="21"
+                  max="120"
                   step="1"
                   required
                 />
@@ -310,27 +314,17 @@
       </form>
     </div>
 
-    <!-- Shown after a stored POST. Hidden until then; waitlist.ts removes [hidden]. -->
+    <!-- Shown after any successful neutral POST response. -->
     <div class="thanks" id="thanksPanel" hidden>
-      <p class="eyebrow">You're on the list</p>
-      <div data-thanks="sent" hidden>
-        <h2>Check your inbox in a moment</h2>
+      <p class="eyebrow">Thanks for reaching out</p>
+      <div>
+        <h2>Thanks for reaching out.</h2>
         <p>
-          A coordinator will reach out when there's a table that fits your nights
-          and your neighborhood. Tables are built one at a time, so it may be a
-          couple of weeks.
+          If there’s anything you need to know, we’ll contact you by email.
         </p>
         <p>
-          If your availability changes, just reply to that email — a person reads
-          it.
-        </p>
-      </div>
-      <div data-thanks="stored" hidden>
-        <h2>The email did not send</h2>
-        <p>
-          You’re on the list. The email did not send. Write to
-          <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>
-          and a person will confirm it.
+          Questions? Write to
+          <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>.
         </p>
       </div>
     </div>

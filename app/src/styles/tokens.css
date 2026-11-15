@@ -1,0 +1,62 @@
+/* Design tokens — the only place raw colors, radii, type sizes and spacing are defined.
+   Values come from the marketing brand kit (../../../src/styles/tokens.css) and
+   docs/UX-DESIGN-REFACTOR-PLAN.md DS-01/DS-02. Legacy names below are kept so existing
+   CSS keeps working while pages migrate; new CSS should use the semantic names. */
+:root {
+  /* brand kit */
+  --ground: #161009;
+  --ground-lift: #1f1710;
+  --brass: #c79a4b;
+  --brass-soft: #dcb670;
+  --brass-12: rgba(199, 154, 75, 0.12);
+  --linen: #f3e9d8;
+  --linen-80: #c4b49a;
+
+  /* semantic color */
+  --bg: var(--ground);
+  --surface: #211a11;        /* legacy name; = surface-1 */
+  --surface-1: #211a11;
+  --surface-2: #2b2216;
+  --raised: var(--surface-2);
+  --line: #3a2f20;
+  --line-strong: #7a6648;    /* control borders: 3.1:1+ on surfaces (WCAG 1.4.11) */
+  --ivory: var(--linen);
+  --text: var(--linen);
+  --muted: #a6947c;          /* 5.9:1+ on surfaces */
+  --text-subtle: #a6947c;
+  --muted-strong: var(--linen-80);
+  --text-muted: var(--linen-80);
+  --gold: var(--brass);
+  --accent: var(--brass);
+  --on-accent: #21190d;
+  --gold-soft: var(--brass-12);
+  --accent-soft: var(--brass-12);
+  --wine: #7c3547;
+  --sage: #7c9070;
+  --focus: var(--brass-soft);
+
+  --success-fg: #cad5b6; --success-bg: #202317; --success-line: #4b5a3f;
+  --warning-fg: #e2c48e; --warning-bg: #2e2417; --warning-line: #695638;
+  --danger-fg: #e6a3a8;  --danger-bg: #2a1d20;  --danger-line: #70434a;
+
+  /* type */
+  --display: "Fraunces", Georgia, serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --text-xs: 12px;   --text-sm: 13px;   --text-staff: 14px;
+  --text-base: 15px; --text-lg: 17px;
+  --display-sm: 20px; --display-md: 26px; --display-lg: 34px;
+  --display-xl: clamp(40px, 6vw, 56px);
+
+  /* spacing (4px base) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+
+  /* shape and layout */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
+  --shadow-dialog: 0 24px 90px #0009;
+  --w-read: 720px; --w-wide: 1120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
