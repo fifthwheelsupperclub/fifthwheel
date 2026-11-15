@@ -69,3 +69,30 @@ test("email problems: unknown vs failed are explained and Send again / Dismiss p
   await expect(page.getByRole("heading", { name: "No email problems" })).toBeVisible();
   expect(seen[0].body).toEqual({ action: "retry" });
 });
+
+test("stripe check: open differences are listed with plain labels and ids; card links to them; 390px does not overflow", async ({ page, context }) => {
+  await mkdir(shots, { recursive: true });
+  await context.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.origin !== origin) return route.abort();
+    if (url.pathname === "/api/admin/overview") return route.fulfill({ json: { ok: true, correlationId: "m", data: { generatedAt: "2026-12-12T12:00:00Z", counts: { ...counts, reconciliationOpen: 2 },
+      heartbeat: { lastRunAt: "2026-12-12T11:58:00Z", ageMinutes: 2, healthy: true }, reconciliationLastOkAt: "2026-12-12T03:00:00Z",
+      reconciliation: [{ kind: "paid_not_recorded", ref: "pi_3Qabc123", detail: { amountCents: 2500 }, firstSeenAt: "2026-12-12T03:00:00Z" },
+        { kind: "refund_outside_app", ref: "re_3Qdef456", detail: { amountCents: 2500, status: "succeeded" }, firstSeenAt: "2026-12-12T03:00:00Z" }] } } });
+    if (url.pathname.startsWith("/api/")) return route.abort();
+    return route.continue();
+  });
+  await page.goto("/admin");
+  const card = page.locator(".ops-card").filter({ hasText: "Stripe and our records disagree" });
+  await expect(card.getByRole("link", { name: "Open" })).toHaveAttribute("href", "#stripe-differences");
+  const section = page.locator("#stripe-differences");
+  await expect(section.getByText("Stripe took a payment we have no record of")).toBeVisible();
+  await expect(section.getByText("pi_3Qabc123")).toBeVisible();
+  await expect(section.getByText(/\$25\.00/).first()).toBeVisible();
+  await expect(section.getByText(/Cents/)).toHaveCount(0);
+  await expect(section.getByText("Refund made outside the app")).toBeVisible();
+  await page.screenshot({ path: `${shots}/w10-stripe-check-desktop-mock-only.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: `${shots}/w10-stripe-check-390px-mock-only.png`, fullPage: true });
+});
