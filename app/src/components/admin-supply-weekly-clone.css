@@ -17,7 +17,7 @@
 .weekly-clone-timezone svg { width: 14px; height: 14px; }
 .weekly-clone-week-form { display: grid; grid-template-columns: minmax(180px, 1fr) 38px minmax(180px, 1fr) auto; align-items: end; gap: 16px; }
 .weekly-clone-field { display: grid; gap: 7px; min-width: 0; color: #e2d3bc; font-size: 11px; font-weight: 600; }
-.weekly-clone-field input { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid #51422e; border-radius: 8px; background: #1c160e; color: var(--ivory); color-scheme: dark; font: inherit; font-size: 12px; font-weight: 400; }
+.weekly-clone-field input { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #1c160e; color: var(--ivory); color-scheme: dark; font: inherit; font-size: 12px; font-weight: 400; }
 .weekly-clone-field input:focus-visible { outline: 2px solid #dfc48e; outline-offset: 2px; }
 .weekly-clone-field small { color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.5; }
 .weekly-clone-shift { display: grid; width: 36px; height: 36px; place-items: center; margin-bottom: 26px; border: 1px solid #493d2b; border-radius: 50%; color: #dfc48e; }

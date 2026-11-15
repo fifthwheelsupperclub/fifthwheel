@@ -111,7 +111,7 @@ Phase 1 implements these. Page sections assume they're done.
 | **G-17** | Fonts | The app loads Fraunces/Inter from Google at runtime. If that fails, Fraunces falls back to Georgia, which changes the look (seen in mock renders, where external requests were blocked) [V-render, V-code `__root.tsx`] | Self-host the same woff2 files the marketing site uses, with `font-display: swap` and metric-matched fallbacks | Consistent rendering, privacy, no third-party dependency | P2 |
 | **G-18** | Keyboard and focus | No skip link. Focus outline is defined only for `button`, `a` and `input`, not `select`, `textarea` or custom choice cards [V-code] | Add "Skip to content". Apply `:focus-visible` to every interactive element through a token. Keep the 44px touch target rule | WCAG 2.4.1, 2.4.7 | P1 |
 | **G-19** | Motion | The shimmer animation is declared, and reduced-motion is handled 10 times in separate places [V-code] | One reduced-motion rule in the tokens file. Skeletons use a static tone when reduced motion is requested | Less duplication | P3 |
-| **G-20** | Internal surfaces | `/preview` (design gallery) and dev-only banners ("Local test data / Local fixture actions enabled") ship in the same bundle [V-render, V-legacy] | Gate `/preview` and fixture banners behind a development-only flag so they never render in production builds | Prevents test UI from leaking to staff or guests | P2 |
+| **G-20** | Internal surfaces | **Correction 2026-11-15 [V-code]:** `/preview` already returns 404 in production (`routes/preview.tsx` `beforeLoad`, confirmed on a production build), and the "Test mode" banner is driven by provider state, not a build flag. Remaining work is only to move the ~250 lines of `.preview-*` CSS out of the production stylesheet (R-18) | Move preview CSS to a dev-only stylesheet loaded by the preview route | Smaller production CSS | P3 |
 
 ---
 
@@ -935,7 +935,7 @@ Complexity: S = under 1 day, M = 1–3 days, L = more than 3 days (one implement
 | **T-08** Copy sweep: shell and decided vocabulary | P1 | C-02, C-14–16, C-24, C-30–32, C-35. R-01, R-09, R-12, R-14, R-20. `copy/states.ts` authored labels | T-04, T-05 | All | M | AC-T08 |
 | **T-09** Responsive nav (tab bar + drawer) | P1 | AppShell | T-04 | Phone | M | AC-T09 |
 | **T-10** A11y foundations | P1 | Skip link, focus tokens, contrast fixes in DS-02, `aria-describedby` on fields | T-01, T-06 | All | S | AC-T10 |
-| **T-11** Dev-only gating | P2 | `/preview`, fixture banners, preview CSS | — | Production hygiene | S | AC-T11 |
+| **T-11** Dev-only gating (reduced: see G-20 correction) | P3 | Preview CSS only | — | Production hygiene | S | AC-T11 |
 
 T-04 and T-05 should land in one branch with the copy-dependent Playwright updates. About 400 text assertions exist (`LP §E2`), so prefer role-based selectors as you touch them.
 
@@ -995,7 +995,7 @@ T-04 and T-05 should land in one branch with the copy-dependent Playwright updat
 - **AC-T08** None of these render in guest UI: "member", "app invitation", "admission", "provider", "Email provider accepted". No sidebar footnote element exists. No empty eyebrow elements.
 - **AC-T09** At 390px: guest bottom tab bar shows 4 labeled items fully visible. Staff "Menu" opens a drawer listing every nav item. `document.documentElement.scrollWidth <= innerWidth` on every route at 320px.
 - **AC-T10** axe-core reports 0 serious or critical violations on every route in mock specs. Input borders and focus indicators are ≥3:1. All text is ≥4.5:1 (≥3:1 for 18px+ display text). A skip link is the first focusable element.
-- **AC-T11** A production build has no `/preview` route and no "Local test data" banner.
+- **AC-T11** The production stylesheet contains no `.preview-*` rules. (`/preview` already 404s in production.)
 
 ### Page-level
 

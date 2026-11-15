@@ -3,7 +3,7 @@
 .supply-management-page .product-breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 19px; color: var(--muted); font-size: 11px; }
 .supply-management-page .product-breadcrumb a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-strong); text-decoration: none; }
 .supply-management-page .product-breadcrumb svg { width: 14px; height: 14px; }
-.supply-management-page .product-breadcrumb span { color: #695c49; }
+.supply-management-page .product-breadcrumb span { color: var(--text-subtle); }
 .supply-management-heading, .supply-detail-heading { align-items: flex-end; margin-bottom: 24px; }
 .supply-management-heading h1, .supply-detail-heading h1 { margin: 10px 0 8px; font-family: var(--display); font-size: clamp(35px, 4vw, 54px); font-weight: 400; line-height: 1.04; letter-spacing: -.04em; }
 .supply-management-heading .page-intro, .supply-detail-heading .page-intro { max-width: 670px; margin: 0; color: var(--muted-strong); font-size: 13px; line-height: 1.65; }
@@ -128,7 +128,7 @@
 .supply-form-lock:disabled { opacity: .72; }
 .supply-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .supply-field { display: grid; align-content: start; gap: 7px; min-width: 0; color: #e2d3bc; font-size: 10px; font-weight: 600; }
-.supply-field input, .supply-field select, .supply-field textarea { width: 100%; min-width: 0; min-height: 44px; padding: 10px 11px; border: 1px solid #51422e; border-radius: 8px; background: #1c160e; color: var(--ivory); font: inherit; font-size: 11px; font-weight: 400; }
+.supply-field input, .supply-field select, .supply-field textarea { width: 100%; min-width: 0; min-height: 44px; padding: 10px 11px; border: 1px solid var(--line-strong); border-radius: 8px; background: #1c160e; color: var(--ivory); font: inherit; font-size: 11px; font-weight: 400; }
 .supply-field textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
 .supply-field select { padding-right: 30px; }
 .supply-field small { color: var(--muted); font-size: 9px; font-weight: 400; line-height: 1.5; }

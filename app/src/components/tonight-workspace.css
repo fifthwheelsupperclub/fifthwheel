@@ -16,7 +16,7 @@
 .tonight-scale { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .tonight-form label { display: grid; gap: 6px; }
 .tonight-form fieldset label, .tonight-scale label { display: flex; }
-.tonight-form select, .tonight-form textarea { padding: 10px 12px; border: 1px solid #51422e; border-radius: 8px; background: #17120b; color: var(--ivory); font: inherit; }
+.tonight-form select, .tonight-form textarea { padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: #17120b; color: var(--ivory); font: inherit; }
 .tonight-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .tonight-confirm p { flex: 1 1 100%; margin: 0; }
 .tonight-form .button { min-height: 46px; justify-self: start; }

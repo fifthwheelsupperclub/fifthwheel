@@ -2,7 +2,7 @@
 .supply-workspace .supply-heading { align-items: flex-end; margin-bottom: 29px; }
 .supply-heading .page-intro { max-width: 680px; }
 .supply-heading > .status-pill { flex: 0 0 auto; margin-bottom: 3px; }
-.supply-nav-number { width: 19px; color: #82745f; font-size: 9px; font-variant-numeric: tabular-nums; }
+.supply-nav-number { width: 19px; color: var(--text-subtle); font-size: 9px; font-variant-numeric: tabular-nums; }
 .supply-state { display: flex; align-items: center; gap: 17px; margin-top: 28px; padding: 23px; border: 1px dashed #493a26; border-radius: 13px; background: #1b150e; }
 .supply-state-error { border-color: #70434a; background: #211714; }
 .supply-state-icon { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; border: 1px solid #59472d; border-radius: 50%; color: var(--gold); }
