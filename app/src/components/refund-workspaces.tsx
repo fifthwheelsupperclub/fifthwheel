@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { PageState } from "./ui/page-state";
 import { instantDate } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
@@ -217,21 +218,21 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
       <PageHeader eyebrow={sourceLabel(obligation.source)} title={obligation.memberName} description={obligation.tableTitle} />
       {message && <p className="refund-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       <section className="refund-detail-overview"><div><p className="eyebrow">STATUS</p><h2>{stateLabel(obligation.state)}</h2><p>{obligation.state === "succeeded" ? "Stripe confirmed the full refund." : obligation.state === "unknown" ? "We don’t know if this was sent. It’s still owed. Check status before sending again." : obligation.state === "submitted" ? "Sent to Stripe. Waiting for Stripe to confirm." : obligation.state === "pending" ? "Queued. It’ll go to Stripe shortly." : obligation.state === "failed" ? obligation.operations.some((operation) => operation.canRetry) ? "Still owed. You can try again." : "Still owed. Needs an admin to look at it first." : "Owed, and not sent yet."}</p></div><div className="refund-detail-amount"><span>Refund</span><strong>{money(obligation.amountCents, obligation.currency)}</strong></div></section>
-      <section className="refund-facts-grid" aria-label="Refund balance"><div><span>Paid</span><strong>{money(obligation.paymentAmountCents)}</strong></div><div><span>Refunded so far</span><strong>{money(obligation.refundedCents)}</strong></div><div><span>Total owed</span><strong>{money(obligation.reservedCents)}</strong></div><div><span>Left to send</span><strong>{money(obligation.availableCents)}</strong></div></section>
-      {obligation.latestSafeCode && <p className="refund-safe-note">{safeCodeCopy(obligation.latestSafeCode)}</p>}
+      <dl className="seat-facts refund-balance" aria-label="Refund balance"><div><dt>Paid</dt><dd>{money(obligation.paymentAmountCents)}</dd></div><div><dt>Refunded so far</dt><dd>{money(obligation.refundedCents)}</dd></div><div><dt>Total owed</dt><dd>{money(obligation.reservedCents)}</dd></div><div><dt>Left to send</dt><dd><strong>{money(obligation.availableCents)}</strong></dd></div></dl>
+      {obligation.latestSafeCode && obligation.latestSafeCode !== "provider_failed" && <p className="refund-safe-note">{safeCodeCopy(obligation.latestSafeCode)}</p>}
       <section className="refund-operations"><div className="refund-section-title"><div><h2>Attempts</h2></div><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
         {obligation.operations.length === 0 ? <p className="refund-empty-copy">No attempts yet.</p> : <ol className="refund-operation-list">{obligation.operations.map((operation) => <li key={operation.operationId}><div className="refund-operation-heading"><div><strong>{operationLabel(operation.state)}</strong><time dateTime={operation.createdAt}>{dateLabel(operation.createdAt)}</time></div><b>{money(operation.amountCents)}</b></div>{safeCodeCopy(operation.safeCode) && <p>{safeCodeCopy(operation.safeCode)}</p>}<div className="refund-operation-actions">{operation.canRetry && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("retry"); }}>Try again<RefreshCw aria-hidden="true" /></button>}{operation.canReconcile && <button className="button button-outline" type="button" disabled={busy} onClick={() => { setTargetOperation(operation.operationId); setAction("reconcile"); }}>Check status<RefreshCw aria-hidden="true" /></button>}</div></li>)}</ol>}
       </section>
       {obligation.canDispatch && <button className="button button-primary refund-dispatch" type="button" disabled={busy} onClick={() => { setTargetOperation(null); setAction("dispatch"); }}>Send refund<ArrowRight aria-hidden="true" /></button>}
       {!obligation.canDispatch && obligation.dispatchBlockedReason && <p className="refund-blocked-note"><Clock3 aria-hidden="true" />{blockedCopy(obligation.dispatchBlockedReason)}</p>}
       {action && <section className="refund-confirm" role="group" aria-labelledby="refund-confirm-title"><h2 id="refund-confirm-title">{action === "dispatch" ? `Send ${money(obligation.availableCents)} refund?` : action === "retry" ? "Try again?" : "Check with Stripe?"}</h2><p>{action === "dispatch" ? "This sends the refund through Stripe. The status updates when Stripe confirms." : action === "retry" ? "This retries the same refund. It can’t pay out twice." : "This only checks. It won’t send another refund."}</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => { setAction(null); setTargetOperation(null); }}>Cancel</button><button className="button button-primary" type="button" disabled={busy} onClick={() => void submitAction()}>{busy ? "Working…" : action === "dispatch" ? "Send refund" : action === "retry" ? "Try again" : "Check status"}</button></div></section>}
-      <div className="refund-footer-actions"><Link className="button button-outline" to="/admin/refunds"><ArrowLeft aria-hidden="true" />Back to Refunds</Link></div>
     </>}
   </div></RefundAdminShell>;
 }
 
-function RefundState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
-  return <section className="refund-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
+function RefundState({ title, detail, action }: { icon?: ReactNode; title: string; detail?: string; action?: ReactNode }) {
+  const variant = /^Loading/.test(title) ? "loading" : /couldn’t/i.test(title) ? "error" : /^Sign in/.test(title) ? "signed-out" : /access/i.test(title) ? "no-access" : "empty";
+  return <PageState variant={variant} title={title} message={detail} action={action} />;
 }
 function RefundAdminShell({ children }: { active: "queue" | "detail"; children: ReactNode }) {
   return <AppShell role="admin" active="refunds" className="refund-admin-workspace" contentClassName="refund-admin-content">{children}</AppShell>;

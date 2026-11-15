@@ -230,3 +230,5 @@
 .supply-modal .button-danger { background: var(--wine); border-color: var(--wine); color: var(--text); }
 .supply-detail-form .supply-editor-actions { position: sticky; bottom: 0; z-index: 4; padding: var(--space-3) 0; background: var(--bg); }
 @media (max-width: 820px) { .supply-detail-form .supply-editor-actions { bottom: 0; } }
+.refund-balance { margin: 0 0 var(--space-4); max-width: var(--w-read); }
+.refund-balance strong { font-size: var(--text-lg); }
