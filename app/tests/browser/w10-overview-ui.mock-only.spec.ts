@@ -22,13 +22,15 @@ for (const healthy of [true, false]) {
     });
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
-    const cards = page.locator(".ops-card h2");
+    const cards = page.locator(".queue-title");
     await expect(cards.first()).toContainText("Tables on hold");
     await expect(cards.nth(1)).toContainText("Refunds failed or unconfirmed");
     await expect(page.getByText("The oldest invitation email has been waiting 22 minutes.")).toBeVisible();
     await expect(page.getByText(healthy ? /Emails and refunds are sending normally/ : /Emails and refunds aren’t sending/)).toBeVisible();
     await expect(page.getByText(/queues are clear/)).toBeVisible();
-    await expect(page.locator(".ops-card").filter({ hasText: "Profiles waiting for review" }).getByRole("link", { name: "Open" })).toHaveAttribute("href", "/admin/identity-review");
+    await expect(page.getByRole("link", { name: /Profiles waiting for review/ })).toHaveAttribute("href", "/admin/identity-review");
+    await expect(page.getByRole("link", { name: "Open", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Need help? Email")).toHaveCount(0);
     await expect(page.getByText(/ballot|vote choice/i)).toHaveCount(0);
     if (healthy) await page.screenshot({ path: `${shots}/w10-admin-overview-desktop-mock-only.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -83,8 +85,7 @@ test("stripe check: open differences are listed with plain labels and ids; card 
     return route.continue();
   });
   await page.goto("/admin");
-  const card = page.locator(".ops-card").filter({ hasText: "Stripe and our records disagree" });
-  await expect(card.getByRole("link", { name: "Open" })).toHaveAttribute("href", "#stripe-differences");
+  await expect(page.getByRole("link", { name: /Stripe and our records disagree/ })).toHaveAttribute("href", "#stripe-differences");
   const section = page.locator("#stripe-differences");
   await expect(section.getByText("Stripe took a payment we have no record of")).toBeVisible();
   await expect(section.getByText("pi_3Qabc123")).toBeVisible();

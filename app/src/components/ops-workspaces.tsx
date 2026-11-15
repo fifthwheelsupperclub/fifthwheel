@@ -7,7 +7,7 @@ import { StatusBadge } from "./ui/status-badge";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { type StaffNavKey } from "./staff-nav";
-import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
 import "./ops-workspaces.css";
 
 type Area = "admin-notices" | "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
@@ -294,17 +294,21 @@ export function AdminOverview() {
     const oldest = counts.oldestPendingDeliveryMinutes;
     return <Shell area="admin-overview">
       <PageHeader title="Today" description="What needs attention, most urgent first." />
-      <p className={`ops-alert ${heartbeat.healthy ? "ops-ok" : ""}`} role={heartbeat.healthy ? "status" : "alert"}>{heartbeat.healthy ? <CheckCircle2 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
-        {heartbeat.lastRunAt === null ? "Emails and refunds aren’t sending. Tell the operations owner now." : heartbeat.healthy ? `Emails and refunds are sending normally. (Last checked ${heartbeat.ageMinutes ?? 0} min ago.)` : "Emails and refunds aren’t sending. Tell the operations owner now."}</p>
+      {heartbeat.healthy && heartbeat.lastRunAt !== null
+        ? <p className="overview-health" role="status"><CheckCircle2 aria-hidden="true" />Emails and refunds are sending normally. (Last checked {heartbeat.ageMinutes ?? 0} min ago.)</p>
+        : <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />Emails and refunds aren’t sending. Tell the operations owner now.</p>}
       {typeof oldest === "number" && oldest >= 15 && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />The oldest invitation email has been waiting {oldest} minutes.</p>}
       {active.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>Nothing needs attention</h2><p>Every queue is empty.</p></section>
-        : <ul className="ops-list">{active.map((q) => <li className="ops-card" key={q.key}><div><h2>{counts[q.key]} · {q.label}</h2><p>{q.help}</p></div>
-          <a className={`button ${q.alert ? "button-primary" : "button-outline"}`} href={q.href}>Open</a></li>)}</ul>}
+        : <ul className="queue-list">{active.map((q) => <li key={q.key}><a className="queue-row" href={q.href}>
+          <strong className="queue-count">{counts[q.key]}</strong>
+          <span className="queue-text"><span className="queue-title">{q.label}</span><small>{q.help}</small></span>
+          {q.alert && <StatusBadge tone="warning">Urgent</StatusBadge>}
+          <ChevronRight aria-hidden="true" />
+        </a></li>)}</ul>}
       {(reconciliation.length > 0 || reconciliationLastOkAt !== null) && <section id="stripe-differences" className="ops-card" style={{ marginBlock: "1rem" }}><div><h2>Stripe check</h2>
         <p>{reconciliationLastOkAt ? `Last completed ${timestamp(reconciliationLastOkAt)}.` : "Has not completed yet."}</p>
         {reconciliation.length > 0 && <ul>{reconciliation.map((f) => <li key={`${f.kind}:${f.ref}`}>{reconciliationLabels[f.kind] ?? f.kind}: <code>{f.ref}</code>{" "}{Object.entries(f.detail).map(([k, v]) => (typeof v === "number" && k.endsWith("Cents") ? `$${(v / 100).toFixed(2)}` : String(v))).join(" · ")}</li>)}</ul>}</div></section>}
       {clear.length > 0 && <details className="ops-clear"><summary>{clear.length} queues are clear</summary><ul>{clear.map((q) => <li key={q.key}><a href={q.href}>{q.label}</a></li>)}</ul></details>}
-      <p className="ops-footnote">Need help? Email <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. Terms and privacy: <a href="https://fifthwheel.community/terms">Terms</a> · <a href="https://fifthwheel.community/privacy">Privacy</a>.</p>
     </Shell>;
   })()}</Status>;
 }

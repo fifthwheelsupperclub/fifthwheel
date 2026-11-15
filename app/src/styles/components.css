@@ -190,3 +190,15 @@
 .profile-review-status p { margin: 0; color: var(--text-muted); font-size: var(--text-base); }
 .profile-form .profile-choice-group + .profile-form-grid { margin-top: var(--space-5); }
 .profile-section .profile-form-grid:last-child { margin-bottom: 0; }
+
+/* ---- Staff overview queue rows (T-18) ---- */
+.overview-health { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--space-4); color: var(--text-muted); font-size: var(--text-staff); }
+.overview-health svg { width: 16px; height: 16px; color: var(--success-fg); flex: 0 0 auto; }
+.queue-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; max-width: var(--w-wide); }
+.queue-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-1); color: inherit; text-decoration: none; }
+.queue-row:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.queue-row > svg { width: 18px; height: 18px; color: var(--text-subtle); }
+.queue-count { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.queue-title { display: block; font-size: var(--text-base); font-weight: 600; }
+.queue-text small { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--text-staff); line-height: 1.45; }
+@media (max-width: 640px) { .queue-row { grid-template-columns: 44px minmax(0, 1fr) auto; } .queue-row .badge { display: none; } }
