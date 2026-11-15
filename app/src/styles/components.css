@@ -202,3 +202,24 @@
 .queue-title { display: block; font-size: var(--text-base); font-weight: 600; }
 .queue-text small { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--text-staff); line-height: 1.45; }
 @media (max-width: 640px) { .queue-row { grid-template-columns: 44px minmax(0, 1fr) auto; } .queue-row .badge { display: none; } }
+
+/* ---- Roster two-pane (T-19) ---- */
+.roster-split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-6); align-items: start; }
+.roster-applicants-pane h2, .roster-selected-head h2 { margin: 0; font-family: var(--display); font-size: var(--display-md); font-weight: 400; }
+.roster-pane-note { margin: var(--space-1) 0 var(--space-4); color: var(--text-muted); font-size: var(--text-staff); }
+.roster-selected-pane { position: sticky; top: 80px; display: grid; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--surface-1); }
+.roster-selected-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.roster-selected-pane .roster-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: 0; }
+.roster-selected-pane .roster-actions .button { flex: 1 1 auto; }
+.roster-mobile-bar { display: none; }
+@media (max-width: 960px) {
+  .roster-split { grid-template-columns: 1fr; }
+  .roster-selected-pane { position: static; }
+  .roster-mobile-bar { position: fixed; z-index: 10; inset: auto 0 0 0; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); border-top: 1px solid var(--line-strong); background: var(--ground-lift); font-size: var(--text-base); font-weight: 600; }
+  .roster-workspace .product-content { padding-bottom: 96px; }
+}
+.roster-split .roster-applicant { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.roster-split .roster-applicant-main { display: grid; gap: 2px; min-width: 0; }
+.roster-split .roster-applicant-main strong { font-size: var(--text-base); }
+.roster-split .roster-applicant-main small { color: var(--text-muted); font-size: var(--text-sm); }
+.roster-split .roster-reasons { color: var(--warning-fg); font-size: var(--text-sm); }
