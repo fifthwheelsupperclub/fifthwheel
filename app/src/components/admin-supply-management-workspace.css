@@ -181,7 +181,6 @@
 .supply-modal:focus { outline: none; }
 .supply-management-page button:focus-visible, .supply-management-page a:focus-visible, .supply-management-page input:focus-visible, .supply-management-page textarea:focus-visible, .supply-management-page select:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 @media (max-width: 900px) {
-  .supply-management-page .product-layout { grid-template-columns: 190px minmax(0, 1fr); }
   .supply-list-controls { align-items: flex-start; flex-direction: column; }
   .supply-list-actions { width: 100%; flex-wrap: wrap; }
   .supply-search { flex: 1 1 220px; }
@@ -189,12 +188,6 @@
   .supply-revision-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  .supply-management-page .product-layout { grid-template-columns: 1fr; }
-  .supply-management-page .product-sidebar { position: static; height: auto; min-height: 0; padding: 14px; border-right: 0; border-bottom: 1px solid #302718; }
-  .supply-management-page .product-sidebar .sidebar-caption, .supply-management-page .product-sidebar .group-label, .supply-management-page .product-sidebar-foot { display: none; }
-  .supply-management-page .product-sidebar .member-nav-link { display: inline-flex; width: auto; min-height: 42px; padding-inline: 10px; }
-  .supply-management-page .product-sidebar { display: flex; flex-flow: row wrap; align-items: center; gap: 5px; }
-  .supply-management-page .product-sidebar > .brand, .supply-management-page .product-sidebar > a.brand { display: none; }
   .supply-management-page .product-content { padding: 22px 18px 48px; }
   .supply-management-heading, .supply-detail-heading { align-items: flex-start; flex-direction: column; }
   .supply-management-heading h1, .supply-detail-heading h1 { font-size: var(--display-md); }

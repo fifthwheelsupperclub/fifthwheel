@@ -40,3 +40,13 @@ test("each pass records a heartbeat with compact outcomes and runs retention and
   const noBeat = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, { ...deps, recordHeartbeat: async () => { throw new Error("db down"); } });
   assert.equal(noBeat.status, 500);
 });
+
+test("reconciliation is reported but never fails the pass or the heartbeat", async () => {
+  const beats: Array<[boolean, Record<string, unknown>]> = [];
+  const deps = { deliverInvitation: async () => ({ state: "idle" }), runRefunds: async () => ({}), recordHeartbeat: async (ok: boolean, s: Record<string, unknown>) => { beats.push([ok, s]); },
+    reconcile: async (): Promise<unknown> => { throw new Error("stripe down"); } };
+  const res = await handleWorkerRequest(req(`Bearer ${secret}`), { JOB_SECRET: secret }, deps);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).reconciliation, "error");
+  assert.deepEqual(beats[0], [true, { invitations: "ran", refunds: "disabled", reconciliation: "error" }]);
+});

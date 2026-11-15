@@ -43,7 +43,6 @@
 .cancellation-state .button { margin-top:6px; }
 .cancellation-alert { display:flex; align-items:flex-start; gap:8px; margin:13px 0; padding:11px 12px; border:1px solid #665236; border-radius:9px; background:#241c12; color:#e8d8b6; font-size: var(--text-staff); line-height:1.55; }
 .cancellation-alert svg { width:16px; height:16px; flex:0 0 16px; color:var(--gold); }
-.cancellation-admin-workspace .product-sidebar .member-nav-link { min-height:40px; }
 .cancellation-admin-workspace .product-content { min-width:0; }
 .cancellation-admin-content { padding:26px 30px; }
 .cancellation-admin-list { display:grid; gap:11px; margin:20px 0; }
@@ -94,9 +93,6 @@
   .cancellation-footer-actions { display:grid; grid-template-columns:1fr; }
   .cancellation-footer-actions .button { justify-content:center; }
   .cancellation-admin-content { padding:18px 15px; }
-  .cancellation-admin-workspace .product-layout { min-height:auto; }
-  .cancellation-admin-workspace .product-sidebar { flex-wrap:wrap; align-content:center; overflow:visible; }
-  .cancellation-admin-workspace .product-sidebar .member-nav-link { flex:0 0 auto; max-width:100%; white-space:normal; line-height:1.35; }
   .cancellation-admin-card { align-items:stretch; flex-direction:column; }
   .cancellation-admin-card > .button { justify-content:center; }
   .cancellation-admin-context { grid-template-columns:1fr; }

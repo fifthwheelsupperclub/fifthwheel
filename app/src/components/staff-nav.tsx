@@ -1,4 +1,5 @@
-import { Fragment } from "react";
+import { Menu, X } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 // One sidebar for every staff screen. Add or rename a nav item here, nowhere else.
 export type StaffNavKey =
@@ -24,12 +25,33 @@ const OTHER_GROUPS: Record<"host" | "restaurant", ReadonlyArray<readonly [string
 
 export type StaffRole = "admin" | "host" | "restaurant";
 
+function groupsFor(role: StaffRole) { return role === "admin" ? ADMIN_GROUPS : OTHER_GROUPS[role]; }
+function Links({ role, active }: Readonly<{ role: StaffRole; active?: StaffNavKey }>) {
+  return <>{groupsFor(role).map(([group, items]) => <Fragment key={group ?? "top"}>
+    {group && <p className="group-label">{group}</p>}
+    {items.map(([key, href, label]) => <a key={key} className={`member-nav-link${key === active ? " active" : ""}`} href={href} aria-current={key === active ? "page" : undefined}>{label}</a>)}
+  </Fragment>)}</>;
+}
+const ROLE_NAME = { admin: "Admin", host: "Host", restaurant: "Restaurant" } as const;
+
 export function StaffSidebar({ role = "admin", active }: Readonly<{ role?: StaffRole; active?: StaffNavKey }>) {
-  const groups = role === "admin" ? ADMIN_GROUPS : OTHER_GROUPS[role];
-  return <aside className="product-sidebar" aria-label={`${role === "admin" ? "Admin" : role === "host" ? "Host" : "Restaurant"} navigation`}>
-    {groups.map(([group, items]) => <Fragment key={group ?? "top"}>
-      {group && <p className="group-label">{group}</p>}
-      {items.map(([key, href, label]) => <a key={key} className={`member-nav-link${key === active ? " active" : ""}`} href={href} aria-current={key === active ? "page" : undefined}>{label}</a>)}
-    </Fragment>)}
-  </aside>;
+  return <aside className="product-sidebar" aria-label={`${ROLE_NAME[role]} navigation`}><Links role={role} active={active} /></aside>;
+}
+
+// Phone navigation: a Menu button in the top bar that opens the same grouped links in a drawer (shown below 820px).
+export function StaffMenu({ role, active }: Readonly<{ role: StaffRole; active?: StaffNavKey }>) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current; if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return <>
+    <button className="menu-button" type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"><Menu aria-hidden="true" />Menu</button>
+    <dialog ref={ref} className="nav-drawer" aria-label={`${ROLE_NAME[role]} navigation`} onClose={() => setOpen(false)} onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+      <div className="nav-drawer-head"><strong>Menu</strong><button className="icon-action" type="button" onClick={() => setOpen(false)} aria-label="Close menu"><X aria-hidden="true" /></button></div>
+      <nav className="nav-drawer-links"><Links role={role} active={active} /></nav>
+    </dialog>
+  </>;
 }

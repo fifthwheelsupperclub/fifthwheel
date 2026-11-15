@@ -1,4 +1,3 @@
-.roster-workspace .product-sidebar { min-width: 0; }
 .roster-workspace .member-nav-link { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: var(--muted-strong); font-size: var(--text-staff); text-decoration: none; }
 .roster-workspace .member-nav-link svg { width: 16px; height: 16px; color: var(--muted); }
 .roster-workspace .member-nav-link:hover { background: #2b2216; color: var(--ivory); }
@@ -99,14 +98,10 @@
 .spin { animation: roster-spin 1s linear infinite; }
 @keyframes roster-spin { to { transform: rotate(360deg); } }
 @media (max-width: 850px) {
-  .roster-workspace .product-layout { grid-template-columns: 180px minmax(0, 1fr); }
   .roster-summary-grid { grid-template-columns: 1fr 1fr; }
   .roster-summary-card:last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
-  .roster-workspace .product-layout { display: block; min-height: auto; }
-  .roster-workspace .product-sidebar { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 6px; overflow-x: auto; padding: 8px 14px; border-right: 0; border-bottom: 1px solid #302718; }
-  .roster-workspace .product-sidebar > .sidebar-caption, .roster-workspace .product-sidebar-foot { display: none; }
   .roster-workspace .member-nav-link { flex: 0 0 auto; min-height: 36px; padding: 0 9px; font-size: var(--text-sm); white-space: nowrap; }
   .roster-workspace .product-content { padding: 22px 15px 48px; }
   .roster-workspace .product-breadcrumb { margin-bottom: 17px; }

@@ -126,7 +126,7 @@
 .request-table-unavailable { grid-column: 1 / -1; margin: 0; padding-top: 9px; border-top: 1px solid #3a2f20; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
 .requests-heading-row { margin-bottom: 8px; }
 .member-tables-page a:focus-visible, .member-tables-page button:focus-visible, .member-tables-page input:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
-@media (max-width: 1020px) {
+@media (max-width: 1180px) {
   .table-filter-panel { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .table-filter-intro { grid-column: 1 / -1; }
   .table-filter-neighborhood { grid-column: 1 / -1; }

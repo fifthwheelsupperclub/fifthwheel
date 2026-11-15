@@ -257,12 +257,13 @@ export function AdminConductReports() {
 }
 
 // ---- Admin: overview ------------------------------------------------------------------------------------------------
-type Overview = { generatedAt: string; heartbeat: { lastRunAt: string | null; ageMinutes: number | null; healthy: boolean }; counts: Record<string, number | null> };
+type Overview = { generatedAt: string; heartbeat: { lastRunAt: string | null; ageMinutes: number | null; healthy: boolean }; counts: Record<string, number | null>; reconciliation?: Array<{ kind: string; ref: string; detail: Record<string, unknown> }>; reconciliationLastOkAt?: string | null };
 type Queue = { key: string; label: string; help: string; href: string; alert?: boolean };
 const queues: Queue[] = [
   { key: "decisionsSuspended", label: "Tables on hold", help: "A removal left a confirmed table invalid. Review before voting.", href: "/admin/table-decisions", alert: true },
   { key: "decisionsNeeded", label: "Tables needing a decision", help: "Guests can’t pay until you confirm or cancel.", href: "/admin/table-decisions", alert: true },
   { key: "paymentsUnaccounted", label: "Payments with no seat or refund", help: "Look into these first. Money isn’t accounted for.", href: "/admin/refunds", alert: true },
+  { key: "reconciliationOpen", label: "Stripe and our records disagree", help: "The nightly check found a difference. Details are below.", href: "#stripe-differences", alert: true },
   { key: "refundsNeedingAttention", label: "Refunds failed or unconfirmed", help: "Check status with Stripe before sending again.", href: "/admin/refunds", alert: true },
   { key: "votesNotFinalized", label: "Vote results not finalized", help: "A closed vote still has no results after a day. Tell the operations owner.", href: "/admin", alert: true },
   { key: "noticeProblems", label: "Guest emails not sent or unconfirmed", help: "Check Resend first, then send again or dismiss.", href: "/admin/notices", alert: true },
@@ -280,10 +281,13 @@ const queues: Queue[] = [
   { key: "supplyNeedsAttention", label: "Tables whose source changed or went missing", help: "Review supply before accepting or publishing.", href: "/admin/tables" },
   { key: "unstaffedWithinSevenDays", label: "Tables in the next 7 days with no host", help: "Assign a host.", href: "/admin/staff-assignments" },
 ];
+const reconciliationLabels: Record<string, string> = { paid_not_recorded: "Stripe took a payment we have no record of", payment_amount_mismatch: "Payment amount differs", ledger_payment_not_in_stripe: "We recorded a payment Stripe doesn’t show as paid",
+  refund_outside_app: "Refund made outside the app", refund_unrecorded: "Stripe refund we have no record of", refund_state_mismatch: "Refund status differs", ledger_refund_not_in_stripe: "We recorded a refund Stripe doesn’t have",
+  over_refunded: "More refunded than paid", reconciliation_incomplete: "Check could not read everything" };
 export function AdminOverview() {
   const { load, reload } = useLoad<Overview>("/api/admin/overview");
   return <Status area="admin-overview" load={load} retry={() => void reload()}>{load.state === "ready" && (() => {
-    const { counts, heartbeat } = load.data;
+    const { counts, heartbeat, reconciliation = [], reconciliationLastOkAt = null } = load.data;
     const active = queues.filter((q) => (counts[q.key] ?? 0) > 0);
     const clear = queues.filter((q) => (counts[q.key] ?? 0) === 0);
     const oldest = counts.oldestPendingDeliveryMinutes;
@@ -295,6 +299,9 @@ export function AdminOverview() {
       {active.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>Nothing needs attention</h2><p>Every queue is empty.</p></section>
         : <ul className="ops-list">{active.map((q) => <li className="ops-card" key={q.key}><div><h2>{counts[q.key]} · {q.label}</h2><p>{q.help}</p></div>
           <a className={`button ${q.alert ? "button-primary" : "button-outline"}`} href={q.href}>Open</a></li>)}</ul>}
+      {(reconciliation.length > 0 || reconciliationLastOkAt !== null) && <section id="stripe-differences" className="ops-card"><div><h2>Stripe check</h2>
+        <p>{reconciliationLastOkAt ? `Last completed ${new Date(reconciliationLastOkAt).toLocaleString()}.` : "Has not completed yet."}</p>
+        {reconciliation.length > 0 && <ul>{reconciliation.map((f) => <li key={`${f.kind}:${f.ref}`}>{reconciliationLabels[f.kind] ?? f.kind}: <code>{f.ref}</code>{" "}{Object.entries(f.detail).map(([k, v]) => `${k} ${String(v)}`).join(", ")}</li>)}</ul>}</div></section>}
       {clear.length > 0 && <details className="ops-clear"><summary>{clear.length} queues are clear</summary><ul>{clear.map((q) => <li key={q.key}><a href={q.href}>{q.label}</a></li>)}</ul></details>}
       <p className="ops-footnote">Need help? Email <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. Terms and privacy: <a href="https://fifthwheel.community/terms">Terms</a> · <a href="https://fifthwheel.community/privacy">Privacy</a>.</p>
     </Shell>;

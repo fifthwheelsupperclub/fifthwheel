@@ -811,13 +811,7 @@ input:not([type=checkbox]):not([type=radio]) { min-height: 46px; font-size: var(
   .auth-story .story-stamp { font-size: var(--text-xs); }
   .auth-card-wrap { padding: 34px 22px 52px; }
   .auth-card { max-width: 440px; }
-  .product-layout { grid-template-columns: 1fr; }
-  .product-sidebar { position: static; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 5px; overflow-x: auto; padding: 8px 13px; border-right: 0; border-bottom: 1px solid #302718; }
-  .product-sidebar .sidebar-caption, .product-sidebar .group-label, .product-sidebar-foot, .product-sidebar .member-nav-link[aria-disabled="true"] { display: none; }
-  .product-sidebar .member-nav-link { min-height: 44px; flex: 0 0 auto; padding: 0 11px; }
   .product-content { padding: 23px 18px 50px; }
-  .member-product-sidebar { position: static; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 5px; overflow-x: auto; padding: 8px 13px; }
-  .member-product-sidebar .sidebar-caption { display: none; }
 }
 @media (max-width: 600px) {
   .product-topbar { min-height: 57px; padding: 0 15px; }

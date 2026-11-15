@@ -73,12 +73,8 @@
 .refund-footer-actions .button { min-height:43px; gap:7px; }
 .refund-spin { animation:refund-spin .9s linear infinite; }
 @keyframes refund-spin { to { transform:rotate(360deg); } }
-.refund-admin-workspace .product-sidebar .member-nav-link { min-height:40px; }
 @media (max-width:800px) { .refund-admin-content { padding:22px; } .refund-facts-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:640px) {
-  .refund-admin-workspace .product-layout { min-height:auto; }
-  .refund-admin-workspace .product-sidebar { flex-wrap:wrap; align-content:center; overflow:visible; }
-  .refund-admin-workspace .product-sidebar .member-nav-link { flex:0 0 auto; max-width:100%; white-space:normal; line-height:1.35; }
   .refund-admin-content { padding:18px 15px; }
   .refund-heading h1 { font-size:clamp(36px,10vw,48px); }
   .refund-summary-card { align-items:stretch; flex-direction:column; }
