@@ -154,7 +154,7 @@ Routes from `app/src/routes` (TanStack file routes). "States reviewed" lists wha
 | 31 | (unmatched) | P-404 | Any | default | V-render |
 | 32 | (route error) | P-ERROR | Any | code only | V-code |
 | 33 | `/preview` | P-PREVIEW | Internal | default | V-render |
-| 34 | *(unrouted)* `AdminSupplySyncWorkspace` "Check Airtable" | P-SYNC | Admin | not reachable: no route imports it | V-code, V-legacy |
+| 34 | ~~`AdminSupplySyncWorkspace` "Check Airtable"~~ | P-SYNC | Admin | deleted 2026-11-15 (was unreachable; the Tables page has an inline check) | V-code |
 
 ### Not inspected (limitations)
 
@@ -741,9 +741,9 @@ Each page assumes the global G-items and DS-components are in place. A table row
 
 [V-render] An internal design gallery with its own copies of shell CSS (about 250 lines of `.preview-*` and phone-frame rules in `styles.css`). Gate it to development builds (G-20) and move its CSS into a dev-only stylesheet so production CSS shrinks.
 
-#### Unrouted: Check Airtable — `AdminSupplySyncWorkspace` (P-SYNC)
+#### Removed: Check Airtable standalone workspace (P-SYNC)
 
-[V-code] `components/admin-supply-sync-workspace.tsx` (244 lines + CSS) isn't imported by any route, so staff can't reach it. **Decision needed (Q-18):** route it at `/admin/tables/sync` and link it from P-SUPPLY's header, or delete it if Airtable sync is now handled elsewhere.
+**Decided 2026-11-15 (Q-18): deleted.** `AdminSupplySyncWorkspace` had no route, so staff could not reach it. The Tables page's inline "Check Airtable" action does the same job. The component and its stylesheet are removed.
 
 ---
 
@@ -1041,7 +1041,7 @@ T-04 and T-05 should land in one branch with the copy-dependent Playwright updat
 | Q-15 | Do reviewers need profile/identity version numbers on screen? | Hide by default in a collapsed "Technical details" | Ops | T-24 |
 | Q-16 | Merge Guest emails and Table invitation delivery into one "Emails" page? | Yes, as two tabs. The routes can remain | Ops | T-23 |
 | Q-17 | Can a host undo a check-in? | Show "Undo" only if the API supports it. Don't add it otherwise | Product | P-ATTEND-03 |
-| Q-18 | Route or delete the unrouted "Check Airtable" workspace? | Route at `/admin/tables/sync` if Airtable is still the supply source. Otherwise delete it and its CSS | Product + engineering | T-30 |
+| Q-18 | Route or delete the unrouted "Check Airtable" workspace? | Route at `/admin/tables/sync` if Airtable is still the supply source. Otherwise delete it and its CSS | **Decided 2026-11-15: deleted.** | T-30 |
 
 ### Tradeoffs and critical review log
 
