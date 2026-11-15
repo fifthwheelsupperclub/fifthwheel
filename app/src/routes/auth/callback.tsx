@@ -141,7 +141,6 @@ function AuthCallbackPage() {
         <h1>Your next<br />chapter <em>starts here.</em></h1>
         <p>One more step to sign in.</p>
       </div>
-      <p className="story-stamp">FIFTH WHEEL <span>·</span> ATLANTA</p>
     </section>
 
     <section className="auth-card-wrap">

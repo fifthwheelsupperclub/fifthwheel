@@ -291,7 +291,6 @@ function AdminSupplyTableList() {
   const closeDialog = useCallback(() => setDialog("closed"), []);
 
   return <AdminSupplyShell>
-    <div className="product-breadcrumb">Tables</div>
     <PageHeader className="supply-management-heading" titleId="supply-list-heading" title="Tables" description="Review details, make a draft, and approve changes before guests can see them." status={state === "ready" && list ? <span className="status-pill status-pill-neutral"><Table2 aria-hidden="true" />{items.length} on this page</span> : undefined} />
 
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadList(null, false)} />}
@@ -531,7 +530,7 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
   const isStale = detail?.currentSyncState !== "current";
 
   return <AdminSupplyShell>
-    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Table detail</div>
+    <a href="/admin/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadDetail()} />}
     {state === "ready" && detail && <>
       <div className="page-heading-row supply-detail-heading"><div><p className="eyebrow">{lifecycleLabels[detail.lifecycle].toUpperCase()}</p><h1 id="supply-detail-title">{draft?.content.title || detail.published?.content.title || detail.accepted?.content.title || "Table draft"}</h1><p className="page-intro">{draft?.content.neighborhood || detail.published?.content.neighborhood || detail.accepted?.content.neighborhood || "Neighborhood not set"} · Updated {formatTimestamp(draft?.updatedAt ?? detail.published?.updatedAt ?? detail.accepted?.updatedAt ?? "")}</p></div><span className={`status-pill ${isStale ? "status-pill-warning" : "status-pill-neutral"}`}><Clock3 aria-hidden="true" />{detail.currentSyncState === "current" ? "Matches Airtable" : detail.currentSyncState === "stale" ? "Changed in Airtable" : "Removed from Airtable"}</span></div>

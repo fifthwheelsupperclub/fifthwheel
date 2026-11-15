@@ -50,9 +50,8 @@ function MemberHomePage() {
   }, []);
 
   return <AppShell role="guest" active="home" contentClassName="member-home-content" labelledBy="member-home-heading">
-        <div className="product-breadcrumb">Member <span>/</span> Home</div>
         {state === "loading" && <PageState variant="loading" title="Loading…" />}
-        {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Use the email address connected to your app invitation." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Sign in with the email you used to join." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
         {state === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you’re on the waitlist, we’ll email you when you’re in." action={<a className="button button-outline" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>} />}
         {state === "error" && <PageState variant="error" title="Your home is unavailable" message="We couldn’t verify your member access. Try again shortly." action={<button className="button button-outline" type="button" onClick={() => void loadHome()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
         {state === "ready" && member && <>

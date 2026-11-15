@@ -284,7 +284,6 @@ function AdminWaitlistPage() {
   }
 
   return <AppShell role="admin" active="waitlist" labelledBy="waitlist-heading">
-        <div className="product-breadcrumb">People <span>/</span> Waitlist</div>
         <PageHeader titleId="waitlist-heading" title="Waitlist" description="People who signed up on the website. Approve them to send a sign-in link."
           status={<span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{loadState === "ready" ? `${items.length} on this page` : "Live list"}</span>} />
 

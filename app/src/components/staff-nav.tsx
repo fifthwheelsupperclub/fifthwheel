@@ -12,7 +12,7 @@ export type StaffNavKey =
 type Item = readonly [key: StaffNavKey, href: string, label: string];
 const ADMIN_GROUPS: ReadonlyArray<readonly [group: string | null, items: readonly Item[]]> = [
   [null, [["overview", "/admin", "Overview"]]],
-  ["GUESTS", [["waitlist", "/admin/waitlist", "Waitlist"], ["identity-review", "/admin/identity-review", "Identity review"], ["seat-requests", "/admin/seat-requests", "Seat requests"]]],
+  ["GUESTS", [["waitlist", "/admin/waitlist", "Waitlist"], ["identity-review", "/admin/identity-review", "Profile review"], ["seat-requests", "/admin/seat-requests", "Seat requests"]]],
   ["TABLES", [["tables", "/admin/tables", "Tables"], ["decisions", "/admin/table-decisions", "Table decisions"], ["assignments", "/admin/staff-assignments", "Staff assignments"]]],
   ["MONEY", [["cancellations", "/admin/cancellations", "Cancellations"], ["refunds", "/admin/refunds", "Refunds"]]],
   ["MESSAGES", [["emails", "/admin/notices", "Guest emails"], ["invitations", "/admin/table-invitations", "Table invitation delivery"]]],

@@ -1,8 +1,6 @@
 .refund-admin-workspace .product-content { min-width:0; }
 .refund-admin-content { padding:26px 30px; }
 .refund-page { max-width:1040px; margin:0 auto; }
-.refund-page .product-breadcrumb { display:flex; align-items:center; gap:8px; margin:0 0 13px; color:var(--muted); font-size: var(--text-sm); }
-.refund-page .product-breadcrumb a { color:#d6bd88; text-decoration-color:#75603b; text-underline-offset:3px; }
 .refund-heading { margin:0 0 22px; }
 .refund-heading .eyebrow { margin:0 0 5px; }
 .refund-heading h1 { margin:0; font-family:var(--display); font-size:clamp(38px,5vw,57px); font-weight:400; line-height:1.03; letter-spacing:-.04em; overflow-wrap:anywhere; }

@@ -595,9 +595,8 @@ export function ProfileWorkspace() {
   const submitDisabled = !profile || !draft || dirty || hasBlockingFields || profile.identityStatus === "submitted" || submitState === "submitting" || Object.values(uploadState).some(Boolean);
 
   return <AppShell role="guest" accountActive contentClassName="profile-content" labelledBy="profile-heading">
-        <div className="product-breadcrumb">Member <span>/</span> Account <span>/</span> Profile</div>
         {loadState === "loading" && <PageState variant="loading" title="Loading your profile" message="Your saved details and review status are being checked." />}
-        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your profile" message="This page is available to the member account connected to your app invitation." action={<a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your profile" message="Sign in with the email you used to join." action={<a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
         {loadState === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you’re on the waitlist, we’ll email you when you’re in." action={<a className="button button-outline" href="/member">Back to home<ArrowRight aria-hidden="true" /></a>} />}
         {loadState === "error" && <PageState variant="error" title="Your profile could not load" message="Your saved information has not been changed. Try again when service is available." action={<button className="button button-outline" type="button" onClick={() => void loadProfile()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
         {loadState === "ready" && profile && draft && <>

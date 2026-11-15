@@ -196,7 +196,6 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
   useEffect(() => { void load(); }, [load]);
   const admin = actor === "admin";
   return <StaffShell actor={actor} active="queue">
-    <div className="product-breadcrumb">{admin ? "People" : "Host tools"}<span>›</span>{admin ? "Seat requests" : "Assigned Tables"}</div>
     <PageHeader className="roster-heading" title={admin ? "Seat requests" : "Your tables"} description={admin ? "Pick a group of 3–5 for each table." : "Suggest a group for each table. An admin approves it."}
       actions={<button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh Tables" disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
     {state === "loading" ? <div className="roster-state" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading Tables…</span></div>
@@ -363,7 +362,7 @@ function RosterDetail({ actor, tableId }: { actor: Actor; tableId: string }) {
   const canApprove = admin && !!permissions?.canApprove && !!proposal && proposal.state === "submitted" && proposal.validation.valid && !stale;
 
   return <StaffShell actor={actor} active="detail">
-    <div className="product-breadcrumb"><Link to={admin ? "/admin/seat-requests" : "/host/assigned-tables"}>{admin ? "Seat requests" : "Assigned Tables"}</Link><span>›</span>{data?.table.title ?? "Roster"}</div>
+    <Link to={admin ? "/admin/seat-requests" : "/host/assigned-tables"} className="page-header-back"><ArrowLeft aria-hidden="true" />{admin ? "Seat requests" : "Assigned Tables"}</Link>
     {state === "loading" ? <div className="roster-state" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading applicants…</span></div>
       : state === "unauthenticated" ? <WorkspaceState icon={<ShieldCheck />} title="Sign in to continue" detail="This workspace is available to authorized staff only." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(location.pathname)}`}>Sign in<ArrowRight /></a>} />
       : state === "forbidden" ? <WorkspaceState icon={<ShieldCheck />} title="This Table is not assigned to you" detail="You can only review rosters for Tables currently assigned to your host account." action={<Link className="button button-outline" to="/host/assigned-tables">Back to assigned Tables<ArrowLeft /></Link>} />

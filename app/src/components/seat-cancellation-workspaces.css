@@ -1,6 +1,4 @@
 .cancellation-page, .cancellation-admin-page { max-width: 1040px; margin: 0 auto; }
-.cancellation-page .product-breadcrumb, .cancellation-admin-page .product-breadcrumb { display:flex; align-items:center; gap:8px; margin-bottom:13px; color:var(--muted); font-size: var(--text-sm); }
-.cancellation-page .product-breadcrumb a, .cancellation-admin-page .product-breadcrumb a { color:#d6bd88; text-decoration-color:#75603b; text-underline-offset:3px; }
 .cancellation-heading { margin:0 0 22px; }
 .cancellation-heading .eyebrow { margin:0 0 5px; }
 .cancellation-heading h1 { margin:0; font-family:var(--display); font-size:clamp(38px,5vw,57px); font-weight:400; line-height:1.03; letter-spacing:-.04em; overflow-wrap:anywhere; }

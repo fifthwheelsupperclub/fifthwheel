@@ -146,7 +146,7 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
   useEffect(() => { void load(); }, [load]);
 
   const content = <>
-    <div className="product-breadcrumb"><Link to="/requests">Requests</Link><span>›</span>Table invitation</div>
+    <Link to="/requests" className="page-header-back"><ArrowLeft aria-hidden="true" />Requests</Link>
     {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
     {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in with the member account connected to your invitation." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="This invitation is for a different account" detail="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
@@ -258,7 +258,6 @@ export function AdminTableInvitationDeliveryWorkspace() {
   }
 
   return <AppShell role="admin" active="invitations" className="table-invitation-admin-page">
-      <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
       <PageHeader className="table-invitation-admin-heading" title="Invitation emails" description="Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox." actions={<button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
       {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}

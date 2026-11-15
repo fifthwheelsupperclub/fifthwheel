@@ -1,6 +1,4 @@
 .member-seats-page { max-width: 1040px; margin: 0 auto; }
-.member-seats-page .product-breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: var(--text-xs); }
-.member-seats-page .product-breadcrumb a { color: #d6bd88; text-decoration-color: #75603b; text-underline-offset: 3px; }
 .member-seats-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 25px; }
 .member-seats-heading h1, .member-seat-detail-heading h1 { margin: 8px 0 5px; font-family: var(--display); font-size: clamp(38px, 5vw, 59px); font-weight: 400; line-height: 1.02; letter-spacing: -.04em; overflow-wrap: anywhere; }
 .member-seats-heading .page-intro { max-width: 600px; margin: 8px 0 0; color: var(--muted-strong); font-size: var(--text-staff); line-height: 1.6; }

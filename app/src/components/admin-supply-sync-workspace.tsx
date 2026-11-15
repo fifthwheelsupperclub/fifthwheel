@@ -194,7 +194,6 @@ export function AdminSupplySyncWorkspace() {
   const retryLabel = action === "unknown" ? "Check again" : "Check Airtable";
 
   return <AppShell role="admin" active="tables" className="supply-workspace" contentClassName="supply-content" labelledBy="supply-title">
-        <div className="product-breadcrumb">Tables <span>/</span> Check Airtable</div>
         <PageHeader className="supply-heading" eyebrow="AIRTABLE" titleId="supply-title" title="Check Airtable" description="See what’s new in Airtable before adding it. Nothing goes live from here."
           status={<span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{summary?.latestRun ? "Last check " + safeDate(summary.latestRun.startedAt) : "No check yet"}</span>} />
 

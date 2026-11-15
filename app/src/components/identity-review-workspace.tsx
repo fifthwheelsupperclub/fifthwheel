@@ -134,7 +134,6 @@ export function IdentityReviewQueue() {
   }, []);
 
   return <AdminReviewShell active="queue">
-    <div className="product-breadcrumb">Guests <span>/</span> Identity review</div>
     <PageHeader titleId="identity-review-heading" title="Profile review" description="Check each guest’s photos and selfie match their details." status={<span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{state === "ready" ? items.length + " pending" : "Review queue"}</span>} />
     {state === "loading" && <PageState variant="loading" title="Loading…" />}
     {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to review profiles" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
@@ -263,7 +262,7 @@ export function IdentityReviewDetail({ guestId }: Readonly<{ guestId: string }>)
   const mayDecide = Boolean(reviewCurrent && readyPhotos >= 1 && readySelfies === 1 && evidenceMatches && decisionState !== "sending" && decisionState !== "done");
 
   return <AdminReviewShell active="detail">
-    <div className="product-breadcrumb"><a href="/admin/identity-review"><ArrowLeft aria-hidden="true" />Profile review</a><span>/</span>Review detail</div>
+    <a href="/admin/identity-review" className="page-header-back"><ArrowLeft aria-hidden="true" />Profile review</a>
     {state === "loading" && <PageState variant="loading" title="Loading…" />}
     {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <PageState variant="no-access" title="You don’t have access to profile review" message="Ask an admin if you think you should." action={<a className="button button-outline" href="/admin/identity-review">Return to the review queue<ArrowRight aria-hidden="true" /></a>} />}

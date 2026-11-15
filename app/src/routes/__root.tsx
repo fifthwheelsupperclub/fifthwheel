@@ -84,7 +84,6 @@ function SystemStatePage({
         {onRetry && <button className="button button-outline" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
         <Link className="button button-primary" to="/"><House aria-hidden="true" />Go to home</Link>
       </div>
-    <p className="system-state-footnote">FIFTH WHEEL · ATLANTA</p>
     </div>
   </main>;
 }

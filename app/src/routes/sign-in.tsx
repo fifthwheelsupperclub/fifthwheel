@@ -60,7 +60,6 @@ function SignInPage() {
         <h1>Good nights<br />start <em>with hello.</em></h1>
         <p>Sign in to see your tables.</p>
       </div>
-      <p className="story-stamp">FIFTH WHEEL <span>·</span> ATLANTA</p>
     </section>
 
     <section className="auth-card-wrap">

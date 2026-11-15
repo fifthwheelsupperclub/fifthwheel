@@ -262,7 +262,6 @@ export function MemberSeatsListWorkspace() {
   const canLoadMore = cursor !== null;
 
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
-    <div className="product-breadcrumb"><span>MEMBER WORKSPACE</span><span>·</span><span>My Seats</span></div>
     <PageHeader className="member-seats-heading" title="My Seats" description="Your upcoming and past tables." actions={<button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button>} />
     {message && <p className={`member-seat-notice ${state === "error" ? "is-error" : ""}`} role={state === "error" ? "alert" : "status"}><AlertCircle aria-hidden="true" />{message}</p>}
     {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading your Seats" detail="Checking the latest saved payment and Seat status." />}
@@ -303,7 +302,7 @@ export function MemberSeatDetailWorkspace({ seatId }: { seatId: string }) {
   const seatStatus = seat ? seatStateCopy(seat.state) : null;
 
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
-    <div className="product-breadcrumb"><Link to="/my-seats">My Seats</Link><span>›</span><span>Seat details</span></div>
+    <Link to="/my-seats" className="page-header-back"><ArrowLeft aria-hidden="true" />My Seats</Link>
     {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading Seat details" detail="Checking the saved payment, itinerary and current status." />}
     {state === "unauthenticated" && <SeatState icon={<ShieldCheck />} title="Sign in to continue" detail="Seat details are private to the member account." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/my-seats/${seatId}`)}`}>Sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <SeatState icon={<ShieldCheck />} title="This Seat is not available to this account" detail="Check that you signed in with the member account that owns this Seat." />}

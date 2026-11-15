@@ -226,9 +226,10 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await member.goto(`${appOrigin}/requests`);
       const requestCard = member.locator(".request-history-card").filter({ hasText: tableTitle });
       await expect(requestCard).toHaveCount(1);
-      await expect(requestCard.getByText("SEAT REQUEST · STILL PENDING", { exact: true })).toBeVisible();
+      await expect(requestCard.getByText("Requested", { exact: true })).toBeVisible();
       await expect(requestCard.getByText("Your invitation is open", { exact: true })).toBeVisible();
-      await expect(requestCard.getByText("This is a separate offer.", { exact: false })).toBeVisible();
+      await expect(requestCard.getByText("This is a separate offer.", { exact: false })).toHaveCount(0);
+      await expect(requestCard.getByText("Email provider accepted", { exact: false })).toHaveCount(0);
       await expect(requestCard.getByText("Request withdrawal is unavailable while this invitation is active.", { exact: false })).toBeVisible();
       await expect(requestCard.getByRole("button", { name: "Withdraw request" })).toHaveCount(0);
       await expect(requestCard.getByRole("link", { name: "Review Table invitation" })).toHaveAttribute("href", invitePath);

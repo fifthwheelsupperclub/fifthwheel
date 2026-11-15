@@ -336,7 +336,7 @@ export function AdminSupplyWeeklyClone() {
   }
 
   return <AppShell role="admin" active="tables"><div className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
-    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Copy a week</div>
+    <a href="/admin/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
     <PageHeader className="weekly-clone-heading" titleId="weekly-clone-heading" title="Copy a week" description="Copy draft tables from one week to another. Only drafts are copied."
       status={<span className="status-pill status-pill-neutral"><CalendarDays aria-hidden="true" />Atlanta calendar weeks</span>} />
 

@@ -4,7 +4,7 @@ import { AppShell } from "./app-shell";
 import { INVITATION_STATE_HEADING, INVITATION_STATE_PILL, REQUEST_STATE_LABEL, type RequestState } from "../copy/states.ts";
 import {
   ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CircleAlert, ClipboardList, Clock3,
-  House, Mail, MapPin, Share2, Table2, Ticket, UserRound, Utensils, X,
+  House, MapPin, Share2, Table2, Ticket, UserRound, Utensils, X,
 } from "lucide-react";
 import type { TableInvitationDeliveryState, TableInvitationHistorySummaryDTO } from "../table-invitations.contract.ts";
 import "./member-tables-workspace.css";
@@ -168,17 +168,6 @@ function safeError(error: Envelope | null): string {
   return error.error.safeMessage;
 }
 
-function invitationDeliveryMessage(state: TableInvitationDeliveryState): Readonly<{ label: string; detail: string }> {
-  switch (state) {
-    case "queued": return { label: "Email queued", detail: "The invitation is active. Email delivery has not been confirmed." };
-    case "sending": return { label: "Email sending", detail: "The invitation is active while delivery is being attempted." };
-    case "accepted": return { label: "Email provider accepted", detail: "The provider accepted the email. Inbox delivery is not confirmed." };
-    case "delivered": return { label: "Delivery confirmed", detail: "The delivery provider reports the invitation email was delivered." };
-    case "failed": return { label: "Email delivery failed", detail: "The invitation remains active. Contact the team if you need help opening it." };
-    case "unknown": return { label: "Email outcome unknown", detail: "The invitation remains active while the team checks the delivery outcome." };
-  }
-}
-
 function safeTablePath(tableId: string): string {
   return `/tables/${encodeURIComponent(tableId)}`;
 }
@@ -286,7 +275,6 @@ export function MemberTablesWorkspace() {
   }
 
   const content = <>
-    <div className="product-breadcrumb">Member <span>/</span> Tables</div>
     <div className="tables-heading-row"><div><p className="eyebrow">FIND YOUR PEOPLE</p><h1 id="tables-heading">An evening worth<br /><em>looking forward to.</em></h1><p className="page-intro">Upcoming tables in Atlanta. Request a seat at any that suit you, and we’ll build each table from the requests.</p></div><span className="tables-heading-mark"><Utensils aria-hidden="true" /></span></div>
     <form className="table-filter-panel" onSubmit={applyFilters} aria-label="Filter published Tables">
       <div className="table-filter-intro"><span><CalendarDays aria-hidden="true" /></span><div><strong>Find a night that fits</strong><small>All times are Atlanta time.</small></div></div>
@@ -432,7 +420,7 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
   }
 
   const content = <>
-    <div className="product-breadcrumb"><a href="/tables">Tables</a><span>/</span>Table detail</div>
+    <a href="/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
     {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Opening the Table" detail="Checking the current published details." />}
     {state === "unauthenticated" && table ? <TablePreview table={table} continueTo={continueTo ?? safeTablePath(tableId)} />
       : state === "unauthenticated" ? <TableState error title="Sign in to continue" detail="This Table link can be opened after you sign in." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>} />
@@ -529,7 +517,6 @@ export function MemberRequestsWorkspace() {
   }
 
   return <MemberWorkspaceShell active="requests">
-    <div className="product-breadcrumb">Member <span>/</span> Requests</div>
     <div className="tables-heading-row requests-heading-row"><div><h1 id="requests-heading">Your requests</h1><p className="page-intro">Tables you’ve asked to join, and any invitations.</p></div><span className="tables-heading-mark"><ClipboardList aria-hidden="true" /></span></div>
     {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Loading your requests" detail="Checking your latest request history." />}
     {state === "unauthenticated" && <TableState error title="Sign in to view Requests" detail="Your request history is private to your admitted member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Frequests">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
@@ -537,12 +524,10 @@ export function MemberRequestsWorkspace() {
     {state === "error" && <TableState error title="We couldn’t load your requests" detail={message || "Nothing has changed. Try again."} action={<button className="button button-outline" type="button" onClick={() => void loadRequests()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
     {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="Find a table you like and request a seat." action={<a className="button button-primary" href="/tables">Browse tables<ArrowRight aria-hidden="true" /></a>} />}
     {state === "ready" && items.length > 0 && <div className="request-history-list">{items.map((item) => <article className="request-history-card" key={item.requestId}>
-      <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><p className="eyebrow">{item.tableInvitation?.state === "active" ? "SEAT REQUEST · STILL PENDING" : item.state === "pending" ? "AWAITING REVIEW" : item.state === "withdrawn" ? "WITHDRAWN" : item.state === "closed_by_table" ? "TABLE CANCELLED" : "REQUEST UPDATE"}</p><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
+      <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
       <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {instantDate(item.createdAt)}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
       {item.tableInvitation && <section className={`request-offer-card offer-${item.tableInvitation.state}`} aria-label="Table invitation status">
         <div className="request-offer-heading"><span className="request-offer-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">TABLE INVITATION</p><strong>{INVITATION_STATE_HEADING[item.tableInvitation.state]}</strong></div><span className={`status-pill ${item.tableInvitation.state === "active" ? "status-pill-success" : "status-pill-neutral"}`}>{INVITATION_STATE_PILL[item.tableInvitation.state]}</span></div>
-        {item.tableInvitation.state === "active" && <p className="request-offer-boundary">This is a separate offer. Your Seat request remains in history, and this invitation does not confirm a paid Seat.</p>}
-        <div className="request-offer-delivery"><Mail aria-hidden="true" /><span><strong>{invitationDeliveryMessage(item.tableInvitation.deliveryState).label}</strong><small>{invitationDeliveryMessage(item.tableInvitation.deliveryState).detail}</small></span></div>
         <a className="request-offer-link" href={`/invitations/${encodeURIComponent(item.tableInvitation.invitationId)}`}>Review Table invitation<ArrowRight aria-hidden="true" /></a>
         {item.state === "pending" && item.tableInvitation.state === "active" && <p className="request-offer-withdraw-note">Request withdrawal is unavailable while this invitation is active. This offer is managed separately.</p>}
       </section>}

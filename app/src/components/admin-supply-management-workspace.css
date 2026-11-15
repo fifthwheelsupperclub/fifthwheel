@@ -1,9 +1,5 @@
 .supply-management-page { min-height: 100vh; }
 .supply-management-content { max-width: 1480px; }
-.supply-management-page .product-breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 19px; color: var(--muted); font-size: var(--text-staff); }
-.supply-management-page .product-breadcrumb a { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-strong); text-decoration: none; }
-.supply-management-page .product-breadcrumb svg { width: 14px; height: 14px; }
-.supply-management-page .product-breadcrumb span { color: var(--text-subtle); }
 .supply-management-heading, .supply-detail-heading { align-items: flex-end; margin-bottom: 24px; }
 .supply-management-heading h1, .supply-detail-heading h1 { margin: 10px 0 8px; font-family: var(--display); font-size: clamp(35px, 4vw, 54px); font-weight: 400; line-height: 1.04; letter-spacing: -.04em; }
 .supply-management-heading .page-intro, .supply-detail-heading .page-intro { max-width: 670px; margin: 0; color: var(--muted-strong); font-size: var(--text-base); line-height: 1.65; }

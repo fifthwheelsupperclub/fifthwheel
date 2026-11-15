@@ -146,7 +146,6 @@ export function AdminRefundsQueue() {
   }, [items.length]);
   useEffect(() => { void load(); }, []);
   return <RefundAdminShell active="queue"><div className="refund-page">
-    <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Refunds</span></div>
     <PageHeader title="Refunds" description="Money we owe guests, and its status with Stripe." />
     {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refunds…" />}
     {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Frefunds">Sign in</a>} />}
@@ -208,7 +207,7 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
     finally { setBusy(false); }
   };
   return <RefundAdminShell active="detail"><div className="refund-page">
-    <div className="product-breadcrumb"><Link to="/admin/refunds">Refunds</Link><span>›</span><span>Obligation</span></div>
+    <Link to="/admin/refunds" className="page-header-back"><ArrowLeft aria-hidden="true" />Refunds</Link>
     {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/admin/refunds/${obligationId}`)}`}>Sign in</a>} />}
     {state === "forbidden" && <RefundState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can manage refunds." />}
