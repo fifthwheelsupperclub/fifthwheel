@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { EmailTabs } from "./email-tabs";
 import { PageState } from "./ui/page-state";
 import { clockAfter, eventDate, eventTime, eventWhen, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
@@ -259,7 +260,8 @@ export function AdminTableInvitationDeliveryWorkspace() {
   }
 
   return <AppShell role="admin" active="invitations" className="table-invitation-admin-page">
-      <PageHeader className="table-invitation-admin-heading" title="Invitation emails" description="Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox." actions={<button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
+      <PageHeader className="table-invitation-admin-heading" title="Invitation emails" description="Invitation emails and whether they were delivered. “Sent” means our email service accepted it." actions={<button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
+      <EmailTabs current="invitations" />
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
       {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
       {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}

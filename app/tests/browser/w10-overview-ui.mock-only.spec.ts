@@ -63,8 +63,12 @@ test("email problems: unknown vs failed are explained and Send again / Dismiss p
     return route.continue();
   });
   await page.goto("/admin/notices");
-  await expect(page.getByText("Unconfirmed", { exact: true })).toBeVisible();
-  await expect(page.getByText(/check Resend first/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Not sure it sent" })).toBeVisible();
+  await expect(page.getByText(/Check the email log/)).toBeVisible();
+  await expect(page.getByText("Sending timed out")).toBeVisible();
+  await expect(page.getByText("lease expired")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Email types" }).getByRole("link", { name: "Table invitations" })).toHaveAttribute("href", "/admin/table-invitations");
+  await expect(page.getByRole("complementary", { name: "Admin navigation" }).getByRole("link", { name: "Emails", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText(/@/)).toHaveCount(0);
   await page.screenshot({ path: `${shots}/w10-email-problems-desktop-mock-only.png`, fullPage: true });
   await page.getByRole("button", { name: "Send again" }).click();

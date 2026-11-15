@@ -15,8 +15,7 @@ const ADMIN_GROUPS: ReadonlyArray<readonly [group: string | null, items: readonl
   ["GUESTS", [["waitlist", "/admin/waitlist", "Waitlist"], ["identity-review", "/admin/identity-review", "Profile review"], ["seat-requests", "/admin/seat-requests", "Seat requests"]]],
   ["TABLES", [["tables", "/admin/tables", "Tables"], ["decisions", "/admin/table-decisions", "Table decisions"], ["assignments", "/admin/staff-assignments", "Staff assignments"]]],
   ["MONEY", [["cancellations", "/admin/cancellations", "Cancellations"], ["refunds", "/admin/refunds", "Refunds"]]],
-  ["MESSAGES", [["emails", "/admin/notices", "Guest emails"], ["invitations", "/admin/table-invitations", "Table invitation delivery"]]],
-  ["SAFETY", [["reports", "/admin/conduct-reports", "Conduct reports"]]],
+  ["MESSAGES AND SAFETY", [["emails", "/admin/notices", "Emails"], ["reports", "/admin/conduct-reports", "Conduct reports"]]],
 ];
 const OTHER_GROUPS: Record<"host" | "restaurant", ReadonlyArray<readonly [string | null, readonly Item[]]>> = {
   host: [[null, [["host-tables", "/host/assigned-tables", "Assigned tables"]]]],
@@ -26,7 +25,8 @@ const OTHER_GROUPS: Record<"host" | "restaurant", ReadonlyArray<readonly [string
 export type StaffRole = "admin" | "host" | "restaurant";
 
 function groupsFor(role: StaffRole) { return role === "admin" ? ADMIN_GROUPS : OTHER_GROUPS[role]; }
-function Links({ role, active }: Readonly<{ role: StaffRole; active?: StaffNavKey }>) {
+function Links({ role, active: activeKey }: Readonly<{ role: StaffRole; active?: StaffNavKey }>) {
+  const active = activeKey === "invitations" ? "emails" : activeKey; // invitation delivery is a tab of Emails
   return <>{groupsFor(role).map(([group, items]) => <Fragment key={group ?? "top"}>
     {group && <p className="group-label">{group}</p>}
     {items.map(([key, href, label]) => <a key={key} className={`member-nav-link${key === active ? " active" : ""}`} href={href} aria-current={key === active ? "page" : undefined}>{label}</a>)}

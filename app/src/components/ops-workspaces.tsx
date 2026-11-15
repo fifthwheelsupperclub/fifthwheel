@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { EmailTabs } from "./email-tabs";
 import { eventDate, eventTime, eventWhen, instantDate, instantTime, timestamp } from "../format/datetime";
 import { Button } from "./ui/button";
 import { ConfirmDialog } from "./ui/confirm-dialog";
@@ -315,6 +316,14 @@ export function AdminOverview() {
 
 // ---- Admin: guest email problems ------------------------------------------------------------------------------------
 type NoticeProblem = { noticeId: string; kind: string; state: "failed" | "unknown"; attempts: number; errorCode: string | null; createdAt: string; firstName: string; tableTitle: string | null };
+function noticeReason(code: string | null): string | null {
+  if (!code) return null;
+  if (/lease/.test(code)) return "Sending timed out";
+  if (/unknown/.test(code)) return "Outcome not confirmed";
+  if (/reject|invalid|bounce/.test(code)) return "The email service rejected it";
+  if (/unavailable|timeout/.test(code)) return "The email service was unavailable";
+  return "Something went wrong sending it";
+}
 const kindLabels: Record<string, string> = { seat_confirmed: "Seat confirmed", cancellation_decision: "Cancellation decision", table_cancelled: "Table cancelled", member_removed: "Removed from Table", t48_reminder: "Invitation reminder" };
 export function AdminNoticeProblems() {
   const { load, reload } = useLoad<{ items: NoticeProblem[] }>("/api/admin/notices");
@@ -325,12 +334,17 @@ export function AdminNoticeProblems() {
     if (result.ok) await reload(); else setMessage(result.message);
   }
   return <Status area="admin-notices" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-notices">
-    <PageHeader title="Guest emails" description="Emails that didn’t send, or that we couldn’t confirm. For unconfirmed ones, check Resend first. If it didn’t go out, send again. If it did, dismiss." />
+    <PageHeader title="Guest emails" description="Emails to guests that didn’t send, or that we couldn’t confirm." />
+    <EmailTabs current="guest" />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No email problems</h2></section>
-      : <ul className="ops-list">{load.data.items.map((n) => <li className="ops-card" key={n.noticeId}>
-        <div><h2>{kindLabels[n.kind] ?? n.kind} · {n.firstName}</h2><p>{n.tableTitle ?? "Table"} · {timestamp(n.createdAt)}</p>
-          <p className="ops-meta"><span className={`status-pill ${n.state === "unknown" ? "status-pill-warning" : ""}`}>{n.state === "unknown" ? "Unconfirmed" : "Failed"}</span><span>{n.attempts} attempt{n.attempts === 1 ? "" : "s"}</span>{n.errorCode && <span>{n.errorCode.replaceAll("_", " ")}</span>}</p></div>
-        <div className="ops-actions"><button className="button button-outline" type="button" onClick={() => void resolve(n, "retry")}>Send again</button><button className="button button-outline" type="button" onClick={() => void resolve(n, "dismiss")}>Dismiss</button></div></li>)}</ul>}
+      : <>{([["failed", "Didn’t send", "These did not go out. Send again."], ["unknown", "Not sure it sent", "We’re not sure these sent. Check the email log, then send again or dismiss."]] as const).map(([state, title, help]) => {
+        const rows = load.data.items.filter((n) => n.state === state);
+        return rows.length === 0 ? null : <section key={state} className="email-group" aria-labelledby={`email-group-${state}`}><h2 id={`email-group-${state}`}>{title}</h2><p className="email-group-help">{help}</p>
+          <ul className="ops-list">{rows.map((n) => <li className="ops-card" key={n.noticeId}>
+            <div><h3>{kindLabels[n.kind] ?? n.kind} · {n.firstName}</h3><p>{n.tableTitle ?? "Table"} · {timestamp(n.createdAt)}</p>
+              <p className="ops-meta"><span>{n.attempts} attempt{n.attempts === 1 ? "" : "s"}</span>{noticeReason(n.errorCode) && <span>{noticeReason(n.errorCode)}</span>}</p></div>
+            <div className="ops-actions"><button className="button button-outline" type="button" onClick={() => void resolve(n, "retry")}>Send again</button><button className="button button-outline" type="button" onClick={() => void resolve(n, "dismiss")}>Dismiss</button></div></li>)}</ul></section>;
+      })}</>}
   </Shell>}</Status>;
 }
