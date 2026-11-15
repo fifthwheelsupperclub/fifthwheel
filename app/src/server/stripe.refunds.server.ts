@@ -56,6 +56,20 @@ export function createStripeRefundProvider(config: Config): RefundProvider {
       }
       return result;
     },
+    async findRefundByOperation(input: Parameters<RefundProvider["findRefundByOperation"]>[0]) {
+      if (input.mode !== config.mode || !/^pi_[A-Za-z0-9]+$/.test(input.paymentIntentId) || !/^[0-9a-f-]{36}$/i.test(input.operationId)) {
+        throw new RefundProviderSafeError("provider_unavailable", false);
+      }
+      const url = new URL("https://api.stripe.com/v1/refunds");
+      url.searchParams.set("payment_intent", input.paymentIntentId); url.searchParams.set("limit", "100");
+      const page = await request(url, null);
+      if (!isRecord(page) || !Array.isArray(page.data) || typeof page.has_more !== "boolean") throw new RefundProviderSafeError("provider_unknown", false);
+      const hit = page.data.find((row) => isRecord(row) && isRecord(row.metadata) && row.metadata.app_refund_operation_id === input.operationId);
+      if (hit) return refund(hit, config.mode);
+      // An incomplete listing cannot prove absence: never let the caller create a second refund on a guess.
+      if (page.has_more) throw new RefundProviderSafeError("provider_unknown", false);
+      return null;
+    },
     async retrieveRefund(input: Parameters<RefundProvider["retrieveRefund"]>[0]) {
       if (input.mode !== config.mode || !/^re_[A-Za-z0-9]+$/.test(input.refundId)) throw new RefundProviderSafeError("provider_unavailable", false);
       return refund(await request(new URL(`https://api.stripe.com/v1/refunds/${encodeURIComponent(input.refundId)}`,), null), config.mode);

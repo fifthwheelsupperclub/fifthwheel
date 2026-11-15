@@ -117,3 +117,9 @@ Not covered (W07.7 stays unchecked): refund outcome `unknown` after a provider t
 | G5 mail outage | With mail unreachable: payment, cancellation approval and refund all completed; member notices sit `unknown` (never accepted, never auto-resent) for the notices queue. |
 
 **Residual risks (not tested / owner decisions):** (1) "Try again" on an unconfirmed refund relies on Stripe's 24-hour idempotency window; an unconfirmed partial refund retried after 24h could pay twice. Mitigation to build if wanted: reconcile by listing refunds for the PaymentIntent and matching `metadata[app_refund_operation_id]`, or block Try again after 23h. (2) Dashboard payment methods are not card-only (Link/Cash App/Klarna/Bank offered). (3) Nightly Stripe-vs-ledger reconciliation job is not built. (4) Live-mode behaviour (live keys, live webhook endpoint, real card) is unverified until the owner-run dry run.
+
+### 2026-11-15 (later) — Refund retry no longer depends on Stripe's 24-hour idempotency window
+
+- Change: before creating a refund the worker now looks up an existing one by our own operation id (`metadata[app_refund_operation_id]`, `GET /v1/refunds?payment_intent=…`, read-only, valid at any age). Found → adopt it; provably absent → create (same idempotency key as before); lookup cannot answer (error, or an incomplete first page) → record `unknown`, create nothing. Files: `stripe.refunds.server.ts`, `refunds.service.server.ts`, `refunds.contract.server.ts`, `refunds-runtime.server.ts` + 4 new unit tests (324/324).
+- Real-stack evidence: fault suite 4/4 (G1 now also asserts the app adopted Stripe's existing refund id, one refund total) and money suite 6/6 re-run after the change.
+- Remaining limit: more than 100 refunds on one PaymentIntent would make the lookup refuse to guess (stays `unknown` for staff); not reachable under the $25 single-Seat model.

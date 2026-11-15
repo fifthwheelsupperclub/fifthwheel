@@ -123,8 +123,10 @@ export function createRefundService(deps: RefundServiceDependencies): RefundServ
             if (!job.providerRefundId) throw new RefundProviderSafeError("provider_unknown", false);
             refund = await deps.provider.retrieveRefund({ refundId: job.providerRefundId, mode: job.mode });
           } else {
-            refund = await deps.provider.createRefund({ paymentIntentId: job.providerPaymentIntentId,
-              amountCents: job.amountCents, currency: "usd", idempotencyKey: job.operationId, mode: job.mode });
+            // A previous attempt may have reached Stripe while its answer was lost. Look first (read-only, any age); only create if absent.
+            refund = await deps.provider.findRefundByOperation({ paymentIntentId: job.providerPaymentIntentId, operationId: job.operationId, mode: job.mode })
+              ?? await deps.provider.createRefund({ paymentIntentId: job.providerPaymentIntentId,
+                amountCents: job.amountCents, currency: "usd", idempotencyKey: job.operationId, mode: job.mode });
           }
           if (!validateProviderRefund(refund, { id: job.providerRefundId ?? undefined, mode: job.mode,
             paymentIntentId: job.providerPaymentIntentId, amountCents: job.amountCents })) {

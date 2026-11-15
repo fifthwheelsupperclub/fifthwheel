@@ -34,3 +34,13 @@ test("configured Stripe mode must match its secret-key prefix", () => {
   assert.throws(() => createStripeRefundProvider({ mode: "live", secretKey: "sk_test_unit", fetch: async () => { throw new Error("no request"); } }),
     (error: unknown) => error instanceof RefundProviderSafeError && error.code === "provider_unavailable");
 });
+
+test("findRefundByOperation matches our metadata, returns null when provably absent, and refuses to guess on an incomplete page", async () => {
+  const op = "33333333-3333-4333-8333-333333333333";
+  const row = (id: string, operation: string) => ({ id, amount: 1250, currency: "usd", status: "succeeded", payment_intent: "pi_abc123", metadata: { app_refund_operation_id: operation } });
+  const make = (body: unknown) => createStripeRefundProvider({ secretKey: "sk_test_abc", mode: "test", fetch: (async () => Response.json(body)) as typeof fetch });
+  const hit = await make({ data: [row("re_other1", "x"), row("re_mine1", op)], has_more: false }).findRefundByOperation({ paymentIntentId: "pi_abc123", operationId: op, mode: "test" });
+  assert.equal(hit?.id, "re_mine1");
+  assert.equal(await make({ data: [row("re_other1", "x")], has_more: false }).findRefundByOperation({ paymentIntentId: "pi_abc123", operationId: op, mode: "test" }), null);
+  await assert.rejects(make({ data: [row("re_other1", "x")], has_more: true }).findRefundByOperation({ paymentIntentId: "pi_abc123", operationId: op, mode: "test" }), /provider_unknown/);
+});

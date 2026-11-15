@@ -37,7 +37,9 @@ test("G1 refund response lost AFTER Stripe created it: obligation goes unknown, 
   console.log("W077 G1 after Try again:", db(`select o.state from public.app_refund_obligations o where o.obligation_id='${ob}'`), db(`select string_agg(state||':'||coalesce(safe_code,'')||':'||coalesce(provider_refund_id,''),',') from public.app_refund_operations where obligation_id='${ob}'`));
   // scheduler behaviour: keep running worker passes (the retry may sit behind a short backoff)
   await expect.poll(async () => { await workerPass(); return db(`select state from public.app_refund_obligations where obligation_id='${ob}'`); }, { timeout: 120_000, intervals: [5_000] }).toBe("succeeded");
-  expect((await stripe(`/refunds?payment_intent=${pi}`)).json.data).toHaveLength(1); // still exactly one refund
+  const finalRefunds = (await stripe(`/refunds?payment_intent=${pi}`)).json.data;
+  expect(finalRefunds).toHaveLength(1); // still exactly one refund
+  expect(db(`select provider_refund_id from public.app_refund_operations where obligation_id='${ob}' and state='succeeded'`)).toBe(finalRefunds[0].id); // the app adopted Stripe's existing refund
   const memberId = db(`select id from auth.users where email='${A.email}'`);
   console.log("W077 G5 member notices:", db(`select coalesce(string_agg(kind||':'||state,','),'none') from public.app_notice_outbox where recipient_user_id='${memberId}'`));
   expect(db(`select count(*) from public.app_notice_outbox where recipient_user_id='${memberId}' and state='accepted'`)).toBe("0");

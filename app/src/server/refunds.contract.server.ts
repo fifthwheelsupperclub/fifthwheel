@@ -64,6 +64,8 @@ export interface RefundProvider {
     mode: "test" | "live";
   }>): Promise<ProviderRefund>;
   retrieveRefund(input: Readonly<{ refundId: string; mode: "test" | "live" }>): Promise<ProviderRefund>;
+  /** Read-only lookup by our own operation id (stored as refund metadata). Safe at any age, unlike an idempotency-key replay (24h). */
+  findRefundByOperation(input: Readonly<{ paymentIntentId: string; operationId: string; mode: "test" | "live" }>): Promise<ProviderRefund | null>;
 }
 
 export type RefundServiceDependencies = Readonly<{

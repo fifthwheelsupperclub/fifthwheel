@@ -33,6 +33,7 @@ function base(environment: Environment) {
   const provider = providerAvailable ? createStripeRefundProvider({ secretKey: secret, mode }) : Object.freeze({
     async createRefund(): Promise<never> { throw new RefundProviderSafeError("provider_unavailable", false); },
     async retrieveRefund(): Promise<never> { throw new RefundProviderSafeError("provider_unavailable", false); },
+    async findRefundByOperation(): Promise<never> { throw new RefundProviderSafeError("provider_unavailable", false); },
   });
   const supabase = createSupabaseServerClient(config);
   const resolvePrincipal = createVerifiedPrincipalResolver(supabase, createSupplyTableAssignmentReader(config));
