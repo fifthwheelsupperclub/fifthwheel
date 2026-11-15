@@ -1,4 +1,12 @@
 import { productionAppUrl } from "../data/site";
+import { captureAttribution, captureTestMode, shouldTrackLead } from "./attribution";
+
+let attributionStorage: Storage | undefined;
+let testStorage: Storage | undefined;
+try { attributionStorage = window.localStorage; } catch { /* Optional. */ }
+try { testStorage = window.sessionStorage; } catch { /* Optional. */ }
+const signupAttribution = captureAttribution(new URL(window.location.href), document.referrer, attributionStorage);
+const testSignup = captureTestMode(new URL(window.location.href), testStorage);
 
 // Posts to the guest app. That route writes waitlist rows in Supabase.
 const ENDPOINT =
@@ -380,6 +388,8 @@ form.addEventListener("submit", (event) => {
     nights: data.getAll("nights").join(", ") || "Not specified",
     referral: String(data.get("referral") ?? "").trim(),
     source: "landing-page",
+    attribution: signupAttribution,
+    is_test: testSignup,
     submitted_at: new Date().toISOString(),
     _gotcha: data.get("_gotcha") || "",
     looking_for: data.get("looking_for"),
@@ -406,15 +416,16 @@ form.addEventListener("submit", (event) => {
   })
     .then(async (res) => {
       if (!res.ok) throw new Error("bad response");
+      let body: unknown = null;
       try {
-        await res.json();
+        body = await res.json();
       } catch (error) {
         if (controller.signal.aborted) throw error;
       }
       // Every 2xx response uses the same copy so duplicates and honeypots
       // cannot reveal whether an address is already on the waitlist.
       revealThanks();
-      if (!payload._gotcha) {
+      if (!payload._gotcha && !payload.is_test && shouldTrackLead(body)) {
         trackWaitlistLead();
       }
     })
@@ -431,3 +442,4 @@ form.addEventListener("submit", (event) => {
       window.clearTimeout(timeoutId);
     });
 });
+
