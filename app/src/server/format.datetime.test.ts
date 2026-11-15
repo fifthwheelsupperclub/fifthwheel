@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calendarDate, clockAfter, eventDate, eventTime, eventWhen, instantDate, instantTime, timestamp } from "../format/datetime.ts";
+import { calendarDate, clockAfter, eventDate, eventTime, eventWhen, instantDate, instantTime, monthDay, timestamp, todayInAtlanta, weekStart } from "../format/datetime.ts";
 
 const now = new Date("2026-11-15T12:00:00Z");
 test("event dates drop the year only when it is this year", () => {
@@ -24,4 +24,12 @@ test("instants render in Atlanta time regardless of the machine zone", () => {
   assert.equal(timestamp("2026-11-13T15:00:00Z", { now }), "Nov 13, 10:00 AM");
   assert.equal(timestamp("2025-12-31T23:30:00Z", { now }), "Dec 31, 2025, 6:30 PM");
   assert.equal(timestamp(null), "Not available");
+});
+
+test("week helpers use Atlanta's calendar and Monday-based weeks", () => {
+  assert.equal(monthDay("2026-12-14"), "Dec 14");
+  assert.equal(weekStart("2026-12-12"), "2026-12-07");
+  assert.equal(weekStart("2026-12-14"), "2026-12-14");
+  assert.equal(weekStart("2026-12-13"), "2026-12-07");
+  assert.equal(todayInAtlanta(new Date("2026-11-16T03:00:00Z")), "2026-11-15");
 });

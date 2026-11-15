@@ -64,3 +64,19 @@ export function timestamp(value: string | null | undefined, opts: { now?: Date }
   const d = instant(value); if (!d) return "Time unavailable";
   return `${instantDate(value, opts)}, ${instantTime(value)}`;
 }
+
+/** "Dec 14" — a month and day, no weekday or year. */
+export function monthDay(value: string): string {
+  const p = ymd(value); if (!p) return BAD;
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" }).format(p.date);
+}
+/** Today's calendar date in Atlanta as "YYYY-MM-DD". */
+export function todayInAtlanta(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ATLANTA_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+/** The Monday on or before a calendar date, as "YYYY-MM-DD". */
+export function weekStart(value: string): string {
+  const p = ymd(value); if (!p) return value;
+  const back = (p.date.getUTCDay() + 6) % 7;
+  return new Date(p.date.getTime() - back * 86_400_000).toISOString().slice(0, 10);
+}

@@ -82,7 +82,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
 
     await screenshotPair(page, "w06-tables", async () => {
       await page.goto(`${appOrigin}/tables`);
-      await expect(page.getByRole("heading", { name: /An evening worth/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Tables", exact: true, level: 1 })).toBeVisible();
       await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "W06 Riverside Table" })).toBeVisible();
       await expect(page.getByText("W06 Private staff notes", { exact: false })).toHaveCount(0);
@@ -90,7 +90,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     await page.getByLabel("From").fill("2099-06-03");
     await page.getByLabel("To").fill("2099-06-03");
     await page.getByLabel("Neighborhood").fill("Inman Park");
-    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.getByLabel("Neighborhood").press("Enter");
     await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "W06 Riverside Table" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
@@ -99,7 +99,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     await expect(page.getByRole("heading", { name: "W06 Riverside Table" })).toBeVisible();
     await page.getByLabel("From").fill("2099-06-01");
     await page.getByLabel("To").fill("2099-06-02");
-    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.getByLabel("Neighborhood").press("Enter");
     await expect(page.getByRole("heading", { name: "No upcoming Tables match yet" })).toBeVisible();
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toBeVisible();
@@ -108,7 +108,7 @@ test("W06 member Tables, request history, access gates and shared preview use pe
     await screenshotPair(page, "w06-table-detail", async () => {
       await page.goto(`${appOrigin}/tables/${tableId}`);
       await expect(page.getByRole("heading", { name: "W06 Garden Table" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Your itinerary" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "The evening" })).toBeVisible();
       await expect(page.getByText("Public Bar")).toBeVisible();
       await expect(page.getByText("Internal W06 host note", { exact: false })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Request a seat", exact: true })).toBeVisible();

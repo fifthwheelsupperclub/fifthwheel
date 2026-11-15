@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { calendarDate, eventDate, eventTime, eventWhen, instantDate } from "../format/datetime";
+import { calendarDate, clockAfter, eventDate, eventTime, eventWhen, instantDate, monthDay, todayInAtlanta, weekStart } from "../format/datetime";
 import { buttonClass } from "./ui/button";
 import { PageHeader } from "./ui/page-header";
 import { PageState } from "./ui/page-state";
@@ -208,6 +208,7 @@ export function MemberTablesWorkspace() {
   const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", neighborhood: "" });
   const [loadingMore, setLoadingMore] = useState(false);
   const requestSequence = useRef(0);
+  const lastApplied = useRef("");
 
   const loadTables = useCallback(async (nextFilters: typeof filters, nextCursor: string | null = null, append = false) => {
     const sequence = ++requestSequence.current;
@@ -251,56 +252,90 @@ export function MemberTablesWorkspace() {
     const params = new URLSearchParams(window.location.search);
     const initial = { dateFrom: params.get("dateFrom") ?? "", dateTo: params.get("dateTo") ?? "", neighborhood: params.get("neighborhood") ?? "" };
     setFilters(initial);
+    lastApplied.current = JSON.stringify(initial);
     void loadTables(initial);
     const onPopState = () => {
       const current = new URLSearchParams(window.location.search);
       const next = { dateFrom: current.get("dateFrom") ?? "", dateTo: current.get("dateTo") ?? "", neighborhood: current.get("neighborhood") ?? "" };
-      setFilters(next); void loadTables(next);
+      setFilters(next); lastApplied.current = JSON.stringify(next); void loadTables(next);
     };
     window.addEventListener("popstate", onPopState);
     return () => { window.removeEventListener("popstate", onPopState); requestSequence.current += 1; };
   }, [loadTables]);
 
+  function pushFilters(next: typeof filters, replace: boolean) {
+    const params = new URLSearchParams();
+    if (next.dateFrom) params.set("dateFrom", next.dateFrom);
+    if (next.dateTo) params.set("dateTo", next.dateTo);
+    if (next.neighborhood.trim()) params.set("neighborhood", next.neighborhood.trim());
+    const url = `/tables${params.size ? `?${params}` : ""}`;
+    if (replace) window.history.replaceState({}, "", url); else window.history.pushState({}, "", url);
+  }
+
+  // Filters apply as they change (dates at once, typing after a short pause); Enter applies immediately.
+  useEffect(() => {
+    const key = JSON.stringify(filters);
+    if (key === lastApplied.current) return;
+    const timer = window.setTimeout(() => { lastApplied.current = key; pushFilters(filters, true); void loadTables(filters); }, 350);
+    return () => window.clearTimeout(timer);
+  }, [filters, loadTables]);
+
   function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const params = new URLSearchParams();
-    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
-    if (filters.dateTo) params.set("dateTo", filters.dateTo);
-    if (filters.neighborhood.trim()) params.set("neighborhood", filters.neighborhood.trim());
-    window.history.pushState({}, "", `/tables${params.size ? `?${params}` : ""}`);
+    lastApplied.current = JSON.stringify(filters);
+    pushFilters(filters, false);
     void loadTables(filters);
   }
 
   function clearFilters() {
     const empty = { dateFrom: "", dateTo: "", neighborhood: "" };
     setFilters(empty);
+    lastApplied.current = JSON.stringify(empty);
     window.history.pushState({}, "", "/tables");
     void loadTables(empty);
   }
 
+  const hasFilters = Boolean(filters.dateFrom || filters.dateTo || filters.neighborhood);
+  const today = todayInAtlanta();
+  const thisWeek = weekStart(today);
+  const nextWeek = weekStart(new Date(Date.parse(`${thisWeek}T12:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10));
+  const weekLabel = (start: string) => start <= thisWeek ? "This week" : start === nextWeek ? "Next week" : `Week of ${monthDay(start)}`;
+  const weeks: Array<{ start: string; label: string; tables: TableData[] }> = [];
+  for (const table of items) {
+    const start = weekStart(table.localDate);
+    const last = weeks[weeks.length - 1];
+    if (last && last.start === start) last.tables.push(table); else weeks.push({ start, label: weekLabel(start), tables: [table] });
+  }
+  const requestBadge = (table: TableData) => {
+    const state = table.ownRequest?.state;
+    return state ? <StatusBadge tone={state === "pending" ? "pending" : state === "declined" ? "danger" : "neutral"}>{REQUEST_STATE_LABEL[state]}</StatusBadge> : null;
+  };
+
+  const showFilters = state === "loading" || state === "ready";
   const content = <>
-    <div className="tables-heading-row"><div><p className="eyebrow">FIND YOUR PEOPLE</p><h1 id="tables-heading">An evening worth<br /><em>looking forward to.</em></h1><p className="page-intro">Upcoming tables in Atlanta. Request a seat at any that suit you, and we’ll build each table from the requests.</p></div><span className="tables-heading-mark"><Utensils aria-hidden="true" /></span></div>
-    <form className="table-filter-panel" onSubmit={applyFilters} aria-label="Filter published Tables">
-      <div className="table-filter-intro"><span><CalendarDays aria-hidden="true" /></span><div><strong>Find a night that fits</strong><small>All times are Atlanta time.</small></div></div>
+    <PageHeader titleId="tables-heading" title="Tables" description="Upcoming evenings in Atlanta. Request a seat at any that suit you." />
+    {showFilters && <form className="tbl-filters" onSubmit={applyFilters} aria-label="Filter published Tables">
       <label>From<input type="date" value={filters.dateFrom} onChange={(event) => { const dateFrom = event.currentTarget.value; setFilters((value) => ({ ...value, dateFrom })); }} /></label>
       <label>To<input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={(event) => { const dateTo = event.currentTarget.value; setFilters((value) => ({ ...value, dateTo })); }} /></label>
-      <label className="table-filter-neighborhood">Neighborhood<input type="text" maxLength={120} value={filters.neighborhood} placeholder="Any Atlanta neighborhood" onChange={(event) => { const neighborhood = event.currentTarget.value; setFilters((value) => ({ ...value, neighborhood })); }} /></label>
-      <button className="button button-primary table-filter-submit" type="submit">Apply filters<ArrowRight aria-hidden="true" /></button>
-    </form>
-    {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Loading tables…" />}
-    {state === "unauthenticated" && <TableState error title="Sign in to browse Tables" detail="Your Table search will be ready after you sign in." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "access_required" && <TableState error title="You don’t have access yet" detail="If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Finish your profile to see tables" detail={errorMessage || "We review every profile before you can browse."} action={<a className="button button-primary" href="/account/profile?returnTo=%2Ftables">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "error" && <TableState error title="We couldn’t load tables" detail={errorMessage || "Try again in a moment."} action={<button className="button button-outline" type="button" onClick={() => void loadTables(filters)}>Try again<ArrowRight aria-hidden="true" /></button>} />}
-    {state === "ready" && items.length === 0 && <TableState title="No tables match" detail="Try different dates or another neighborhood." action={<button className="button button-outline" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>} />}
+      <label className="tbl-filter-neighborhood">Neighborhood<input type="text" maxLength={120} value={filters.neighborhood} placeholder="Any neighborhood" onChange={(event) => { const neighborhood = event.currentTarget.value; setFilters((value) => ({ ...value, neighborhood })); }} /></label>
+      {hasFilters && <button className="button button-tertiary" type="button" onClick={clearFilters}>Clear filters</button>}
+    </form>}
+    {state === "loading" && <PageState variant="loading" title="Loading tables…" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to browse Tables" message="Your Table search will be ready after you sign in." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "access_required" && <PageState variant="no-access" title="You don’t have access yet" message="If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email." action={<a className="button button-primary" href="/sign-in?returnTo=%2Ftables">Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <PageState variant="no-access" title="Finish your profile to see tables" message={errorMessage || "We review every profile before you can browse."} action={<a className="button button-primary" href="/account/profile?returnTo=%2Ftables">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <PageState variant="error" title="We couldn’t load tables" message={errorMessage || "Try again in a moment."} action={<button className="button button-outline" type="button" onClick={() => void loadTables(filters)}>Try again</button>} />}
+    {state === "ready" && items.length === 0 && <PageState variant="empty" title={hasFilters ? "No tables match those dates" : "No tables yet"} message={hasFilters ? "Try different dates or another neighborhood." : "New evenings are added regularly. Check back soon."} />}
     {state === "ready" && items.length > 0 && <>
-      <div className="tables-results-heading"><div><p className="eyebrow">UPCOMING IN ATLANTA</p><h2>{items.length === 1 ? "One table" : "Tables"}</h2></div><div className="tables-results-tools"><p>{cursor ? "More nights are available below." : "Each night has three stops: drinks, dinner and dessert."}</p>{(filters.dateFrom || filters.dateTo || filters.neighborhood.trim()) && <button className="button button-outline table-clear-filters" type="button" onClick={clearFilters}>Clear filters<X aria-hidden="true" /></button>}</div></div>
-      <div className="table-card-grid">{items.map((table) => <article className="member-table-card" key={table.tableId}>
-        <div className="member-table-card-top"><span className="table-date-icon"><CalendarDays aria-hidden="true" /></span><span className="table-card-price">$25 <small>total</small></span></div>
-        <p className="table-card-date">{formatLocalDate(table.localDate)}</p><h3>{table.title}</h3>
-        <p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><Clock3 aria-hidden="true" />{formatTime(table.startLocalTime)}</p>
-        <a className="button button-outline table-card-link" href={safeTablePath(table.tableId)}>View Table<ArrowRight aria-hidden="true" /></a>
-      </article>)}</div>
+      <p className="tbl-zone">Times are Atlanta time.</p>
+      {weeks.map((week) => <section className="tbl-week" key={week.start} aria-label={week.label}>
+        <h2>{week.label}</h2>
+        <div className="tbl-grid">{week.tables.map((table) => <a className="tbl-card" key={table.tableId} href={safeTablePath(table.tableId)}>
+          <span className="tbl-date"><small>{eventDate(table.localDate).split(",")[0]}</small><strong>{monthDay(table.localDate).split(" ")[1]}</strong></span>
+          <span className="tbl-main"><h3>{table.title}</h3><span>{table.neighborhood} · {formatTime(table.startLocalTime)}</span></span>
+          <span className="tbl-side"><strong>${((table.priceCents ?? 2500) / 100).toFixed(0)}</strong>{requestBadge(table)}</span>
+        </a>)}</div>
+      </section>)}
       {cursor && <div className="table-load-more"><button className="button button-outline" type="button" onClick={() => void loadTables(filters, cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading…" : "Show more"}<ChevronDown aria-hidden="true" /></button></div>}
     </>}
   </>;
@@ -425,23 +460,23 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
 
   const content = <>
     <a href="/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
-    {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Opening the Table" detail="Checking the current published details." />}
+    {state === "loading" && <PageState variant="loading" title="Opening the Table" />}
     {state === "unauthenticated" && table ? <TablePreview table={table} continueTo={continueTo ?? safeTablePath(tableId)} />
-      : state === "unauthenticated" ? <TableState error title="Sign in to continue" detail="This Table link can be opened after you sign in." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>} />
+      : state === "unauthenticated" ? <PageState variant="signed-out" title="Sign in to continue" message="This Table link can be opened after you sign in." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>} />
       : null}
     {state === "preview" && table && <TablePreview table={table} continueTo={safeTablePath(table.tableId)} />}
-    {state === "access_required" && <TableState error title="You don’t have access yet" detail={message || "If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email."} action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Finish your profile first" detail={message || "Finish your profile to see the plan and request a seat."} action={<a className="button button-primary" href={`/account/profile?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Continue to your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "not_found" && <TableState error title="This table isn’t available" detail={message || "It may have already happened or been removed."} action={<a className="button button-outline" href="/tables"><ArrowLeft aria-hidden="true" />Browse upcoming Tables</a>} />}
-    {state === "error" && <TableState error title="Table details are temporarily unavailable" detail={message || "We couldn’t verify this published Table, so its itinerary and price are hidden."} action={<button className="button button-outline" type="button" onClick={() => void loadDetail()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
+    {state === "access_required" && <PageState variant="no-access" title="You don’t have access yet" message={message || "If you joined the waitlist, we’ll email you when you’re in. Already in? Sign in with that email."} action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Sign in with a different email<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <PageState variant="no-access" title="Finish your profile first" message={message || "Finish your profile to see the plan and request a seat."} action={<a className="button button-primary" href={`/account/profile?returnTo=${encodeURIComponent(safeTablePath(tableId))}`}>Continue to your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "not_found" && <PageState variant="empty" title="This table isn’t available" message={message || "It may have already happened or been removed."} action={<a className="button button-outline" href="/tables"><ArrowLeft aria-hidden="true" />Browse upcoming Tables</a>} />}
+    {state === "error" && <PageState variant="error" title="Table details are temporarily unavailable" message={message || "We couldn’t verify this published Table, so its itinerary and price are hidden."} action={<button className="button button-outline" type="button" onClick={() => void loadDetail()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
     {state === "ready" && table && table.stops && table.startLocalTime && <>
-      <div className="member-table-detail-heading"><p className="eyebrow">A FIFTH WHEEL EVENING</p><p className="table-detail-date">{formatLocalDate(table.localDate)}</p><h1>{table.title}</h1><p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><Clock3 aria-hidden="true" />Starts at {formatTime(table.startLocalTime)} Atlanta time</p></div>
+      <PageHeader titleId="table-title" title={table.title} description={`${eventWhen(table.localDate, table.startLocalTime)} · ${table.neighborhood}`} />
       <div className="table-detail-layout">
-        <section className="table-itinerary-card" aria-labelledby="itinerary-title"><div className="table-section-heading"><span><Utensils aria-hidden="true" /></span><div><p className="eyebrow">THREE STOPS, ONE GOOD NIGHT</p><h2 id="itinerary-title">Your itinerary</h2></div></div>
-          <ol className="table-itinerary-list">{table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="table-itinerary-step">0{index + 1}</span><div><p className="table-stop-role">{titleCase(stop.role)}{stop.minutesFromStart === 0 ? " · Start" : ` · ${stop.minutesFromStart} min later`}</p><h3>{stop.venueName}</h3><p className="table-stop-address">{stop.venueAddress}</p>{stop.publicNotes && <p className="table-stop-note">{stop.publicNotes}</p>}</div></li>)}</ol>
+        <section className="table-itinerary-card" aria-labelledby="itinerary-title"><h2 id="itinerary-title">The evening</h2>
+          <ol className="table-itinerary-list">{table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="table-itinerary-step">0{index + 1}</span><div><p className="table-stop-role">{titleCase(stop.role)} · {clockAfter(table.startLocalTime ?? "", stop.minutesFromStart)}</p><h3>{stop.venueName}</h3><p className="table-stop-address">{stop.venueAddress}</p>{stop.publicNotes && <p className="table-stop-note">{stop.publicNotes}</p>}</div></li>)}</ol>
         </section>
-        <aside className="table-request-card" aria-labelledby="request-card-title"><h2 id="request-card-title">Request a seat</h2><div className="table-price"><strong>$25</strong><span>per person if you’re invited</span></div><p>We’ll look at all the requests and let you know if you’re invited. Nothing is charged now.</p>
-          {table.ownRequest?.state === "pending" ? <div className="table-own-request pending"><span><Check aria-hidden="true" /></span><div><strong>Request received — awaiting review.</strong><small>The team will review your request. You can withdraw while it is pending.</small></div></div>
+        <aside className="table-request-card" aria-labelledby="request-card-title"><h2 id="request-card-title">Request a seat</h2><div className="table-price"><strong>$25</strong><span>per seat, only if you’re invited</span></div><p>Nothing is charged now. We’ll let you know if you’re invited.</p>
+          {table.ownRequest?.state === "pending" ? <div className="table-own-request pending"><span><Check aria-hidden="true" /></span><div><strong>Request received — awaiting review.</strong><a href="/requests">View in Requests</a></div></div>
             : table.ownRequest?.state === "declined" ? <div className="table-own-request declined"><span><CircleAlert aria-hidden="true" /></span><div><strong>This request was declined.</strong><small>{table.ownRequest.declineReason || "See Requests for your history."}</small></div></div>
               : table.ownRequest?.state === "withdrawn" ? <div className="table-own-request withdrawn"><span><X aria-hidden="true" /></span><div><strong>You withdrew your request.</strong></div></div>
                 : table.ownRequest?.state === "closed_by_table" ? <div className="table-own-request declined"><span><CircleAlert aria-hidden="true" /></span><div><strong>This table was cancelled.</strong><small>If you paid, you’ll get a full refund. Track it in My Seats.</small></div></div>
@@ -451,7 +486,6 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
           <button className="table-share-action" type="button" onClick={() => void shareTable()}><Share2 aria-hidden="true" />Share this Table link</button>
           {shareMessage && <p className="table-share-message" role="status">{shareMessage}</p>}
           {message && actionState !== "idle" && <p className={`table-action-message ${actionState === "error" ? "is-error" : ""}`} role={actionState === "error" ? "alert" : "status"}>{message}</p>}
-          <a className="table-requests-link" href="/requests">See your Requests<ArrowRight aria-hidden="true" /></a>
         </aside>
       </div>
     </>}
@@ -463,10 +497,10 @@ export function MemberTableDetailWorkspace({ tableId }: { tableId: string }) {
 
 function TablePreview({ table, continueTo }: { table: TableData; continueTo: string }) {
   return <section className="table-preview-card" aria-labelledby="table-preview-title">
-    <span className="table-preview-icon"><Table2 aria-hidden="true" /></span><p className="eyebrow">SHARED TABLE PREVIEW</p><h1 id="table-preview-title">{table.title}</h1>
+    <h1 id="table-preview-title">{table.title}</h1>
     <p className="table-card-meta"><MapPin aria-hidden="true" />{table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(table.localDate, false)}</p>
-    <p className="table-preview-boundary">Sign in to see the full plan and request a seat. New to Fifth Wheel? Join the waitlist.</p>
-    <a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(continueTo)}`}>Sign in to continue<ArrowRight aria-hidden="true" /></a>
+    <p className="table-preview-boundary">Sign in to see the full plan and request a seat. New here? <a href="https://fifthwheel.community/#waitlist" target="_blank" rel="noreferrer">Join the waitlist.</a></p>
+    <a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(continueTo)}`}>Sign in to request a seat<ArrowRight aria-hidden="true" /></a>
   </section>;
 }
 
@@ -556,8 +590,3 @@ export function MemberRequestsWorkspace() {
   </MemberWorkspaceShell>;
 }
 
-function TableState({ title, detail, action, error = false, icon }: { title: string; detail?: string; action?: ReactNode; error?: boolean; icon?: ReactNode }) {
-  return <section className={`table-data-state ${error ? "is-error" : ""}`} role={error ? "alert" : icon ? "status" : undefined} aria-live={error || icon ? "polite" : undefined}>
-    <span className="table-data-icon">{icon ?? (error ? <CircleAlert aria-hidden="true" /> : <Table2 aria-hidden="true" />)}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}
-  </section>;
-}
