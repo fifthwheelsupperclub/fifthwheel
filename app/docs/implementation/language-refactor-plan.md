@@ -662,7 +662,7 @@ Apply as a rule in each `*.http.server.ts` / `*.service.server.ts` `safeMessage`
 
 Applied in the app: step 1 (shared staff and guest nav, `copy/states.ts`), D0–D1, D2–D5, D6–D7, D8–D13 (except the rows below). Browser tests that read changed copy were updated. Ten browser specs (w03, w04, w05, w06, w065) fail on the unmodified code too (they need local fixtures), so their copy updates are unverified.
 
-Not applied: rows waiting on decisions (D-3, D-4, D-8, D-9 Accept→Publish label split, D-11, D-12, D-13, D-14, D-15 applied, D-16, D-17, D-19, D-20), the shared `PageState` component, the guest nav footnotes and role badges, the "How it works" explainer, clock-time itineraries, payment disclosure block, the T−24 and cancellation emails' remaining wording, `scripts/check-copy.mjs`, and `/preview`.
+Not applied: rows waiting on decisions (D-3, D-4, D-8, D-9 Accept→Publish label split, D-11, D-13, D-14, D-15 applied, D-16, D-17, D-19, D-20), the shared `PageState` component, the guest nav footnotes and role badges, the "How it works" explainer, clock-time itineraries, payment disclosure block, the T−24 and cancellation emails' remaining wording, `scripts/check-copy.mjs`, and `/preview`. D-12 was decided on 2026-11-15, but its rows (§D2 Home next step, Home empty) wait for the state-aware Home behavior (UX plan T-12).
 
 ### E1. Order of work (and why)
 
@@ -785,7 +785,7 @@ Decided 2026-11-14: D-1, D-2, D-5, D-6, D-7, D-10 and D-21, all as recommended. 
 | D-9 | Is the two-step *Accept* → *Publish* for tables needed, or can it be one "Publish"? | Keep if it's used. Rename "Approved (not live)" / "Live" | Product + ops |
 | D-10 | Guest refund states: 6 → 4 | **Decided 2026-11-14 as recommended.** Yes (§C4) | Ledger + product |
 | D-11 | Who's the named owner for Airtable setup, worker outages, the vote finalizer, and role provisioning? Copy currently says "operations owner", "engineering", "the scheduler" | Name a role or contact in the copy | Ops |
-| D-12 | Member home shows a static "Complete your profile" and never lists tables. Fix the behavior, or simplify the page? | Make it state-aware (profile state, upcoming seat, open invitation) | Product + engineering |
+| D-12 | Member home shows a static "Complete your profile" and never lists tables. Fix the behavior, or simplify the page? | **Decided 2026-11-15 as recommended.** Make it state-aware (profile state, upcoming seat, open invitation). Implementation spec: `docs/UX-DESIGN-REFACTOR-PLAN.md` P-HOME-01 / T-12 | Product + engineering |
 | D-13 | Who sees the one-line intro and the phone number? | State it in the field help | Product + privacy |
 | D-14 | Checkbox label and version display on the approved disclosure | "I understand and agree." Hide the version or move it to small print. Needs legal sign-off. | Legal / owner |
 | D-15 | "Spots are limited" in the T−48 reminder: true? | Remove unless verifiable | Product |
