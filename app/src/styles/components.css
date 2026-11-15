@@ -264,3 +264,9 @@
   .auth-story-copy h1 { font-size: 34px; }
   .auth-card-wrap { padding-top: 20px; }
 }
+
+/* ---- Phase 4 fixes ---- */
+.ops-card > div, .ops-actions { min-width: 0; }
+.ops-meta .badge { white-space: normal; text-align: left; }
+/* The shell's content area already pads the page; ops pages must not add a second layer. */
+.ops-workspace .ops-content { padding: 0; }

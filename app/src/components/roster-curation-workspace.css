@@ -1,6 +1,6 @@
 .roster-workspace .member-nav-link { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: var(--muted-strong); font-size: var(--text-staff); text-decoration: none; }
 .roster-workspace .member-nav-link svg { width: 16px; height: 16px; color: var(--muted); }
-.roster-workspace .member-nav-link:hover { background: #2b2216; color: var(--ivory); }
+.roster-workspace .member-nav-link:hover { background: var(--surface-2); color: var(--ivory); }
 .roster-workspace .member-nav-link.active { background: #352819; color: #e2c48e; }
 .roster-workspace .member-nav-link.active svg { color: var(--gold); }
 .roster-heading { align-items: center; }
@@ -9,7 +9,7 @@
 .roster-queue-meta > span:first-child { display: inline-flex; align-items: center; gap: 7px; color: var(--muted-strong); }
 .roster-queue-meta svg { width: 14px; height: 14px; color: var(--gold); }
 .roster-queue-list { display: grid; gap: 11px; }
-.roster-queue-card { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 19px; border: 1px solid #3a2f20; border-radius: 13px; background: #1d170f; }
+.roster-queue-card { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 19px; border: 1px solid var(--line); border-radius: 13px; background: #1d170f; }
 .roster-card-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #55452e; border-radius: 12px; background: #292013; color: var(--gold); }
 .roster-card-icon svg { width: 19px; height: 19px; }
 .roster-card-copy { min-width: 0; }
@@ -41,7 +41,7 @@
 .roster-summary-card strong { grid-column: 2; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; line-height: 1.15; }
 .roster-summary-card .roster-revision { overflow: hidden; font-family: Inter, sans-serif; font-size: var(--text-base); text-overflow: ellipsis; }
 .roster-summary-card small { grid-column: 1 / -1; color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
-.roster-section { margin: 0 0 26px; padding: 22px; border: 1px solid #3a2f20; border-radius: 14px; background: #1c160f; }
+.roster-section { margin: 0 0 26px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: #1c160f; }
 .roster-section-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .roster-section-heading h2 { margin: 7px 0 5px; font-family: var(--display); font-size: var(--display-md); font-weight: 400; letter-spacing: -.025em; }
 .roster-section-heading p:not(.eyebrow) { max-width: 560px; margin: 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.6; }
@@ -76,7 +76,7 @@
 .roster-selected-empty { margin: 0; padding: 12px; border: 1px dashed #493a26; border-radius: 9px; color: var(--muted); font-size: var(--text-sm); }
 .roster-selected-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #3b3021; border-radius: 8px; color: var(--ivory); font-size: var(--text-sm); }
 .roster-selected-row span:last-child { color: var(--muted); }
-.roster-historical-selection { margin-top: 14px; padding: 14px; border: 1px solid #493a26; border-radius: 10px; background: #211a11; }
+.roster-historical-selection { margin-top: 14px; padding: 14px; border: 1px solid #493a26; border-radius: 10px; background: var(--surface-1); }
 .roster-historical-selection h3 { margin: 7px 0 10px; font-family: var(--display); font-size: var(--display-sm); font-weight: 400; }
 .roster-historical-selection ul { display: grid; gap: 7px; margin: 0 0 10px; padding-left: 18px; color: var(--ivory); font-size: var(--text-sm); }
 .roster-historical-selection small { color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
@@ -89,7 +89,7 @@
 .roster-notice svg, .roster-approved-note svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; }
 .roster-permission-note { margin: 14px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
 .roster-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; overflow: auto; padding: 20px; background: #080604bd; }
-.roster-confirm-dialog { width: min(100%, 520px); padding: 25px; border: 1px solid #5a472c; border-radius: 16px; background: #211a11; box-shadow: 0 24px 80px #0008; }
+.roster-confirm-dialog { width: min(100%, 520px); padding: 25px; border: 1px solid #5a472c; border-radius: 16px; background: var(--surface-1); box-shadow: 0 24px 80px #0008; }
 .roster-confirm-dialog h2 { margin: 12px 0 7px; font-family: var(--display); font-size: var(--display-lg); font-weight: 400; letter-spacing: -.03em; }
 .roster-confirm-dialog > p:not(.eyebrow) { color: var(--muted-strong); font-size: var(--text-staff); line-height: 1.7; }
 .roster-confirm-list { display: grid; gap: 5px; max-height: 180px; overflow: auto; margin-top: 16px; padding: 11px; border: 1px solid #3b3021; border-radius: 9px; color: var(--ivory); font-size: var(--text-sm); }

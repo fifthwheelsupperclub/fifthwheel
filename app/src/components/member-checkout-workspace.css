@@ -1,6 +1,6 @@
 .member-checkout-workspace { margin-top: 12px; }
 .member-checkout-workspace .invitation-price-line { margin-top: 13px; }
-.checkout-state { display: flex; align-items: flex-start; gap: 10px; margin-top: 13px; padding: 12px; border: 1px solid #4a3c28; border-radius: 10px; background: #211a11; color: var(--muted-strong); font-size: var(--text-sm); line-height: 1.6; }
+.checkout-state { display: flex; align-items: flex-start; gap: 10px; margin-top: 13px; padding: 12px; border: 1px solid #4a3c28; border-radius: 10px; background: var(--surface-1); color: var(--muted-strong); font-size: var(--text-sm); line-height: 1.6; }
 .checkout-state > svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--gold); }
 .checkout-state p { margin: 0; }
 .checkout-state strong { display: block; color: var(--ivory); font-size: var(--text-staff); }
@@ -19,7 +19,7 @@
 .checkout-disclosure-heading .eyebrow { margin: 0 0 2px; font-size: var(--text-xs); }
 .checkout-disclosure-heading span { color: var(--muted); font-size: var(--text-xs); }
 .checkout-disclosure-copy { margin-top: 11px; color: var(--muted-strong); font-size: var(--text-base); line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-.checkout-acknowledgement { display: flex; width: 100%; min-height: 48px; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 0 0; border: 0; border-top: 1px solid #3a2f20; border-radius: 0; background: transparent; color: var(--ivory); font-size: var(--text-staff); line-height: 1.5; cursor: pointer; }
+.checkout-acknowledgement { display: flex; width: 100%; min-height: 48px; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ivory); font-size: var(--text-staff); line-height: 1.5; cursor: pointer; }
 .checkout-acknowledgement:hover, .checkout-acknowledgement:has(input:checked) { background: transparent; color: var(--ivory); }
 .checkout-acknowledgement input { width: 20px; height: 20px; flex: 0 0 20px; margin: 0; }
 .checkout-deadline { margin: 10px 0 0; padding-top: 9px; border-top: 1px solid #443722; }

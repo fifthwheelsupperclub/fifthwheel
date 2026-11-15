@@ -27,7 +27,7 @@
 .table-request-submit { width: 100%; min-height: 46px; justify-content: space-between; border-radius: 9px; }
 .table-own-request { display: flex; gap: 10px; margin: 12px 0; padding: 11px; border: 1px solid #4b5a3f; border-radius: 9px; background: #202317; }
 .table-own-request.declined { border-color: #70434a; background: #2a1d1b; }
-.table-own-request.withdrawn { border-color: #51442e; background: #211a11; }
+.table-own-request.withdrawn { border-color: #51442e; background: var(--surface-1); }
 .table-own-request > span { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; color: #d1d8bd; }
 .table-own-request > span svg { width: 16px; height: 16px; }
 .table-own-request strong, .table-own-request small { display: block; }

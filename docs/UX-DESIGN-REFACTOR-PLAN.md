@@ -1072,3 +1072,29 @@ I reviewed the draft from four perspectives. Challenges and resolutions:
 - **Static analysis:** font-size, radius, hex and breakpoint counts are from a regex scan of `app/src/styles.css` and `app/src/components/*.css`. Contrast ratios were computed with the WCAG relative-luminance formula against the stated background tokens.
 - **Prior work honored:** `interface-direction.md` (tokens, IA, 44px targets, reflow at 320px, the 2026-11-12 review notes) and `language-refactor-plan.md` (decisions D-1…D-21, §C vocabulary, §E plan). This plan doesn't re-audit copy covered there. It flags only decided items that are still unapplied in the render, plus new layout-driven copy.
 - **No files in the app were modified.** The only artifact is this document.
+
+
+---
+
+## 12. Implementation status (as of 2026-11-15)
+
+Phases 1–4 are implemented on `codex/app-rewrite`. This section records what was verified and what was deliberately left.
+
+### Verification (T-31 to T-34)
+
+- **Responsive sweep (T-31).** All 49 mock-rendered page states were loaded at 320, 390, 768, 1024 and 1440px. Result: **0 pages with horizontal overflow, 0 text nodes under 12px, 0 undersized form controls (min 36px)**. One overflow was found and fixed (host attendance cards at 320px).
+- **Accessibility scan (T-32).** axe-core 4.10 with the WCAG 2.0/2.1/2.2 A and AA rule sets, run on the same 49 states at 390 and 1440px. It found one rule failing: low-contrast text in the sidebar group label, plus nine other text colors below 4.5:1 that the pages could reach. All are now on `--text-subtle` (5.9:1+). Final result: **0 violations**. Keyboard behavior is covered by `tests/browser/a11y-keyboard.mock-only.spec.ts` (skip link first, dialogs close on Escape and return focus, staff menu drawer, bottom tab labels).
+- **Consistency checks (T-33).** `pnpm lint:ui` (`scripts/check-ui.mjs`) fails on: font sizes under 12px, browser `confirm/alert/prompt`, date formatting outside `src/format/datetime.ts`, hand-rolled top bars or extra `<main>` landmarks, and it ratchets (can only go down) raw hex colors outside the token file (now 721), `!important` declarations (30) and banned guest-facing terms (0).
+- **Visual polish (T-34).** Ops pages (host attendance, restaurant, refunds, decisions, conduct reports) had a second layer of padding on top of the shell's, so their titles sat lower than every other page. Removed.
+
+### Known leftovers
+
+| ID | Item | Why it was left |
+|---|---|---|
+| AC-T01 | Raw hex outside `tokens.css` is not 0 | 721 bespoke warm shades remain. Mapping each to its nearest token would shift colors, so it needs a visual review. The ratchet stops it growing. |
+| AC-T10 | Input border and focus contrast ≥3:1 | Control borders and the focus ring use the new tokens. Decorative card borders keep their lower-contrast hairlines, as WCAG allows. |
+| P-INVITE-03 / Q-05 | Disclosure checkbox wording and version display | Waiting on legal sign-off. |
+| P-SIGNIN-02 / Q-08 | Expired-link notice on sign-in | Nothing redirects to sign-in with a reason today. |
+| P-PROFILE-06 | Photo-grid upload redesign | Optional; would change markup the real-stack spec relies on. |
+| P-ROSTER-05/06, P-CANCELS-04, P-REFUNDS-03, P-ASSIGN-*, P-SUPPLYDETAIL-04, P-SUPPLY-02, P-WAITLIST-05/Q-14, P-TONIGHT-02, P-ATTEND undo (Q-17), restaurant grouping | Lower-priority layout items; none block a task. |
+| Real-stack specs | Several were edited for new copy but not run (they need local Supabase fixtures) | Run `node scripts/run-*-browser.mjs` before release. |
