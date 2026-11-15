@@ -199,7 +199,12 @@ create temp table w07_ids on commit drop as select
   array(select provider_session_id from public.app_checkout_attempts where invitation_id=${inv} and provider_session_id is not null) sessions;
 delete from public.app_audit_events where subject_id in (select unnest(attempts||payments||seats) from w07_ids)
   or subject_id in (${[f.tableId,f.requestId,f.proposalId,f.invitationId].map(sql).join(",")}) or actor_user_id in (${[f.adminId,f.memberId].map(sql).join(",")});
+delete from public.app_seat_cancellation_notice_outbox where cancellation_request_id in (select cancellation_request_id from public.app_seat_cancellation_requests where seat_id in (select unnest(seats) from w07_ids));
+delete from public.app_seat_cancellation_operations where cancellation_request_id in (select cancellation_request_id from public.app_seat_cancellation_requests where seat_id in (select unnest(seats) from w07_ids));
 delete from public.app_seat_cancellation_requests where seat_id in (select unnest(seats) from w07_ids);
+delete from public.app_refund_work_items where operation_id in (select operation_id from public.app_refund_operations where payment_id in (select unnest(payments) from w07_ids));
+delete from public.app_refund_action_operations where refund_operation_id in (select operation_id from public.app_refund_operations where payment_id in (select unnest(payments) from w07_ids));
+delete from public.app_refund_operations where payment_id in (select unnest(payments) from w07_ids);
 delete from public.app_refund_obligations where payment_id in (select unnest(payments) from w07_ids);
 delete from public.app_seats where seat_id in (select unnest(seats) from w07_ids);
 delete from public.app_payments where payment_id in (select unnest(payments) from w07_ids);
@@ -234,6 +239,8 @@ async function main() {
   await preflight();
   try { mkdirSync(lockPath); } catch { fail("another W07 browser run is active (or left a lock); inspect before retrying"); }
   mkdirSync(screenshots, { recursive: true });
+  process.env.JOB_SECRET = randomUUID() + randomUUID(); // per-run secrets, never persisted
+  process.env.REFUND_WORKER_SECRET = randomUUID() + randomUUID(); process.env.REFUND_WORKER_ID = randomUUID();
   const suffix = randomUUID().replaceAll("-", "").slice(0, 14);
   const f = {
     suffix, adminEmail: `w07-admin-${suffix}@example.test`, memberEmail: `w07-member-${suffix}@example.test`, adminId: null, memberId: null,
@@ -248,7 +255,7 @@ async function main() {
     const seed = command("psql", [dbUrl, "-X", "-v", "ON_ERROR_STOP=1"], { input: fixtureSql(f), env: { ...process.env, PGPASSWORD: "postgres" } });
     if (seed.status !== 0) fail(`W07 fixture seed failed: ${seed.stderr.split(/\r?\n/).filter((l) => /^ERROR:|DETAIL:/.test(l)).join(" ")}`);
     seeded = true;
-    Object.assign(process.env, { W07_MEMBER_EMAIL: f.memberEmail, W07_INVITATION_ID: f.invitationId, W07_TABLE_ID: f.tableId, W07_DB_URL: dbUrl });
+    Object.assign(process.env, { W07_ADMIN_EMAIL: f.adminEmail, W07_MEMBER_EMAIL: f.memberEmail, W07_INVITATION_ID: f.invitationId, W07_TABLE_ID: f.tableId, W07_DB_URL: dbUrl });
     testExit = await runPlaywright();
   } finally {
     let cleanupOk = true;

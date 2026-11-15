@@ -17,7 +17,7 @@ test("Stripe refund create uses server-owned PaymentIntent, amount, and durable 
   const form = new URLSearchParams(calls[0]?.body);
   assert.equal(form.get("payment_intent"), "pi_abc123");
   assert.equal(form.get("amount"), "1250");
-  assert.equal(form.get("currency"), "usd");
+  assert.equal(form.has("currency"), false); // Stripe rejects `currency` on POST /v1/refunds
   assert.equal(form.get("metadata[app_refund_operation_id]"), "33333333-3333-4333-8333-333333333333");
   assert.equal(result.status, "succeeded");
 });

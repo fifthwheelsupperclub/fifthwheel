@@ -82,3 +82,9 @@ Evidence: DB harnesses `test-w10-ops-db.mjs` and `test-w10-notices-db.mjs` (roll
   2. **No HTTP routes existed for My Seats** (`/api/me/seats`, `/api/me/seats/$seatId`, `.../calendar.ics`); the screen showed "temporarily unavailable". Added `seats.http.server.ts`, `seats-runtime.server.ts`, three routes, 3 unit tests (320/320 pass).
 - **Open, needs the release owner:** the sandbox Dashboard currently offers Link, Cash App Pay, Klarna and Bank in addition to Card. The Seat contract is card-only; restrict methods in Dashboard → Settings → Payment methods (live mode too) before launch.
 - Not yet run: cancellation request/approval → refund → provider settlement, duplicate/out-of-order/wrong-mode webhook replay, concurrent last-slot, abandoned/expired checkout, late charge. W07.7 stays unchecked.
+
+### 2026-11-15 (later) — W07 cancellation → refund journey, real Stripe test mode
+
+- Same runner now continues after payment: member requests cancellation (Seat → `cancellation_requested`, rights kept) → admin approves a **full $25 refund** in the UI → refund obligation created → admin "Send refund" queues it → authenticated worker pass (`/api/internal/worker`, per-run `JOB_SECRET`/`REFUND_WORKER_SECRET`) claims and completes it → obligation `succeeded` with a real Stripe test-mode refund id (`re_…`), operation `succeeded`. Fixtures cleaned.
+- Defect found and fixed: the refund adapter sent a `currency` parameter, which Stripe rejects on `POST /v1/refunds` (every refund would have failed as `provider_rejected`). Removed; the adapter still verifies currency and amount on the response. Unit test updated.
+- Still open for W07.7: provider-failed/unknown refund recovery against Stripe, partial refund, duplicate/out-of-order/wrong-mode webhook replay, concurrent last-slot, abandoned/expired checkout, late charge, refund-queue email delivery check. Box stays unchecked.

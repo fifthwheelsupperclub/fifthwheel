@@ -48,7 +48,7 @@ export function createStripeRefundProvider(config: Config): RefundProvider {
         throw new RefundProviderSafeError("provider_rejected", true);
       }
       const body = new URLSearchParams(); body.set("payment_intent", input.paymentIntentId);
-      body.set("amount", String(input.amountCents)); body.set("currency", input.currency);
+      body.set("amount", String(input.amountCents)); // Stripe rejects a `currency` param on refunds; currency is verified on the response below
       body.set("metadata[app_refund_operation_id]", input.idempotencyKey);
       const result = refund(await request(new URL("https://api.stripe.com/v1/refunds"), body, input.idempotencyKey), config.mode);
       if (result.paymentIntentId !== input.paymentIntentId || result.amountCents !== input.amountCents || result.currency.toLowerCase() !== "usd") {
