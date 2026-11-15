@@ -226,20 +226,18 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await member.goto(`${appOrigin}/requests`);
       const requestCard = member.locator(".request-history-card").filter({ hasText: tableTitle });
       await expect(requestCard).toHaveCount(1);
-      await expect(requestCard.getByText("Requested", { exact: true })).toBeVisible();
-      await expect(requestCard.getByText("Your invitation is open", { exact: true })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Invited — pay to confirm" })).toBeVisible();
       await expect(requestCard.getByText("This is a separate offer.", { exact: false })).toHaveCount(0);
       await expect(requestCard.getByText("Email provider accepted", { exact: false })).toHaveCount(0);
-      await expect(requestCard.getByText("Request withdrawal is unavailable while this invitation is active.", { exact: false })).toBeVisible();
       await expect(requestCard.getByRole("button", { name: "Withdraw request" })).toHaveCount(0);
-      await expect(requestCard.getByRole("link", { name: "Review Table invitation" })).toHaveAttribute("href", invitePath);
+      await expect(requestCard.getByRole("link", { name: "Pay to confirm" })).toHaveAttribute("href", invitePath);
       const historyResponse = await member.request.get(`${appOrigin}/api/me/requests?limit=20`);
       expect(historyResponse.status()).toBe(200);
       const historyJson = await historyResponse.json();
       expect(historyJson).toMatchObject({ ok: true, data: { items: [expect.objectContaining({ state: "pending", tableInvitation: expect.objectContaining({ state: "active", deliveryState: "accepted" }) })] } });
       await screenshotPair(member, "w065-member-request-offer-overlay", async () => {
         await member.goto(`${appOrigin}/requests`);
-        await expect(member.locator(".request-history-card").filter({ hasText: tableTitle }).getByText("Your invitation is open", { exact: true })).toBeVisible();
+        await expect(member.locator(".request-history-card").filter({ hasText: tableTitle }).getByRole("link", { name: "Pay to confirm" })).toBeVisible();
       });
     } finally { await memberContext.close(); }
 

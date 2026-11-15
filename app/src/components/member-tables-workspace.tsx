@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { calendarDate, eventDate, eventTime, instantDate } from "../format/datetime";
+import { calendarDate, eventDate, eventTime, eventWhen, instantDate } from "../format/datetime";
+import { buttonClass } from "./ui/button";
+import { PageHeader } from "./ui/page-header";
+import { PageState } from "./ui/page-state";
+import { StatusBadge, type BadgeTone } from "./ui/status-badge";
 import { AppShell } from "./app-shell";
 import { INVITATION_STATE_HEADING, INVITATION_STATE_PILL, REQUEST_STATE_LABEL, type RequestState } from "../copy/states.ts";
 import {
@@ -516,25 +520,37 @@ export function MemberRequestsWorkspace() {
     finally { setActionId(null); }
   }
 
+  const invited = items.filter((i) => i.tableInvitation?.state === "active");
+  const waiting = items.filter((i) => i.state === "pending" && i.tableInvitation?.state !== "active");
+  const past = items.filter((i) => !invited.includes(i) && !waiting.includes(i));
+  const meta = (i: RequestRecord) => `${eventWhen(i.table.localDate, i.table.startLocalTime ?? "")} · ${i.table.neighborhood}`;
+  const pastBadge = (i: RequestRecord): [BadgeTone, string] => i.tableInvitation && i.tableInvitation.state !== "active" && i.state === "pending"
+    ? ["neutral", INVITATION_STATE_PILL[i.tableInvitation.state]]
+    : [i.state === "declined" ? "danger" : "neutral", REQUEST_STATE_LABEL[i.state]];
+  const title = (i: RequestRecord) => i.table.isCurrentlyPublished ? <a href={safeTablePath(i.tableId)}>{i.table.title}</a> : <>{i.table.title}</>;
+
   return <MemberWorkspaceShell active="requests">
-    <div className="tables-heading-row requests-heading-row"><div><h1 id="requests-heading">Your requests</h1><p className="page-intro">Tables you’ve asked to join, and any invitations.</p></div><span className="tables-heading-mark"><ClipboardList aria-hidden="true" /></span></div>
-    {state === "loading" && <TableState icon={<span className="entry-loader small" />} title="Loading your requests" detail="Checking your latest request history." />}
-    {state === "unauthenticated" && <TableState error title="Sign in to view Requests" detail="Your request history is private to your admitted member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Frequests">Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "profile_incomplete" && <TableState error title="Finish your profile first" detail={message || "You can request seats once we’ve reviewed your profile."} action={<a className="button button-primary" href="/account/profile">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "error" && <TableState error title="We couldn’t load your requests" detail={message || "Nothing has changed. Try again."} action={<button className="button button-outline" type="button" onClick={() => void loadRequests()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
-    {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="Find a table you like and request a seat." action={<a className="button button-primary" href="/tables">Browse tables<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "ready" && items.length > 0 && <div className="request-history-list">{items.map((item) => <article className="request-history-card" key={item.requestId}>
-      <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
-      <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {instantDate(item.createdAt)}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
-      {item.tableInvitation && <section className={`request-offer-card offer-${item.tableInvitation.state}`} aria-label="Table invitation status">
-        <div className="request-offer-heading"><span className="request-offer-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">TABLE INVITATION</p><strong>{INVITATION_STATE_HEADING[item.tableInvitation.state]}</strong></div><span className={`status-pill ${item.tableInvitation.state === "active" ? "status-pill-success" : "status-pill-neutral"}`}>{INVITATION_STATE_PILL[item.tableInvitation.state]}</span></div>
-        <a className="request-offer-link" href={`/invitations/${encodeURIComponent(item.tableInvitation.invitationId)}`}>Review Table invitation<ArrowRight aria-hidden="true" /></a>
-        {item.state === "pending" && item.tableInvitation.state === "active" && <p className="request-offer-withdraw-note">Request withdrawal is unavailable while this invitation is active. This offer is managed separately.</p>}
-      </section>}
-      {item.table.isCurrentlyPublished
-        ? <a className="request-table-link" href={safeTablePath(item.tableId)}>View Table details<ArrowRight aria-hidden="true" /></a>
-        : <p className="request-table-unavailable">This table is no longer available.</p>}
-    </article>)}</div>}
+    <PageHeader titleId="requests-heading" title="Requests" />
+    {state === "loading" && <PageState variant="loading" title="Loading your requests" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your requests" message="Sign in with the email you used to join." action={<a className="button button-primary" href="/sign-in?returnTo=%2Frequests">Sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "profile_incomplete" && <PageState variant="no-access" title="Finish your profile first" message={message || "You can request seats once we’ve reviewed your profile."} action={<a className="button button-primary" href="/account/profile">Complete your profile<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "error" && <PageState variant="error" title="We couldn’t load your requests" message={message || "Nothing has changed. Try again."} action={<button className="button button-outline" type="button" onClick={() => void loadRequests()}>Try again</button>} />}
+    {state === "ready" && items.length === 0 && <PageState variant="empty" title="No requests yet" message="Find a table you like and request a seat." action={<a className="button button-primary" href="/tables">Browse tables</a>} />}
+    {state === "ready" && items.length > 0 && <div className="req-groups">
+      {invited.length > 0 && <section aria-labelledby="req-invited"><h2 id="req-invited">Invited — pay to confirm</h2><div className="req-list">{invited.map((i) => <article className="request-history-card req-card req-card-invited" key={i.requestId}>
+        <div><h3>{title(i)}</h3><p>{meta(i)}</p></div>
+        <a className={buttonClass("primary")} href={`/invitations/${encodeURIComponent(i.tableInvitation!.invitationId)}`}>Pay to confirm<ArrowRight aria-hidden="true" /></a>
+      </article>)}</div></section>}
+      {waiting.length > 0 && <section aria-labelledby="req-waiting"><h2 id="req-waiting">Waiting to hear</h2><div className="req-list">{waiting.map((i) => <article className="request-history-card req-card" key={i.requestId}>
+        <div><h3>{title(i)}</h3><p>{meta(i)}</p><p className="req-sub">Requested {instantDate(i.createdAt)}</p></div>
+        <div className="req-side"><StatusBadge tone="pending">{REQUEST_STATE_LABEL[i.state]}</StatusBadge>
+          <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(i)} disabled={actionId === i.requestId}>{actionId === i.requestId ? "Withdrawing…" : "Withdraw request"}</button></div>
+      </article>)}</div></section>}
+      {past.length > 0 && <details className="req-past"><summary>Past requests ({past.length})</summary><div className="req-list">{past.map((i) => { const [tone, label] = pastBadge(i); return <article className="request-history-card req-card" key={i.requestId}>
+        <div><h3>{title(i)}</h3><p>{meta(i)}</p>{i.state === "declined" && i.declineReason && <p className="req-sub">{i.declineReason}</p>}{!i.table.isCurrentlyPublished && <p className="req-sub">This table is no longer available.</p>}</div>
+        <div className="req-side"><StatusBadge tone={tone}>{label}</StatusBadge></div>
+      </article>; })}</div></details>}
+    </div>}
     {message && state === "ready" && <p className="table-action-message is-error" role="alert">{message}</p>}
     {cursor && state === "ready" && <div className="table-load-more"><button className="button button-outline" type="button" onClick={() => void loadRequests(cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading more…" : "Load earlier requests"}<ChevronDown aria-hidden="true" /></button></div>}
   </MemberWorkspaceShell>;
