@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { buttonClass } from "./ui/button";
+import { PageState } from "./ui/page-state";
 import { clockAfter, eventTime, instantDate, instantTime } from "../format/datetime";
 import { AlertCircle, CheckCircle2, Clock3, HeartHandshake, LoaderCircle, MapPin, ShieldAlert, Star } from "lucide-react";
 import { MemberWorkspaceShell } from "./member-tables-workspace.tsx";
@@ -47,10 +49,11 @@ export function TonightWorkspace({ tableId }: Readonly<{ tableId: string }>) {
   }, [phase, load]);
 
   return <MemberWorkspaceShell active="seats"><div className="tonight-page">
-    {tonight.state === "loading" && <p className="tonight-note" role="status"><LoaderCircle className="tonight-spin" aria-hidden="true" />Loading…</p>}
-    {tonight.state === "error" && <section className="tonight-note" role="alert"><AlertCircle aria-hidden="true" /><h1>{tonight.status === 401 ? "Sign in to continue" : tonight.status === 404 || tonight.status === 403 ? "Not available" : "Unavailable right now"}</h1>
-      <p>{tonight.status === 404 || tonight.status === 403 ? "This page is for guests at this table." : tonight.message}</p>
-      {tonight.status === 401 ? <a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/tonight/${tableId}`)}`}>Sign in</a> : <a className="button button-outline" href="/my-seats">Back to My Seats</a>}</section>}
+    {tonight.state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {tonight.state === "error" && <PageState variant={tonight.status === 401 ? "signed-out" : tonight.status === 404 || tonight.status === 403 ? "no-access" : "error"}
+      title={tonight.status === 401 ? "Sign in to continue" : tonight.status === 404 || tonight.status === 403 ? "Not available" : "Unavailable right now"}
+      message={tonight.status === 404 || tonight.status === 403 ? "This page is for guests at this table." : tonight.message}
+      action={tonight.status === 401 ? <a className={buttonClass("primary")} href={`/sign-in?returnTo=${encodeURIComponent(`/tonight/${tableId}`)}`}>Sign in</a> : <a className={buttonClass("primary")} href="/my-seats">Back to My Seats</a>} />}
     {tonight.state === "ready" && <TonightBody data={tonight.data} base={base} reload={load} />}
   </div></MemberWorkspaceShell>;
 }

@@ -131,6 +131,7 @@ test("a guest without a Seat is refused", async ({ page, context }) => {
   await mock(context, { [`GET ${base}/tonight`]: () => fail(404, null, "That could not be found.") });
   await page.goto(`/tonight/${tableId}`);
   await expect(page.getByRole("heading", { name: "Not available" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to My Seats" })).toHaveClass(/button-primary/);
 });
 
 test("admin conduct reports: triage posts exact status/hold, ratings suppress small groups", async ({ page, context }) => {
