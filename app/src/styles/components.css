@@ -113,3 +113,8 @@
 .req-past summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--text-muted); font-size: var(--text-base); font-weight: 600; }
 .req-past .req-list { margin-top: var(--space-3); }
 @media (max-width: 640px) { .req-card { flex-direction: column; align-items: stretch; } .req-side { justify-items: start; } .req-card-invited .button { width: 100%; } }
+
+/* ---- Invitation page (T-14): itinerary without the outer card ---- */
+.member-tables-page .invitation-itinerary-section { padding: 0; border: 0; background: none; }
+.invitation-itinerary-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+.invitation-itinerary-head h2 { margin: 0; font-family: var(--display); font-size: var(--display-md); font-weight: 400; }

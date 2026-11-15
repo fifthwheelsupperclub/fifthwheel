@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { eventDate, eventTime, timestamp } from "../format/datetime";
+import { PageState } from "./ui/page-state";
+import { clockAfter, eventDate, eventTime, eventWhen, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
@@ -147,21 +148,21 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
 
   const content = <>
     <Link to="/requests" className="page-header-back"><ArrowLeft aria-hidden="true" />Requests</Link>
-    {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
-    {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in with the member account connected to your invitation." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="This invitation is for a different account" detail="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
-    {state === "not_found" && <InvitationState icon={<Ticket />} title="Invitation not found" detail="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
-    {state === "error" && <InvitationState icon={<CircleAlert />} title="Invitation details are temporarily unavailable" detail={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    {state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Sign in with the email the invitation was sent to." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="This invitation is for a different account" message="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
+    {state === "not_found" && <PageState variant="empty" title="Invitation not found" message="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
+    {state === "error" && <PageState variant="error" title="Invitation details are temporarily unavailable" message={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again</button>} />}
     {state === "ready" && detail && <>
-      <div className="invitation-member-heading"><p className="eyebrow">TABLE INVITATION</p><h1>{detail.table.title}</h1><p className="page-intro"><CalendarDays aria-hidden="true" />{dateLabel(detail.table.localDate)}<span>·</span><Clock3 aria-hidden="true" />{timeLabel(detail.table.startLocalTime)}<span>·</span><MapPin aria-hidden="true" />{detail.table.neighborhood}</p></div>
+      <PageHeader className="invitation-member-heading" title={`You’re invited to ${detail.table.title}`} description={`${eventWhen(detail.table.localDate, detail.table.startLocalTime)} · ${detail.table.neighborhood}`} />
       <div className="invitation-member-grid">
-        <section className="invitation-member-card"><h2>You’re invited</h2><p>{detail.state === "active" ? `Pay to confirm your seat at ${detail.table.title}.` : invitationStateText(detail.state)}</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
+        <section className="invitation-member-card"><h2>Your seat</h2><p>{detail.state === "active" ? `Pay to confirm your seat at ${detail.table.title}.` : invitationStateText(detail.state)}</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
       </div>
-      <section className="invitation-itinerary-section"><div className="invitation-section-heading"><span><Table2 aria-hidden="true" /></span><div><p className="eyebrow">TABLE DETAILS</p><h2>Evening itinerary</h2></div></div>
-        {detail.table.itineraryAvailable ? <ol className="invitation-stops">{detail.table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="invitation-stop-number">0{index + 1}</span><div><p className="eyebrow">{stop.role.toUpperCase()} · {stop.minutesFromStart === 0 ? "START" : `+${stop.minutesFromStart} MIN`}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
+      <section className="invitation-itinerary-section">
+        <div className="invitation-itinerary-head"><h2>Evening itinerary</h2>{detail.table.itineraryAvailable && <a className="button button-tertiary" href={`/tables/${encodeURIComponent(detail.table.tableId)}`}>Full details</a>}</div>
+        {detail.table.itineraryAvailable ? <ol className="invitation-stops">{detail.table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="invitation-stop-number">0{index + 1}</span><div><p className="eyebrow">{stop.role.charAt(0).toUpperCase() + stop.role.slice(1)} · {clockAfter(detail.table.startLocalTime, stop.minutesFromStart)}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
           : <p className="invitation-itinerary-unavailable">The full plan isn’t available right now. Your invitation is still here.</p>}
       </section>
-      <div className="invitation-member-actions"><Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>{detail.table.itineraryAvailable && <a className="button button-primary" href={`/tables/${encodeURIComponent(detail.table.tableId)}`}>View Table details<ArrowRight aria-hidden="true" /></a>}</div>
     </>}
   </>;
   return state === "unauthenticated"
@@ -174,7 +175,7 @@ function InvitationPublicShell({ invitationId, children }: { invitationId: strin
   return <main className="product-page member-tables-page public-table-page">
     <header className="product-topbar">
       <a className="brand" href="/" aria-label="Fifth Wheel home"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">TABLE INVITATION</span><a className="account-action" href={`/sign-in?returnTo=${encodeURIComponent(continuation)}`}>Sign in<ArrowRight aria-hidden="true" /></a></div>
+      <div className="product-topbar-actions"><a className="account-action" href={`/sign-in?returnTo=${encodeURIComponent(continuation)}`}>Sign in<ArrowRight aria-hidden="true" /></a></div>
     </header>
     <div className="public-table-content">{children}</div>
   </main>;

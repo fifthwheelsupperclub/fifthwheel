@@ -359,7 +359,7 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
 
     {state === "loading" && <div className="checkout-state checkout-state-muted" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading…</span></div>}
     {state === "unauthenticated" && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>Sign in to view checkout for this invitation.</p><a href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Sign in to continue</a></div>}
-    {state === "forbidden" && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>This invitation is available only to its named member.</p></div>}
+    {state === "forbidden" && <div className="checkout-state checkout-state-warning" role="status"><ShieldCheck aria-hidden="true" /><p>This invitation is for a different account.</p></div>}
     {state === "not_found" && <div className="checkout-state checkout-state-warning" role="status"><AlertCircle aria-hidden="true" /><p>This invitation could not be found for this account.</p></div>}
     {state === "error" && <div className="checkout-state checkout-state-error" role="alert"><AlertCircle aria-hidden="true" /><div><p>{message || "Checkout eligibility is temporarily unavailable."}</p><button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button></div></div>}
 
@@ -402,7 +402,7 @@ export function MemberCheckoutWorkspace({ invitationId }: { invitationId: string
             {action === "starting" || action === "opening" ? <LoaderCircle className="spin" aria-hidden="true" /> : <CreditCard aria-hidden="true" />}
             {recovery?.attempt.state === "open" ? "Resume payment" : action === "starting" ? "Opening payment…" : "Continue to payment"}
           </button>
-          <p>Your seat is confirmed once your payment goes through.</p>
+          <p>{disclosure.requiresAcknowledgement && !acknowledged ? "Check the box above to continue. " : ""}Your seat is confirmed once your payment goes through.</p>
         </div>}
     </>}
   </div>;

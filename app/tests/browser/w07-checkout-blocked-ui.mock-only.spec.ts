@@ -169,6 +169,11 @@ test("W07.1 server-ready checkout waits for the approved acknowledgment and star
     const beginButton = page.getByRole("button", { name: "Continue to payment" });
     await expect(beginButton).toBeDisabled();
     await expect(page.getByRole("checkbox", { name: /I acknowledge this disclosure/ })).toBeVisible();
+    // T-14: the page title names the table, the disabled button says why, and "Continue to payment" is the only primary action.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("You’re invited to");
+    await expect(page.getByText("Check the box above to continue.")).toBeVisible();
+    await expect(page.locator("main .button-primary")).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Back to Requests" })).toHaveCount(0);
     await page.screenshot({ path: resolve(screenshots, "w07-checkout-ready-awaiting-ack-desktop-mock-only.png"), fullPage: true });
     await page.getByRole("checkbox", { name: /I acknowledge this disclosure/ }).check();
     await expect(beginButton).toBeEnabled();
