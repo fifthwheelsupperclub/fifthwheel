@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { eventDate, eventTime, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
@@ -103,15 +104,8 @@ function decodeReconcile(value: unknown): ReconcileTableInvitationDeliveryResult
     || !["accepted", "unknown"].includes(String(value.deliveryState)) || !isCount(value.attemptCount)) return null;
   return { invitationId: value.invitationId as string, deliveryState: value.deliveryState as "accepted" | "unknown", attemptCount: value.attemptCount };
 }
-function dateLabel(value: string) {
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
-}
-function timeLabel(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(2020, 0, 1, hour, minute));
-}
+const dateLabel = (value: string) => eventDate(value.slice(0, 10), { long: true });
+const timeLabel = (value: string) => eventTime(value);
 function deliveryCopy(state: TableInvitationDeliveryState): Readonly<{ label: string; detail: string; tone: DeliveryTone }> {
   switch (state) {
     case "queued": return { label: "Waiting to send", detail: "The invitation is active.", tone: "neutral" };
@@ -276,9 +270,9 @@ export function AdminTableInvitationDeliveryWorkspace() {
         const delivery = deliveryCopy(item.delivery.state);
         return <article className="admin-invitation-card" key={item.invitationId}>
           <div className="admin-invitation-main"><span className="admin-invitation-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">{item.invitationState === "active" ? "OPEN" : item.invitationState === "revoked" ? "WITHDRAWN" : "CLOSED"}</p><h2>{item.guest.displayName}</h2><p className="table-card-meta"><Table2 aria-hidden="true" />{item.table.title}<span>·</span><CalendarDays aria-hidden="true" />{dateLabel(item.table.localDate)}<span>·</span><MapPin aria-hidden="true" />{item.table.neighborhood}</p></div></div>
-          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.delivery.lastAttemptAt))}` : " · not sent yet"}</small></div>
+          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${timestamp(item.delivery.lastAttemptAt)}` : " · not sent yet"}</small></div>
           {item.delivery.safeErrorCode && <p className="admin-invitation-safe-error">Error code: {item.delivery.safeErrorCode.replaceAll("_", " ")}</p>}
-          <details className="admin-invitation-attempts"><summary>History <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(attempt.startedAt))}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
+          <details className="admin-invitation-attempts"><summary>History <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{timestamp(attempt.startedAt)}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
           {item.delivery.state === "failed" ? <button className="button button-outline admin-invitation-retry" type="button" onClick={() => void retry(item)} disabled={retryId === item.invitationId || item.invitationState !== "active"}>{retryId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{retryId === item.invitationId ? "Sending…" : "Send again"}</button>
               : item.delivery.state === "unknown" ? <><p className="admin-invitation-recovery-note"><CircleAlert aria-hidden="true" />We don’t know if this was sent. Checking won’t send another email.</p><button className="button button-outline admin-invitation-retry" type="button" onClick={() => void reconcile(item)} disabled={reconcileId === item.invitationId}>{reconcileId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{reconcileId === item.invitationId ? "Checking…" : "Check status"}</button></>
               : null}

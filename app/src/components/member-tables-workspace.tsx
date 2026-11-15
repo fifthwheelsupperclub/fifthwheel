@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { calendarDate, eventDate, eventTime, instantDate } from "../format/datetime";
 import { AppShell } from "./app-shell";
 import { INVITATION_STATE_HEADING, INVITATION_STATE_PILL, REQUEST_STATE_LABEL, type RequestState } from "../copy/states.ts";
 import {
@@ -196,20 +197,9 @@ function clearOperationId(key: string): void {
   try { window.sessionStorage.removeItem(key); } catch { /* storage can be unavailable in private contexts */ }
 }
 
-function formatLocalDate(value: string, withDay = true): string {
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year!, month! - 1, day!, 12));
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC", weekday: withDay ? "long" : undefined, month: "long", day: "numeric", year: "numeric",
-  }).format(date);
-}
+const formatLocalDate = (value: string, withDay = true) => (withDay ? eventDate(value, { long: true }) : calendarDate(value));
 
-function formatTime(value: string | undefined): string {
-  if (!value) return "Time unavailable";
-  const [hour, minute] = value.split(":").map(Number);
-  const date = new Date(Date.UTC(2026, 0, 1, hour!, minute!));
-  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" }).format(date);
-}
+const formatTime = (value: string | undefined) => eventTime(value);
 
 function titleCase(value: string): string { return value.charAt(0).toUpperCase() + value.slice(1); }
 
@@ -548,7 +538,7 @@ export function MemberRequestsWorkspace() {
     {state === "ready" && items.length === 0 && <TableState title="No requests yet" detail="Find a table you like and request a seat." action={<a className="button button-primary" href="/tables">Browse tables<ArrowRight aria-hidden="true" /></a>} />}
     {state === "ready" && items.length > 0 && <div className="request-history-list">{items.map((item) => <article className="request-history-card" key={item.requestId}>
       <div className="request-history-main"><span className={`request-state-icon state-${item.state}`}>{item.state === "pending" ? <Clock3 aria-hidden="true" /> : item.state === "withdrawn" ? <X aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><div><p className="eyebrow">{item.tableInvitation?.state === "active" ? "SEAT REQUEST · STILL PENDING" : item.state === "pending" ? "AWAITING REVIEW" : item.state === "withdrawn" ? "WITHDRAWN" : item.state === "closed_by_table" ? "TABLE CANCELLED" : "REQUEST UPDATE"}</p><h2>{item.table.title}</h2><p className="table-card-meta"><MapPin aria-hidden="true" />{item.table.neighborhood}<span aria-hidden="true">·</span><CalendarDays aria-hidden="true" />{formatLocalDate(item.table.localDate, false)}</p></div></div>
-      <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(item.createdAt))}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
+      <div className="request-history-status"><span className={`status-pill ${item.state === "pending" ? "" : item.state === "declined" ? "status-pill-alert" : ""}`}>{REQUEST_STATE_LABEL[item.state]}</span><p>Requested {instantDate(item.createdAt)}</p>{item.state === "declined" && item.declineReason && <p className="request-decline-explanation">{item.declineReason}</p>}{item.state === "pending" && item.tableInvitation?.state !== "active" && <button className="button button-outline request-withdraw-button" type="button" onClick={() => void withdraw(item)} disabled={actionId === item.requestId}>{actionId === item.requestId ? "Withdrawing…" : "Withdraw request"}<X aria-hidden="true" /></button>}</div>
       {item.tableInvitation && <section className={`request-offer-card offer-${item.tableInvitation.state}`} aria-label="Table invitation status">
         <div className="request-offer-heading"><span className="request-offer-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">TABLE INVITATION</p><strong>{INVITATION_STATE_HEADING[item.tableInvitation.state]}</strong></div><span className={`status-pill ${item.tableInvitation.state === "active" ? "status-pill-success" : "status-pill-neutral"}`}>{INVITATION_STATE_PILL[item.tableInvitation.state]}</span></div>
         {item.tableInvitation.state === "active" && <p className="request-offer-boundary">This is a separate offer. Your Seat request remains in history, and this invitation does not confirm a paid Seat.</p>}

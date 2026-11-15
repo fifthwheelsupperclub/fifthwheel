@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { eventDate, eventTime, instantDate } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import type { ReactNode } from "react";
@@ -148,19 +149,9 @@ function apiErrorText(code: string, fallback: string) {
   };
   return labels[code] ?? fallback;
 }
-function fmtDate(value: string) {
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
-}
-function fmtTime(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(2020, 0, 1, hour, minute));
-}
-function fmtRequestDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "date unavailable" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
+const fmtDate = (value: string) => eventDate(value.slice(0, 10));
+const fmtTime = (value: string) => eventTime(value);
+const fmtRequestDate = (value: string) => instantDate(value);
 const issueLabels: Record<string, string> = {
   select_three_to_five: "Choose 3–5 people for the roster.", candidate_ineligible: "One or more selected people no longer meet the Table requirements.",
   candidate_not_found: "A selected person is no longer available.", request_not_pending: "A selected Seat request is no longer active.",

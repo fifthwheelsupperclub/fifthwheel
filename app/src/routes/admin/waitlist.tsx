@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { instantDate } from "../../format/datetime";
 import { PageHeader } from "../../components/ui/page-header";
 import { PageState } from "../../components/ui/page-state";
 import { AppShell } from "../../components/app-shell";
@@ -44,11 +45,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function safeDate(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
+const safeDate = (value: string) => instantDate(value);
 
 function AdminWaitlistPage() {
   const [items, setItems] = useState<readonly WaitlistItem[]>([]);

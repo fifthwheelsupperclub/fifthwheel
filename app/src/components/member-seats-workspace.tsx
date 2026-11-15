@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { instantDate, instantTime, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { Link } from "@tanstack/react-router";
 import {
@@ -166,15 +167,9 @@ async function readEnvelope<T>(response: Response, parse: (data: unknown) => T |
   return parseEnvelope(await response.json().catch(() => null), parse);
 }
 
-function dateLabel(value: string, timeZone: string, withWeekday = false): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone, month: "long", day: "numeric", year: "numeric", weekday: withWeekday ? "long" : undefined }).format(new Date(value));
-}
-function timeLabel(value: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value));
-}
-function dateTimeLabel(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
+const dateLabel = (value: string, timeZone: string, withWeekday = false) => instantDate(value, { tz: timeZone, long: withWeekday });
+const timeLabel = (value: string, timeZone: string) => instantTime(value, { tz: timeZone });
+const dateTimeLabel = (value: string) => timestamp(value);
 function money(amountCents: number, currency: string): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amountCents / 100);
 }

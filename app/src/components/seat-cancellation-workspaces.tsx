@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { eventWhen, instantDate, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
@@ -84,7 +85,7 @@ async function getJson<T>(url: string, parse: (data: unknown) => T | null): Prom
   return { response, envelope: parseEnvelope(await response.json().catch(() => null), parse) };
 }
 function money(cents: number): string { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100); }
-function dateLabel(value: string): string { return new Intl.DateTimeFormat("en-US", { dateStyle: "full", timeStyle: "short" }).format(new Date(value)); }
+const dateLabel = (value: string) => timestamp(value);
 function requestReason(reason: RequestAvailabilityReason): string {
   switch (reason) {
     case "available": return "";
@@ -216,7 +217,7 @@ export function AdminCancellationsQueue() {
 }
 
 function AdminCancellationCard({ item }: { item: AdminCancellationQueueItemDTO }) {
-  return <article className="cancellation-admin-card"><div className="cancellation-admin-card-main"><span className="cancellation-admin-avatar"><UserRound aria-hidden="true" /></span><div><p className="eyebrow">REQUESTED {new Date(item.request.requestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p><h2>{item.member.displayName}</h2><p>{item.table.title} · {item.table.localDate} · {item.table.startLocalTime}</p><p className="cancellation-admin-seat"><Ticket aria-hidden="true" />{adminSeatStatusLabel(item.seat.state)} · Paid {money(item.seat.amountCents)} · Refundable {money(item.seat.refundAvailableCents)}</p></div></div><Link className="button button-outline" to="/admin/cancellations/$requestId" params={{ requestId: item.request.requestId }}>Review request<ArrowRight aria-hidden="true" /></Link></article>;
+  return <article className="cancellation-admin-card"><div className="cancellation-admin-card-main"><span className="cancellation-admin-avatar"><UserRound aria-hidden="true" /></span><div><p className="eyebrow">REQUESTED {instantDate(item.request.requestedAt)}</p><h2>{item.member.displayName}</h2><p>{item.table.title} · {eventWhen(item.table.localDate, item.table.startLocalTime)}</p><p className="cancellation-admin-seat"><Ticket aria-hidden="true" />{adminSeatStatusLabel(item.seat.state)} · Paid {money(item.seat.amountCents)} · Refundable {money(item.seat.refundAvailableCents)}</p></div></div><Link className="button button-outline" to="/admin/cancellations/$requestId" params={{ requestId: item.request.requestId }}>Review request<ArrowRight aria-hidden="true" /></Link></article>;
 }
 
 export function AdminCancellationDetail({ requestId }: { requestId: string }) {
@@ -263,7 +264,7 @@ export function AdminCancellationDetail({ requestId }: { requestId: string }) {
     {state === "not_found" && <CancellationState icon={<Ticket />} title="Request not found" detail="It may have been removed or is outside this workspace." action={<Link className="button button-outline" to="/admin/cancellations">Back to queue</Link>} />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="We couldn’t load this request" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>
-      <PageHeader title={data.member.displayName} description={<>{data.table.title} · {data.table.localDate} · {data.table.startLocalTime}</>} />
+      <PageHeader title={data.member.displayName} description={<>{data.table.title} · {eventWhen(data.table.localDate, data.table.startLocalTime)}</>} />
       {message && <p className="cancellation-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       <section className="cancellation-admin-context"><div><p className="eyebrow">SEAT</p><h2>{data.seat.state.replaceAll("_", " ")}</h2><p>Paid {money(data.seat.amountCents)} · Refundable {money(data.refundBalance.refundAvailableCents)}</p></div><div><p className="eyebrow">REQUESTED</p><p>{dateLabel(data.request.requestedAt)}</p></div>{data.request.memberReason && <div className="cancellation-admin-member-note"><p className="eyebrow">THEIR NOTE</p><p>{data.request.memberReason}</p></div>}</section>
       {data.request.memberSafeReason && <section className="cancellation-admin-context"><div><p className="eyebrow">YOUR REPLY</p><p>{data.request.memberSafeReason}</p></div></section>}

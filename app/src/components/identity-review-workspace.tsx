@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { calendarDate, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
@@ -81,20 +82,9 @@ function operationIdFor(ref: { current: PendingOperation | null }, payload: unkn
   return id;
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
+const formatDate = (value: string) => timestamp(value);
 
-function formatBirthDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return "Date unavailable";
-  const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
-}
+const formatBirthDate = (value: string) => calendarDate(value);
 
 function safeIdentityLabel(value: string): string {
   return value === "woman" ? "Woman" : value === "man" ? "Man" : value === "non_binary" ? "Non-binary" : "Not provided";

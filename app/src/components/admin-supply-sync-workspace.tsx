@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { ArrowRight, Ban, Check, CircleAlert, Clock3, Database, FileWarning, LoaderCircle, RefreshCw, ShieldCheck, Table2, WifiOff } from "lucide-react";
@@ -60,13 +61,7 @@ function parseResponse<T>(body: unknown, isData: (value: unknown) => value is T)
   return null;
 }
 
-function safeDate(value: string | null | undefined): string {
-  if (!value) return "Not available";
-  const date = new Date(value);
-  return Number.isFinite(date.getTime())
-    ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" }).format(date) + " ET"
-    : "Date unavailable";
-}
+const safeDate = (value: string | null | undefined) => timestamp(value);
 
 function providerCopy(state: SupplyProviderState): Readonly<{ title: string; detail: string; className: string; icon: typeof Database }> {
   switch (state) {

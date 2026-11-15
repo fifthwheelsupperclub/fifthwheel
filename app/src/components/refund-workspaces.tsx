@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { instantDate } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
@@ -77,9 +78,7 @@ async function getJson<T>(url: string, parser: (data: unknown) => T | null) {
 function money(value: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value / 100);
 }
-function dateLabel(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
-}
+const dateLabel = (value: string) => instantDate(value);
 function stateLabel(state: RefundObligationSummaryDTO["state"]): string {
   switch (state) {
     case "open": return "Owed, not sent";

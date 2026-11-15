@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { eventDate, eventTime, eventWhen, instantDate, instantTime, timestamp } from "../format/datetime";
 import { Button } from "./ui/button";
 import { ConfirmDialog } from "./ui/confirm-dialog";
 import { Field } from "./ui/field";
@@ -30,7 +31,7 @@ function useLoad<T>(path: string) {
   useEffect(() => { void reload(); }, [reload]);
   return { load, reload };
 }
-const when = (date: string, time: string) => `${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`))} · ${time} Atlanta time`;
+const when = (date: string, time: string) => eventWhen(date, time);
 const blockerText: Record<string, string> = { select_three_to_five: "Needs 3–5 paid guests", age_under_21: "A paid guest is under 21", profile_not_approved: "A paid guest’s profile needs review",
   pair_age_mismatch: "Two guests are outside each other’s age range", missing_mutual_open_connection: "A guest has no mutual connection", age_span_exceeded: "Ages span more than 12 years" };
 
@@ -98,7 +99,7 @@ export function HostTableAttendance({ tableId }: Readonly<{ tableId: string }>) 
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.guests.length === 0 ? <section className="ops-state"><h2>No paid guests yet</h2><p>Only guests with a paid Seat appear here.</p></section>
       : <ul className="ops-list">{load.data.guests.map((g) => <li className="ops-card" key={g.seatId}>
-        <div><h2>{g.firstName}</h2><p className="ops-meta">{g.checkedInAt ? <span className="status-pill status-pill-success"><UserCheck aria-hidden="true" />Checked in {new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(new Date(g.checkedInAt))}</span> : <span className="status-pill">Not checked in</span>}
+        <div><h2>{g.firstName}</h2><p className="ops-meta">{g.checkedInAt ? <span className="status-pill status-pill-success"><UserCheck aria-hidden="true" />Checked in {instantTime(g.checkedInAt)}</span> : <span className="status-pill">Not checked in</span>}
           {g.cancellationRequestId && <span className="status-pill status-pill-warning">Cancellation requested{g.cancellationFlagged ? " · flagged for admin" : ""}</span>}</p></div>
         <div className="ops-actions">
           {!g.checkedInAt && <button className="button button-primary" type="button" disabled={!load.data.canCheckIn || busy === g.seatId} onClick={() => void act(g.seatId, `/api/host/tables/${encodeURIComponent(tableId)}/check-in`, { seatId: g.seatId }, "Check-in failed. Try again.")}>{busy === g.seatId ? "Checking in…" : "Check in"}</button>}
@@ -129,7 +130,7 @@ export function AdminStaffAssignments() {
           <label>Business contact<input name="contact" defaultValue={s.businessContact ?? ""} maxLength={200} required /></label>
           <button className="button button-outline" type="submit">Save contact</button></form>
         <fieldset className="ops-checks"><legend>{s.role === "host" ? "Assigned Tables" : "Assigned venues"}</legend>
-          {(s.role === "host" ? load.data.tables.map((t) => ({ id: t.tableId, label: `${t.title} · ${t.localDate}`, on: s.tableIds.includes(t.tableId) })) : load.data.venues.map((v) => ({ id: v.venueId, label: v.name, on: s.venueIds.includes(v.venueId) }))).map((o) =>
+          {(s.role === "host" ? load.data.tables.map((t) => ({ id: t.tableId, label: `${t.title} · ${eventDate(t.localDate)}`, on: s.tableIds.includes(t.tableId) })) : load.data.venues.map((v) => ({ id: v.venueId, label: v.name, on: s.venueIds.includes(v.venueId) }))).map((o) =>
             <label key={o.id}><input type="checkbox" checked={o.on} onChange={(event) => void post(s.role === "host" ? "/api/admin/staff-assignments/host" : "/api/admin/staff-assignments/venue",
               s.role === "host" ? { tableId: o.id, userId: s.userId, assigned: event.currentTarget.checked } : { venueId: o.id, userId: s.userId, assigned: event.currentTarget.checked })} />{o.label}</label>)}
         </fieldset></li>)}</ul>}
@@ -148,7 +149,7 @@ export function RestaurantWorkspace() {
     {load.data.selected === null ? <section className="ops-state"><UtensilsCrossed aria-hidden="true" /><h2>No venue yet</h2><p>Ask Fifth Wheel to add your venue.</p></section>
       : load.data.services.length === 0 ? <section className="ops-state"><h2>No upcoming services</h2><p>When a Table includes your venue, its service time appears here.</p></section>
       : <ul className="ops-list">{load.data.services.map((s) => <li className="ops-card" key={`${s.tableId}-${s.role}`}>
-        <div><h2>{s.serviceLocalTime} · {s.role}</h2><p>{when(s.serviceLocalDate, s.serviceLocalTime)}</p>
+        <div><h2>{eventTime(s.serviceLocalTime)} · {s.role}</h2><p>{when(s.serviceLocalDate, s.serviceLocalTime)}</p>
           <p className="ops-meta"><span className="status-pill">{s.paidCount} guest{s.paidCount === 1 ? "" : "s"} expected</span>{s.status === "review_required" && <span className="status-pill status-pill-warning">Under review</span>}</p>
           {s.notes && <p>{s.notes}</p>}
           {s.hostContacts.length > 0 && <p className="ops-contact-line">Host: {s.hostContacts.map((c) => `${c.displayName} · ${c.businessContact}`).join("; ")}</p>}</div></li>)}</ul>}
@@ -243,7 +244,7 @@ export function AdminConductReports() {
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {reports.load.data.items.length === 0 ? <section className="ops-state"><h2>No reports</h2><p>Reports from guests who attended appear here.</p></section>
       : <ul className="ops-list">{reports.load.data.items.map((r) => <li className="ops-card ops-card-stack" key={r.reportId}>
-        <div><h2>{r.tableTitle}</h2><p className="ops-meta"><StatusBadge tone={r.status === "new" ? "pending" : r.status === "resolved" ? "success" : "neutral"}>{r.status === "new" ? "New" : r.status === "reviewing" ? "Reviewing" : "Resolved"}</StatusBadge>{r.held && <StatusBadge tone="warning">On hold</StatusBadge>}<span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))}</span></p>
+        <div><h2>{r.tableTitle}</h2><p className="ops-meta"><StatusBadge tone={r.status === "new" ? "pending" : r.status === "resolved" ? "success" : "neutral"}>{r.status === "new" ? "New" : r.status === "reviewing" ? "Reviewing" : "Resolved"}</StatusBadge>{r.held && <StatusBadge tone="warning">On hold</StatusBadge>}<span>{instantDate(r.createdAt)}</span></p>
           <p>From {r.author}{r.subject ? ` about ${r.subject}` : ""}</p><p className="ops-report-body">{r.body}</p></div>
         <div className="ops-actions"><Field label="Status" className="ops-field"><select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></Field>
           <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Keep (don’t delete)</label>
@@ -251,7 +252,7 @@ export function AdminConductReports() {
     <ConfirmDialog open={pendingDelete !== null} title="Delete report?" confirmLabel="Delete report" destructive busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={() => pendingDelete && void remove(pendingDelete)}>This permanently deletes the report from {pendingDelete?.tableTitle}. This can’t be undone.</ConfirmDialog>
     <PageHeader title="Ratings" description="Averages show once 3 or more guests respond." />
     {ratings.load.state === "ready" && (ratings.load.data.tables.length === 0 ? <section className="ops-state"><h2>No ratings yet</h2></section>
-      : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{t.localDate} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
+      : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{eventDate(t.localDate)} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
         <span className="status-pill">{t.overallAverage === null ? "Not enough responses yet" : `${t.overallAverage.toFixed(2)} overall`}</span></li>)}</ul>)}
   </Shell>}</Status>;
 }
@@ -299,9 +300,9 @@ export function AdminOverview() {
       {active.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>Nothing needs attention</h2><p>Every queue is empty.</p></section>
         : <ul className="ops-list">{active.map((q) => <li className="ops-card" key={q.key}><div><h2>{counts[q.key]} · {q.label}</h2><p>{q.help}</p></div>
           <a className={`button ${q.alert ? "button-primary" : "button-outline"}`} href={q.href}>Open</a></li>)}</ul>}
-      {(reconciliation.length > 0 || reconciliationLastOkAt !== null) && <section id="stripe-differences" className="ops-card"><div><h2>Stripe check</h2>
-        <p>{reconciliationLastOkAt ? `Last completed ${new Date(reconciliationLastOkAt).toLocaleString()}.` : "Has not completed yet."}</p>
-        {reconciliation.length > 0 && <ul>{reconciliation.map((f) => <li key={`${f.kind}:${f.ref}`}>{reconciliationLabels[f.kind] ?? f.kind}: <code>{f.ref}</code>{" "}{Object.entries(f.detail).map(([k, v]) => `${k} ${String(v)}`).join(", ")}</li>)}</ul>}</div></section>}
+      {(reconciliation.length > 0 || reconciliationLastOkAt !== null) && <section id="stripe-differences" className="ops-card" style={{ marginBlock: "1rem" }}><div><h2>Stripe check</h2>
+        <p>{reconciliationLastOkAt ? `Last completed ${timestamp(reconciliationLastOkAt)}.` : "Has not completed yet."}</p>
+        {reconciliation.length > 0 && <ul>{reconciliation.map((f) => <li key={`${f.kind}:${f.ref}`}>{reconciliationLabels[f.kind] ?? f.kind}: <code>{f.ref}</code>{" "}{Object.entries(f.detail).map(([k, v]) => (typeof v === "number" && k.endsWith("Cents") ? `$${(v / 100).toFixed(2)}` : String(v))).join(" · ")}</li>)}</ul>}</div></section>}
       {clear.length > 0 && <details className="ops-clear"><summary>{clear.length} queues are clear</summary><ul>{clear.map((q) => <li key={q.key}><a href={q.href}>{q.label}</a></li>)}</ul></details>}
       <p className="ops-footnote">Need help? Email <a href="mailto:hello@fifthwheel.community">hello@fifthwheel.community</a>. Terms and privacy: <a href="https://fifthwheel.community/terms">Terms</a> · <a href="https://fifthwheel.community/privacy">Privacy</a>.</p>
     </Shell>;
@@ -324,7 +325,7 @@ export function AdminNoticeProblems() {
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No email problems</h2></section>
       : <ul className="ops-list">{load.data.items.map((n) => <li className="ops-card" key={n.noticeId}>
-        <div><h2>{kindLabels[n.kind] ?? n.kind} · {n.firstName}</h2><p>{n.tableTitle ?? "Table"} · {new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(n.createdAt))}</p>
+        <div><h2>{kindLabels[n.kind] ?? n.kind} · {n.firstName}</h2><p>{n.tableTitle ?? "Table"} · {timestamp(n.createdAt)}</p>
           <p className="ops-meta"><span className={`status-pill ${n.state === "unknown" ? "status-pill-warning" : ""}`}>{n.state === "unknown" ? "Unconfirmed" : "Failed"}</span><span>{n.attempts} attempt{n.attempts === 1 ? "" : "s"}</span>{n.errorCode && <span>{n.errorCode.replaceAll("_", " ")}</span>}</p></div>
         <div className="ops-actions"><button className="button button-outline" type="button" onClick={() => void resolve(n, "retry")}>Send again</button><button className="button button-outline" type="button" onClick={() => void resolve(n, "dismiss")}>Dismiss</button></div></li>)}</ul>}
   </Shell>}</Status>;

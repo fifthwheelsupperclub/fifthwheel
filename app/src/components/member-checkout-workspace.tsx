@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { timestamp } from "../format/datetime";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { StripeEmbeddedCheckout } from "@stripe/stripe-js";
 import { AlertCircle, CheckCircle2, Clock3, CreditCard, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
@@ -139,9 +140,7 @@ function publishableKeyFor(mode: "test" | "live" | null, key: string | null): st
   return null;
 }
 
-function formatDeadline(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
+const formatDeadline = (value: string) => timestamp(value);
 
 const operationStorageKey = (invitationId: string) => `fw.checkout.operation.${invitationId}`;
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { eventDate, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
@@ -108,18 +109,8 @@ function parseEnvelope<T>(body: unknown, valid: (value: unknown) => value is T):
   return null;
 }
 
-function formatDate(value: string, _time?: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return "Schedule unavailable";
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
-  if (!Number.isFinite(date.getTime())) return "Schedule unavailable";
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
-}
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Time unavailable";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" }).format(date) + " ET";
-}
+const formatDate = (value: string, _time?: string) => eventDate(value);
+const formatTimestamp = (value: string) => timestamp(value);
 function providerDescription(state: SupplyTableListDTO["providerState"]): Readonly<{ title: string; text: string; className: string; icon: typeof Database }> {
   switch (state) {
     case "fixture": return { title: "Test mode", text: "Changes don’t reach Airtable.", className: "supply-mode-fixture", icon: Database };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { eventDate, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, LoaderCircle, RefreshCw, ShieldCheck, Table2, Undo2, WifiOff } from "lucide-react";
@@ -110,17 +111,8 @@ function defaultWeekStart(): string {
   const delta = (weekday + 6) % 7;
   return addDays(today, -delta);
 }
-function formatDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return "Date unavailable";
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(date);
-}
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "time unavailable";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
+const formatDate = (value: string) => eventDate(value);
+const formatTimestamp = (value: string) => timestamp(value);
 function stateLabel(state: WeeklyCloneOperationDTO["state"]): string {
   const labels: Record<WeeklyCloneOperationDTO["state"], string> = {
     running: "Copying drafts", partial: "Some drafts copied", outcome_unknown: "Result needs a check", completed: "Drafts copied",
@@ -351,7 +343,7 @@ export function AdminSupplyWeeklyClone() {
     <aside className="weekly-clone-trust-note"><ShieldCheck aria-hidden="true" /><div><strong>Drafts only</strong><p>Only drafts are copied.</p></div></aside>
 
     <section className="weekly-clone-card weekly-clone-schedule" aria-labelledby="weekly-preview-title">
-      <div className="weekly-clone-section-heading"><div><h2 id="weekly-preview-title">1 · Pick weeks</h2><p>Same day and time, different week.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />America/New_York</span></div>
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-preview-title">1 · Pick weeks</h2><p>Same day and time, different week.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />Atlanta time</span></div>
       <form className="weekly-clone-week-form" onSubmit={loadPreview}>
         <label className="weekly-clone-field"><span>Copy from (week of)</span><input type="date" value={sourceWeekStart} onChange={(event) => { setSourceWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-source-hint" /><small id="weekly-source-hint">The preview includes draft records scheduled within this week.</small></label>
         <div className="weekly-clone-shift" aria-hidden="true"><ArrowRight /></div>
