@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { StatusBadge } from "./ui/status-badge";
 import { calendarDate, timestamp } from "../format/datetime";
 import { PageHeader } from "./ui/page-header";
 import { PageState } from "./ui/page-state";
@@ -134,7 +135,7 @@ export function IdentityReviewQueue() {
   }, []);
 
   return <AdminReviewShell active="queue">
-    <PageHeader titleId="identity-review-heading" title="Profile review" description="Check each guest’s photos and selfie match their details." status={<span className="status-pill status-pill-neutral"><Clock3 aria-hidden="true" />{state === "ready" ? items.length + " pending" : "Review queue"}</span>} />
+    <PageHeader titleId="identity-review-heading" title="Profile review" description="Check each guest’s photos and selfie match their details." status={state === "ready" ? <StatusBadge tone="pending">{items.length} pending</StatusBadge> : undefined} />
     {state === "loading" && <PageState variant="loading" title="Loading…" />}
     {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to review profiles" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <PageState variant="no-access" title="You don’t have access to profile review" message="Ask an admin if you think you should." action={<a className="button button-outline" href="/admin/waitlist">Return to the admin workspace<ArrowRight aria-hidden="true" /></a>} />}
@@ -144,9 +145,8 @@ export function IdentityReviewQueue() {
       : <>
         <section className="review-queue" aria-label="Submitted identity reviews">
           {items.map((item) => <a className="review-queue-item" href={"/admin/identity-review/" + encodeURIComponent(item.guestId)} key={item.guestId + "-" + item.reviewId}>
-            <span className="review-queue-icon"><UserRoundCheck aria-hidden="true" /></span>
             <span className="review-queue-main"><strong>{item.firstName} {item.lastName}</strong><small>Submitted {formatDate(item.submittedAt)} · Review {item.attemptNumber}</small></span>
-            <span className="review-queue-revision">Version {item.profileRevision}</span><ArrowRight aria-hidden="true" />
+            <ArrowRight aria-hidden="true" />
           </a>)}
         </section>
         {nextCursor && <button className="button button-outline review-load-more" type="button" onClick={() => void loadQueue(nextCursor, true)} disabled={loadingMore}>{loadingMore ? "Loading…" : "Load more reviews"}<ArrowRight aria-hidden="true" /></button>}
@@ -268,15 +268,10 @@ export function IdentityReviewDetail({ guestId }: Readonly<{ guestId: string }>)
     {state === "forbidden" && <PageState variant="no-access" title="You don’t have access to profile review" message="Ask an admin if you think you should." action={<a className="button button-outline" href="/admin/identity-review">Return to the review queue<ArrowRight aria-hidden="true" /></a>} />}
     {state === "error" && <PageState variant="error" title="Review detail unavailable" message={message} action={<button className="button button-outline" type="button" onClick={() => void loadDetail()}>Reload review<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && detail && profile && <>
-      <PageHeader className="review-detail-heading" eyebrow={`Review #${detail.attemptNumber}`} titleId="identity-review-detail-heading" title={`${profile.firstName} ${profile.lastName}`} description={`Submitted ${formatDate(detail.submittedAt)}`} status={<span className={"status-pill " + (reviewCurrent ? "status-pill-neutral" : "status-pill-alert")}>{reviewCurrent ? "CURRENT" : "OUT OF DATE"}</span>} />
+      <PageHeader className="review-detail-heading" titleId="identity-review-detail-heading" title={`${profile.firstName} ${profile.lastName}`} description={`Submitted ${formatDate(detail.submittedAt)} · Review ${detail.attemptNumber}`} status={reviewCurrent ? undefined : <StatusBadge tone="danger">Out of date</StatusBadge>} />
       {detail.correctionReason && <section className="review-history-note"><p className="eyebrow">PREVIOUS CORRECTION</p><p>{detail.correctionReason}</p></section>}
       {!reviewCurrent && <div className="review-conflict-banner" role="alert"><CircleAlert aria-hidden="true" /><span>{profile.firstName} changed their profile since submitting. Refresh to see the latest.</span><button className="text-action" type="button" onClick={() => void loadDetail()}>Refresh review</button></div>}
       <div className="review-detail-grid">
-        <section className="review-card" aria-labelledby="review-profile-heading">
-          <div className="review-card-heading"><span className="profile-section-icon"><UserRoundCheck aria-hidden="true" /></span><div><h2 id="review-profile-heading">Details</h2></div></div>
-          <dl className="review-facts"><div className="review-fact"><dt>Full name</dt><dd>{profile.firstName} {profile.lastName}</dd></div><div className="review-fact"><dt>Date of birth</dt><dd>{formatBirthDate(profile.dateOfBirth)}</dd></div><div className="review-fact"><dt>Gender</dt><dd>{safeIdentityLabel(profile.identity)}</dd></div></dl>
-          <div className="review-evidence-summary"><strong>Photos on this submission</strong><span>{readyPhotos} profile photo{readyPhotos === 1 ? "" : "s"} · {readySelfies} separate selfie</span>{profile.missingFields.length > 0 && <p>Still needed: {profile.missingFields.map(friendlyField).join(", ")}</p>}</div>
-        </section>
         <section className="review-card review-evidence-card" aria-labelledby="review-evidence-heading">
           <div className="review-card-heading"><span className="profile-section-icon"><ShieldCheck aria-hidden="true" /></span><div><h2 id="review-evidence-heading">Photos</h2><p>Viewing is logged.</p></div><button className="icon-action" type="button" aria-label="Refresh photos" onClick={() => void loadDetail()}><RefreshCw aria-hidden="true" /></button></div>
           {detail.evidence.length === 0 && <p className="empty-evidence">No photos are attached to this submission.</p>}
@@ -286,10 +281,15 @@ export function IdentityReviewDetail({ guestId }: Readonly<{ guestId: string }>)
           </figure>)}</div>
           <p className="review-manual-note"><ShieldCheck aria-hidden="true" />Compare by hand. This isn’t an ID or background check.</p>
         </section>
+        <section className="review-card" aria-labelledby="review-profile-heading">
+          <div className="review-card-heading"><span className="profile-section-icon"><UserRoundCheck aria-hidden="true" /></span><div><h2 id="review-profile-heading">Details</h2></div></div>
+          <dl className="review-facts"><div className="review-fact"><dt>Full name</dt><dd>{profile.firstName} {profile.lastName}</dd></div><div className="review-fact"><dt>Date of birth</dt><dd>{formatBirthDate(profile.dateOfBirth)}</dd></div><div className="review-fact"><dt>Gender</dt><dd>{safeIdentityLabel(profile.identity)}</dd></div></dl>
+          <div className="review-evidence-summary"><strong>Photos on this submission</strong><span>{readyPhotos} profile photo{readyPhotos === 1 ? "" : "s"} · {readySelfies} separate selfie</span>{profile.missingFields.length > 0 && <p>Still needed: {profile.missingFields.map(friendlyField).join(", ")}</p>}</div>
+        </section>
       </div>
       {decisionMessage && <div className={"profile-feedback " + (decisionState === "error" || decisionState === "conflict" ? "profile-feedback-error" : "")} role={decisionState === "error" || decisionState === "conflict" ? "alert" : "status"}>{decisionState === "error" || decisionState === "conflict" ? <CircleAlert aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}{decisionMessage}</div>}
       {decisionState === "done" ? <div className="review-decision-complete"><BadgeCheck aria-hidden="true" /><div><strong>Decision saved</strong><p>{decisionMessage}</p><a className="button button-primary" href="/admin/identity-review">Back to review queue<ArrowRight aria-hidden="true" /></a></div></div> : <section className="review-decision-panel" aria-labelledby="review-decision-heading">
-        <div><h2 id="review-decision-heading">Decision</h2></div>
+        <div><h2 id="review-decision-heading">Decision</h2>{decisionMode === "none" && <p className="review-decision-help">Approving confirms the photos match these details.</p>}</div>
         {decisionMode === "none" && <div className="review-decision-actions"><button className="button button-outline" type="button" onClick={() => { setDecisionMode("request"); setDecisionState("idle"); }} disabled={!mayDecide}><FileCheck2 aria-hidden="true" />Ask for changes</button><button className="button button-primary" type="button" onClick={() => setDecisionMode("approve")} disabled={!mayDecide}><BadgeCheck aria-hidden="true" />Approve</button></div>}
         {decisionMode === "approve" && <div className="decision-confirmation"><p>Approve {profile.firstName}’s profile? This confirms the photos match. It isn’t an ID or background check.</p><div><button className="button button-outline" type="button" onClick={() => setDecisionMode("none")}>Cancel</button><button className="button button-primary" type="button" onClick={() => void submitDecision("approved")} disabled={!mayDecide || decisionState === "sending"}>{decisionState === "sending" ? "Saving decision…" : "Confirm approval"}<ArrowRight aria-hidden="true" /></button></div></div>}
         {decisionMode === "request" && <div className="decision-request"><label htmlFor="correction-reason">What should they change?</label><textarea id="correction-reason" rows={4} maxLength={2000} value={correctionReason} onChange={(event) => setCorrectionReason(event.currentTarget.value)} aria-describedby="correction-reason-help" aria-invalid={decisionState === "error" && !correctionReason.trim()} /><small id="correction-reason-help">They’ll see this message.</small><div><button className="button button-outline" type="button" onClick={() => setDecisionMode("none")}>Cancel</button><button className="button button-primary" type="button" onClick={() => void submitDecision("resubmission_required")} disabled={!mayDecide || decisionState === "sending" || !correctionReason.trim()}>{decisionState === "sending" ? "Saving decision…" : "Send"}<ArrowRight aria-hidden="true" /></button></div></div>}
