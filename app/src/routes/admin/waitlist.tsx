@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { StaffSidebar } from "../../components/staff-nav";
+import { AppShell } from "../../components/app-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { SignOutButton } from "../../components/sign-out-button.tsx";
 import {
   ArrowRight,
   Check,
@@ -285,15 +284,7 @@ function AdminWaitlistPage() {
     }
   }
 
-  return <main className="product-page">
-    <header className="product-topbar">
-      <a className="brand" href="/admin/waitlist" aria-label="Fifth Wheel admin waitlist"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <StaffSidebar active="waitlist" />
-
-      <section className="product-content" aria-labelledby="waitlist-heading">
+  return <AppShell role="admin" active="waitlist" labelledBy="waitlist-heading">
         <div className="product-breadcrumb">People <span>/</span> Waitlist</div>
         <div className="page-heading-row">
           <div><h1 id="waitlist-heading">Waitlist</h1><p className="page-intro">People who signed up on the website. Approve them to send a sign-in link.</p></div>
@@ -333,8 +324,6 @@ function AdminWaitlistPage() {
           </div>
           <div className="pagination-row"><span>{nextCursor ? "More signups are available." : "You’re at the end of this list."}</span><button type="button" className="button button-outline" disabled={!nextCursor} onClick={() => { setCursor(nextCursor ?? undefined); void loadWaitlist(nextCursor ?? undefined); }}>Next page<ArrowRight aria-hidden="true" /></button></div>
         </>}
-      </section>
-    </div>
 
     {selected && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeInvite(); }}>
       <section ref={dialogRef} className="invite-dialog" role="dialog" aria-modal="true" aria-labelledby="invite-dialog-title" aria-describedby="invite-dialog-description" tabIndex={-1}>
@@ -355,7 +344,7 @@ function AdminWaitlistPage() {
         <div className="dialog-actions"><button className="button button-outline" type="button" onClick={closeInvite}>Close</button><button className="button button-primary" type="button" disabled={inviteState === "admitting" || inviteState === "sending" || inviteState === "reconciling" || inviteState === "accepted"} onClick={() => { if (inviteState === "unknown" && deliveryId) void reconcileDelivery(); else void confirmInvite(); }}>{inviteState === "admitting" ? "Approving…" : inviteState === "sending" ? "Sending…" : inviteState === "reconciling" ? "Checking…" : inviteState === "accepted" ? "Sent" : inviteState === "failed" ? "Send again" : inviteState === "unknown" ? deliveryId ? "Check status" : "Try again" : selected.admissionState === "invited" ? "Send link" : "Approve and send link"}<ArrowRight aria-hidden="true" /></button></div>
       </section>
     </div>}
-  </main>;
+  </AppShell>;
 }
 
 function AccessState({ item }: { item: WaitlistItem }) {

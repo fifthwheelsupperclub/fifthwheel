@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, LoaderCircle,
   MapPin, RefreshCw, Save, ShieldCheck, Table2, UsersRound, UserRoundCheck,
 } from "lucide-react";
-import { SignOutButton } from "./sign-out-button.tsx";
 import type {
   AssignedCurationTableDTO, AssignedCurationTablesDTO, RosterApplicantDTO, RosterError,
   RosterProposalDTO, RosterResponse, RosterValidationIssue, TableRosterContextDTO,
@@ -178,20 +177,9 @@ const readOnlyLabels: Record<NonNullable<RosterData["table"]["readOnlyReason"]>,
 };
 function issueText(code: string) { return issueLabels[code] ?? "The group needs review under a roster rule."; }
 
-function StaffShell({ actor, active, children }: { actor: Actor; active: "queue" | "detail"; children: ReactNode }) {
+function StaffShell({ actor, children }: { actor: Actor; active: "queue" | "detail"; children: ReactNode }) {
   const admin = actor === "admin";
-  return <main className="product-page roster-workspace">
-    <header className="product-topbar">
-      <a className="brand" href={admin ? "/admin/seat-requests" : "/host/assigned-tables"} aria-label="Fifth Wheel roster workspace">
-        <span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span>
-      </a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">{admin ? "ADMIN WORKSPACE" : "HOST WORKSPACE"}</span><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <StaffSidebar role={admin ? "admin" : "host"} active={admin ? "seat-requests" : "host-tables"} foot={admin ? "Sensitive review actions are recorded." : "Host access is limited to assigned tables."} />
-      <section className="product-content">{children}</section>
-    </div>
-  </main>;
+  return <AppShell role={admin ? "admin" : "host"} active={admin ? "seat-requests" : "host-tables"} className="roster-workspace">{children}</AppShell>;
 }
 
 export function AdminSeatRequestsQueue() { return <QueueWorkspace actor="admin" />; }

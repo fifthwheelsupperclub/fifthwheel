@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { ArrowRight, Ban, Check, CircleAlert, Clock3, Database, FileWarning, LoaderCircle, RefreshCw, ShieldCheck, Table2, WifiOff } from "lucide-react";
 import type { SupplyProviderState, SupplySyncAdminSummaryDTO, SupplySyncConflict, SupplySyncError, SupplySyncResponse, SupplySyncRunDTO } from "../supply.contract.ts";
-import { SignOutButton } from "./sign-out-button.tsx";
 import "./admin-supply-sync-workspace.css";
 
 type ViewState = "loading" | "ready" | "error" | "unauthenticated" | "forbidden";
@@ -198,15 +197,7 @@ export function AdminSupplySyncWorkspace() {
   const canSync = view === "ready" && summary !== null && ["fixture", "ready"].includes(summary.providerState) && action !== "running";
   const retryLabel = action === "unknown" ? "Check again" : "Check Airtable";
 
-  return <main className="product-page supply-workspace">
-    <header className="product-topbar">
-      <a className="brand" href="/admin/waitlist" aria-label="Fifth Wheel admin workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <StaffSidebar active="tables" foot="Supply changes never alter invitations, seats or payment state." />
-
-      <section className="product-content supply-content" aria-labelledby="supply-title">
+  return <AppShell role="admin" active="tables" className="supply-workspace" contentClassName="supply-content" labelledBy="supply-title">
         <div className="product-breadcrumb">Tables <span>/</span> Check Airtable</div>
         <div className="page-heading-row supply-heading">
           <div><p className="eyebrow">AIRTABLE</p><h1 id="supply-title">Check Airtable</h1><p className="page-intro">See what’s new in Airtable before adding it. Nothing goes live from here.</p></div>
@@ -238,7 +229,5 @@ export function AdminSupplySyncWorkspace() {
 
           <section className="supply-scope-note"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Checking is safe</h2><p>Checking Airtable never changes live tables, guests or payments.</p></div></section>
         </>}
-      </section>
-    </div>
-  </main>;
+  </AppShell>;
 }

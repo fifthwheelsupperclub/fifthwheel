@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Ticket, UserRound, Wallet } from "lucide-react";
 import { MemberWorkspaceShell } from "./member-tables-workspace.tsx";
-import { SignOutButton } from "./sign-out-button.tsx";
 import type {
   AdminCancellationDetailDTO, AdminCancellationQueueDTO, AdminCancellationQueueItemDTO,
   CancellationErrorCode, CancellationResponse, DecideCancellationInput, MemberCancellationHistoryDTO,
@@ -164,7 +163,7 @@ export function MemberSeatCancellationWorkspace({ seatId }: { seatId: string }) 
     finally { setBusy(false); }
   };
   const pendingRequest = data?.items.find((item) => item.state === "pending") ?? null;
-  return <MemberWorkspaceShell active="seats"><main className="cancellation-page">
+  return <MemberWorkspaceShell active="seats"><div className="cancellation-page">
     <div className="product-breadcrumb"><Link to="/my-seats/$seatId" params={{ seatId }}>My Seats</Link><span>›</span><span>Cancellation request</span></div>
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading cancellation status" detail="Checking your saved request and Seat availability." />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Cancellation requests are private to the member account that owns this Seat." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/my-seats/${seatId}/cancellation`)}`}>Sign in<ArrowRight aria-hidden="true" /></a>} />}
@@ -179,7 +178,7 @@ export function MemberSeatCancellationWorkspace({ seatId }: { seatId: string }) 
       {data.requestAvailability.canRequest ? <section className="cancellation-request-card"><h2>{data.items.length > 0 ? "Ask again" : "Ask to cancel this seat"}</h2><p>We’ll decide whether to cancel your seat and whether you’ll get a refund.</p>{requestReason(data.requestAvailability.reason) && <div className="cancellation-availability available" role="status"><Clock3 aria-hidden="true" />{requestReason(data.requestAvailability.reason)}</div>}<form onSubmit={submit} className="cancellation-form"><label htmlFor="cancellation-member-reason">Anything we should know? (optional)</label><textarea id="cancellation-member-reason" rows={4} maxLength={2000} value={reason} onChange={(event) => setReason(event.currentTarget.value)} placeholder="" /><span className="cancellation-count">{reason.length}/2000</span><button className="button button-primary" type="submit" disabled={busy || Boolean(pendingRequest)}>{busy ? <LoaderCircle className="member-seat-spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{busy ? "Sending…" : "Send request"}</button></form></section> : !pendingRequest && <section className="cancellation-request-card"><div className="cancellation-availability unavailable" role="status"><Clock3 aria-hidden="true" />{requestReason(data.requestAvailability.reason)}</div></section>}
       <div className="cancellation-footer-actions"><Link className="button button-outline" to="/my-seats/$seatId" params={{ seatId }}><ArrowLeft aria-hidden="true" />Back to Seat details</Link><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
     </>}
-  </main></MemberWorkspaceShell>;
+  </div></MemberWorkspaceShell>;
 }
 
 function ApprovedRefundMessage({ refundCents }: { refundCents: number | null }) {
@@ -204,7 +203,7 @@ export function AdminCancellationsQueue() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "The cancellation queue is temporarily unavailable."); setState("error"); }
   }, []);
   useEffect(() => { void load(); }, [load]);
-  return <AdminCancellationShell active="queue"><main className="cancellation-admin-page">
+  return <AdminCancellationShell active="queue"><div className="cancellation-admin-page">
     <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Cancellations</span></div>
     <header className="cancellation-heading"><p className="eyebrow"></p><h1>Cancellation requests</h1><p>Decide whether to cancel each seat and how much to refund.</p></header>
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading…" />}
@@ -212,7 +211,7 @@ export function AdminCancellationsQueue() {
     {state === "forbidden" && <CancellationState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can decide cancellations and refunds." />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="We couldn’t load requests" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>{message && <p className="cancellation-alert" role="status">{message}</p>}<section className="cancellation-admin-list" aria-label="Pending cancellation requests">{data.items.length === 0 ? <div className="cancellation-empty"><CheckCircle2 aria-hidden="true" /><h2>No pending requests</h2><p>New requests appear here.</p></div> : data.items.map((item) => <AdminCancellationCard key={item.request.requestId} item={item} />)}</section>{data.nextCursor && <button className="button button-outline" type="button" onClick={() => void load(data.nextCursor!)}>Show more<ArrowRight aria-hidden="true" /></button>}</>}
-  </main></AdminCancellationShell>;
+  </div></AdminCancellationShell>;
 }
 
 function AdminCancellationCard({ item }: { item: AdminCancellationQueueItemDTO }) {
@@ -255,7 +254,7 @@ export function AdminCancellationDetail({ requestId }: { requestId: string }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "We’re not sure that saved. Refresh to check."); }
     finally { setBusy(false); }
   };
-  return <AdminCancellationShell active="detail"><main className="cancellation-admin-page">
+  return <AdminCancellationShell active="detail"><div className="cancellation-admin-page">
     <div className="product-breadcrumb"><Link to="/admin/cancellations">Cancellations</Link><span>›</span><span>Review request</span></div>
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." />}
@@ -275,13 +274,13 @@ export function AdminCancellationDetail({ requestId }: { requestId: string }) {
       </section> : <section className="cancellation-request-card"><p className="eyebrow">DECISION SAVED</p><h2>{data.request.state === "approved" ? "Approved" : deniedSeatHeading(data.seat.state)}</h2>{data.request.memberSafeReason && <p>{data.request.memberSafeReason}</p>}{data.request.state === "approved" && data.request.refundCents !== null && <p>{data.request.refundCents === 0 ? "No refund." : `${money(data.request.refundCents)} refund added to Refunds. Send it from there.`}</p>}</section>}
       <div className="cancellation-footer-actions"><Link className="button button-outline" to="/admin/cancellations"><ArrowLeft aria-hidden="true" />Back to queue</Link><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
     </>}
-  </main></AdminCancellationShell>;
+  </div></AdminCancellationShell>;
 }
 
 function parseDollars(value: string): number { if (!/^\d{1,2}(?:\.\d{1,2})?$/.test(value)) return 0; return Math.round(Number(value) * 100); }
 function CancellationState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
   return <section className="cancellation-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
 }
-function AdminCancellationShell({ active, children }: { active: "queue" | "detail"; children: ReactNode }) {
-  return <main className="product-page cancellation-admin-workspace"><header className="product-topbar"><a className="brand" href="/admin/cancellations" aria-label="Fifth Wheel admin workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header><div className="product-layout"><StaffSidebar active="cancellations" foot="A refund amount is recorded for processing; this decision does not send money." footIcon={<Wallet aria-hidden="true" />} /><section className="product-content cancellation-admin-content">{children}</section></div></main>;
+function AdminCancellationShell({ children }: { active: "queue" | "detail"; children: ReactNode }) {
+  return <AppShell role="admin" active="cancellations" className="cancellation-admin-workspace" contentClassName="cancellation-admin-content">{children}</AppShell>;
 }

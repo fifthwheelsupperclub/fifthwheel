@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GuestSidebar } from "../components/guest-nav";
+import { AppShell } from "../components/app-shell";
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleAlert, ClipboardList, House, Table2, Ticket, UserRound } from "lucide-react";
-import { SignOutButton } from "../components/sign-out-button.tsx";
 
 export const Route = createFileRoute("/member")({ component: MemberHomePage });
 
@@ -49,15 +48,7 @@ function MemberHomePage() {
     return () => controller.abort();
   }, []);
 
-  return <main className="product-page">
-    <header className="product-topbar">
-      <a className="brand" href="/member" aria-label="Fifth Wheel member home"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">MEMBER WORKSPACE</span><a className="account-action" href="/account/profile"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <GuestSidebar active="home" foot="Your admission is separate from Table invitations and payment." />
-
-      <section className="product-content member-home-content" aria-labelledby="member-home-heading">
+  return <AppShell role="guest" active="home" contentClassName="member-home-content" labelledBy="member-home-heading">
         <div className="product-breadcrumb">Member <span>/</span> Home</div>
         {state === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><span className="entry-loader small" /></span><h2>Loading…</h2></section>}
         {state === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to continue</h2><p>Use the email address connected to your app invitation.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
@@ -72,7 +63,5 @@ function MemberHomePage() {
           </section>
           <section className="member-home-empty"><span className="data-state-icon"><Table2 aria-hidden="true" /></span><h2>Your Tables will appear here</h2><p>Table invitations and Seats are separate from app access. Nothing is shown until it exists on your account.</p></section>
         </>}
-      </section>
-    </div>
-  </main>;
+      </AppShell>;
 }

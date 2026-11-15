@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, Ban, CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Database, FileCheck2, FilePlus2, LoaderCircle, MapPin, RefreshCw, Save, ShieldCheck, Table2, WifiOff } from "lucide-react";
 import type {
@@ -8,7 +8,6 @@ import type {
   SupplyTableDetailDTO, SupplyTableLifecycle, SupplyTableListDTO, SupplyTableListItemDTO,
   SupplyValidationIssue, SupplyVenueListDTO,
 } from "../supply.management.contract.ts";
-import { SignOutButton } from "./sign-out-button.tsx";
 import "./admin-supply-management-workspace.css";
 
 type LoadState = "loading" | "ready" | "error" | "unauthenticated" | "forbidden";
@@ -150,15 +149,8 @@ async function requestData<T>(response: Response, valid: (value: unknown) => val
   return parseEnvelope(body, valid);
 }
 
-function AdminSupplyShell(props: Readonly<{ children: React.ReactNode; adminNavigation?: boolean }>) {
-  const adminNavigation = Boolean(props.adminNavigation);
-  return <main className="product-page supply-management-page">
-    <header className="product-topbar"><a className="brand" href="/admin/tables" aria-label="Fifth Wheel supply workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">SUPPLY WORKSPACE</span><SignOutButton /></div></header>
-    <div className="product-layout">
-      <StaffSidebar role={adminNavigation ? "admin" : "host"} active="tables" foot="Table updates do not change invitations, seats, or payments." />
-      <section className="product-content supply-management-content">{props.children}</section>
-    </div>
-  </main>;
+function AdminSupplyShell(props: Readonly<{ children: React.ReactNode }>) {
+  return <AppShell role="admin" active="tables" className="supply-management-page" contentClassName="supply-management-content">{props.children}</AppShell>;
 }
 
 function StatePanel({ state, message, onRetry }: Readonly<{ state: LoadState; message: string; onRetry: () => void }>) {
@@ -305,7 +297,7 @@ function AdminSupplyTableList() {
   const fixtureMutationsEnabled = Boolean(list?.providerState === "fixture" && list.mutationsEnabled);
   const closeDialog = useCallback(() => setDialog("closed"), []);
 
-  return <AdminSupplyShell adminNavigation={Boolean(list?.canCreateDraft)}>
+  return <AdminSupplyShell>
     <div className="product-breadcrumb">Tables</div>
     <div className="page-heading-row supply-management-heading"><div><h1 id="supply-list-heading">Tables</h1><p className="page-intro">Review details, make a draft, and approve changes before guests can see them.</p></div>{state === "ready" && list && <span className="status-pill status-pill-neutral"><Table2 aria-hidden="true" />{items.length} on this page</span>}</div>
 
@@ -411,7 +403,7 @@ function Field(props: Readonly<{ label: string; id: string; error?: string; chil
   return <label className="supply-field" htmlFor={props.id}><span>{props.label}</span>{props.children}{props.error && <small className="supply-field-error" role="alert">{props.error}</small>}</label>;
 }
 
-export function AdminSupplyTableDetail({ tableId }: Readonly<{ tableId: string }>) {
+export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: string; footer?: React.ReactNode }>) {
   const [state, setState] = useState<LoadState>("loading");
   const [detail, setDetail] = useState<SupplyTableDetailDTO | null>(null);
   const [venues, setVenues] = useState<SupplyVenueListDTO | null>(null);
@@ -545,7 +537,7 @@ export function AdminSupplyTableDetail({ tableId }: Readonly<{ tableId: string }
   const ProviderIcon = provider?.icon ?? Database;
   const isStale = detail?.currentSyncState !== "current";
 
-  return <AdminSupplyShell adminNavigation={Boolean(detail?.canAccept || detail?.canPublish)}>
+  return <AdminSupplyShell>
     <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Table detail</div>
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadDetail()} />}
     {state === "ready" && detail && <>
@@ -591,6 +583,7 @@ export function AdminSupplyTableDetail({ tableId }: Readonly<{ tableId: string }
       {!fixtureMutationsEnabled && <p className="supply-disabled-note"><Ban aria-hidden="true" />Write actions are disabled outside the isolated local fixture environment. Draft writes, acceptance and publication are unavailable here.</p>}
     </>}
     <SupplyConfirmDialog mode={dialog === "accept" || dialog === "publish" ? dialog : "closed"} onClose={() => setDialog("closed")} onConfirm={() => void revisionAction(dialog as "accept" | "publish")} disabled={mutationState === "running"} busy={mutationState === "running"} />
+    {footer}
   </AdminSupplyShell>;
 }
 

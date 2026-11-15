@@ -1,5 +1,4 @@
-import { ShieldCheck } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { Fragment } from "react";
 
 // One sidebar for every staff screen. Add or rename a nav item here, nowhere else.
 export type StaffNavKey =
@@ -22,19 +21,15 @@ const OTHER_GROUPS: Record<"host" | "restaurant", ReadonlyArray<readonly [string
   host: [[null, [["host-tables", "/host/assigned-tables", "Assigned tables"]]]],
   restaurant: [[null, [["restaurant", "/restaurant", "Service times"]]]],
 };
-const WORKSPACE_LABEL = { admin: "ADMIN WORKSPACE", host: "HOST WORKSPACE", restaurant: "RESTAURANT WORKSPACE" } as const;
 
-export type StaffRole = keyof typeof WORKSPACE_LABEL;
-export const staffWorkspaceLabel = (role: StaffRole) => WORKSPACE_LABEL[role];
+export type StaffRole = "admin" | "host" | "restaurant";
 
-export function StaffSidebar({ role = "admin", active, foot, footIcon }: Readonly<{ role?: StaffRole; active?: StaffNavKey; foot?: ReactNode; footIcon?: ReactNode }>) {
+export function StaffSidebar({ role = "admin", active }: Readonly<{ role?: StaffRole; active?: StaffNavKey }>) {
   const groups = role === "admin" ? ADMIN_GROUPS : OTHER_GROUPS[role];
   return <aside className="product-sidebar" aria-label={`${role === "admin" ? "Admin" : role === "host" ? "Host" : "Restaurant"} navigation`}>
-    <p className="sidebar-caption">WORKSPACE</p>
     {groups.map(([group, items]) => <Fragment key={group ?? "top"}>
       {group && <p className="group-label">{group}</p>}
       {items.map(([key, href, label]) => <a key={key} className={`member-nav-link${key === active ? " active" : ""}`} href={href} aria-current={key === active ? "page" : undefined}>{label}</a>)}
     </Fragment>)}
-    {foot && <div className="product-sidebar-foot">{footIcon ?? <ShieldCheck aria-hidden="true" />}<span>{foot}</span></div>}
   </aside>;
 }

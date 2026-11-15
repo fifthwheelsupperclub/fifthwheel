@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { StaffSidebar, type StaffNavKey } from "./staff-nav";
+import { AppShell } from "./app-shell";
+import { type StaffNavKey } from "./staff-nav";
 import { AlertCircle, CheckCircle2, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
-import { SignOutButton } from "./sign-out-button.tsx";
 import "./ops-workspaces.css";
 
 type Area = "admin-notices" | "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
@@ -30,10 +30,9 @@ const blockerText: Record<string, string> = { select_three_to_five: "Needs 3–5
   pair_age_mismatch: "Two guests are outside each other’s age range", missing_mutual_open_connection: "A guest has no mutual connection", age_span_exceeded: "Ages span more than 12 years" };
 
 function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>) {
-  const admin = area.startsWith("admin");
-  return <main className="product-page ops-workspace"><header className="product-topbar"><a className="brand" href="/" aria-label="Fifth Wheel"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-    <div className="product-topbar-actions"><span className="product-workspace-label">{admin ? "ADMIN WORKSPACE" : area === "host" ? "HOST WORKSPACE" : "RESTAURANT WORKSPACE"}</span><SignOutButton /></div></header>
-    <div className="product-layout"><StaffSidebar role={admin ? "admin" : area === "host" ? "host" : "restaurant"} active={{ "admin-overview": "overview", "admin-decisions": "decisions", "admin-staff": "assignments", "admin-notices": "emails", "admin-feedback": "reports", host: "host-tables", restaurant: "restaurant" }[area as string] as StaffNavKey | undefined} /><div className="ops-content">{children}</div></div></main>;
+  const role = area.startsWith("admin") ? "admin" : area === "host" ? "host" : "restaurant";
+  const active = { "admin-overview": "overview", "admin-decisions": "decisions", "admin-staff": "assignments", "admin-notices": "emails", "admin-feedback": "reports", host: "host-tables", restaurant: "restaurant" }[area as string] as StaffNavKey | undefined;
+  return <AppShell role={role} active={active} className="ops-workspace"><div className="ops-content">{children}</div></AppShell>;
 }
 function Status({ area, load, retry, children }: Readonly<{ area: Area; load: Load<unknown>; retry: () => void; children: ReactNode }>) {
   if (load.state === "loading") return <Shell area={area}><p className="ops-state" role="status"><LoaderCircle className="ops-spin" aria-hidden="true" />Loading…</p></Shell>;

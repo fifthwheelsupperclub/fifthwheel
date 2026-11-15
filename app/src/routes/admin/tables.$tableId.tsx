@@ -8,5 +8,5 @@ export const Route = createFileRoute("/admin/tables/$tableId")({
 
 function TableSupplyDetailRoute() {
   const { tableId } = Route.useParams();
-  return <><AdminSupplyTableDetail tableId={tableId} /><TableCancelPanel tableId={tableId} /></>;
+  return <AdminSupplyTableDetail tableId={tableId} footer={<TableCancelPanel tableId={tableId} />} />;
 }

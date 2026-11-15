@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, LoaderCircle, Mail, MapPin, RefreshCw, ShieldCheck, Table2, Ticket, UserRound, UsersRound } from "lucide-react";
 import { MemberWorkspaceShell } from "./member-tables-workspace.tsx";
-import { SignOutButton } from "./sign-out-button.tsx";
 import { MemberCheckoutWorkspace } from "./member-checkout-workspace.tsx";
 import type {
   AdminTableInvitationDTO, AdminTableInvitationListDTO, MemberTableInvitationDetailDTO,
@@ -263,9 +262,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
     } finally { setReconcileId(null); }
   }
 
-  return <main className="product-page table-invitation-admin-page">
-    <header className="product-topbar"><a className="brand" href="/admin/table-invitations" aria-label="Fifth Wheel admin Table invitation delivery"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header>
-    <div className="product-layout"><StaffSidebar active="invitations" foot="Retry queues delivery work; it never changes offer approval or payment state." /><section className="product-content">
+  return <AppShell role="admin" active="invitations" className="table-invitation-admin-page">
       <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
       <div className="page-heading-row table-invitation-admin-heading"><div><h1>Invitation emails</h1><p className="page-intro">Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
@@ -289,8 +286,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
         </article>;
       })}</div>}
       {state === "ready" && cursor && <div className="table-load-more"><button className="button button-outline" type="button" disabled={loadingMore} onClick={() => { setLoadingMore(true); void load(cursor, true); }}>{loadingMore ? "Loading…" : "Show more"}<ArrowRight aria-hidden="true" /></button></div>}
-    </section></div>
-  </main>;
+  </AppShell>;
 }
 
 function localOperationId(key: string) {

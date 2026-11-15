@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, CircleAlert, Clock3, FileCheck2, LoaderCircle, RefreshCw, ShieldCheck, Table2, UserRoundCheck, UsersRound } from "lucide-react";
 import type { IdentityReviewDecisionResultDTO, IdentityReviewDetailDTO, IdentityReviewQueueItem, ProfileFileSummary, W04Error } from "../profile.contract.ts";
-import { SignOutButton } from "./sign-out-button.tsx";
 
 type State = "loading" | "ready" | "unauthenticated" | "forbidden" | "error";
 type ApiOutcome<T> = Readonly<{ data: T; error: null }> | Readonly<{ data: null; error: W04Error | null }>;
@@ -321,15 +320,6 @@ function friendlyField(field: string): string {
 }
 
 function AdminReviewShell(props: Readonly<{ active: "queue" | "detail"; children: React.ReactNode }>) {
-  return <main className="product-page">
-    <header className="product-topbar">
-      <a className="brand" href="/admin/waitlist" aria-label="Fifth Wheel admin workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <StaffSidebar role="admin" active="identity-review" foot="Identity evidence is restricted to current submitted reviews." />
-      <section className="product-content identity-review-content">{props.children}</section>
-    </div>
-  </main>;
+  return <AppShell role="admin" active="identity-review" contentClassName="identity-review-content">{props.children}</AppShell>;
 }
 

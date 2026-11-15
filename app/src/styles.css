@@ -1008,3 +1008,6 @@ input:not([type=checkbox]):not([type=radio]) { min-height: 46px; font-size: 12px
   .profile-form-actions { display: grid; grid-template-columns: 1fr; }
   .profile-form-actions .button { width: 100%; }
 }
+
+.skip-link { position: absolute; z-index: 30; left: 12px; top: -48px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 12px; }

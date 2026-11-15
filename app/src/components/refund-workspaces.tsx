@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { StaffSidebar } from "./staff-nav";
+import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
-import { SignOutButton } from "./sign-out-button.tsx";
 import "./refund-workspaces.css";
 import type {
   RefundActionDTO, RefundDetailDTO, RefundListDTO, RefundObligationSummaryDTO,
@@ -146,7 +145,7 @@ export function AdminRefundsQueue() {
     finally { setLoadingMore(false); }
   }, [items.length]);
   useEffect(() => { void load(); }, []);
-  return <RefundAdminShell active="queue"><main className="refund-page">
+  return <RefundAdminShell active="queue"><div className="refund-page">
     <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Refunds</span></div>
     <header className="refund-heading"><p className="eyebrow"></p><h1>Refunds</h1><p>Money we owe guests, and its status with Stripe.</p></header>
     {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading refunds…" />}
@@ -155,7 +154,7 @@ export function AdminRefundsQueue() {
     {state === "error" && <RefundState icon={<AlertCircle />} title="We couldn’t load refunds" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "empty" && <section className="refund-empty"><CheckCircle2 aria-hidden="true" /><h2>No refunds owed.</h2></section>}
     {state === "ready" && <><section className="refund-list" aria-label="Refund obligations">{items.map((item) => <RefundSummaryCard key={item.obligationId} item={item} />)}</section>{nextCursor && <button className="button button-outline refund-load-more" type="button" disabled={loadingMore} onClick={() => void load(nextCursor)}>{loadingMore ? "Loading…" : "Show more"}<ArrowRight aria-hidden="true" /></button>}</>}
-  </main></RefundAdminShell>;
+  </div></RefundAdminShell>;
 }
 
 function RefundSummaryCard({ item }: { item: RefundObligationSummaryDTO }) {
@@ -208,7 +207,7 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "The refund action could not be confirmed."); }
     finally { setBusy(false); }
   };
-  return <RefundAdminShell active="detail"><main className="refund-page">
+  return <RefundAdminShell active="detail"><div className="refund-page">
     <div className="product-breadcrumb"><Link to="/admin/refunds">Refunds</Link><span>›</span><span>Obligation</span></div>
     {state === "loading" && <RefundState icon={<LoaderCircle className="refund-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <RefundState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/admin/refunds/${obligationId}`)}`}>Sign in</a>} />}
@@ -229,12 +228,12 @@ export function AdminRefundDetail({ obligationId }: { obligationId: string }) {
       {action && <section className="refund-confirm" role="group" aria-labelledby="refund-confirm-title"><h2 id="refund-confirm-title">{action === "dispatch" ? `Send ${money(obligation.availableCents)} refund?` : action === "retry" ? "Try again?" : "Check with Stripe?"}</h2><p>{action === "dispatch" ? "This sends the refund through Stripe. The status updates when Stripe confirms." : action === "retry" ? "This retries the same refund. It can’t pay out twice." : "This only checks. It won’t send another refund."}</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => { setAction(null); setTargetOperation(null); }}>Cancel</button><button className="button button-primary" type="button" disabled={busy} onClick={() => void submitAction()}>{busy ? "Working…" : action === "dispatch" ? "Send refund" : action === "retry" ? "Try again" : "Check status"}</button></div></section>}
       <div className="refund-footer-actions"><Link className="button button-outline" to="/admin/refunds"><ArrowLeft aria-hidden="true" />Back to Refunds</Link></div>
     </>}
-  </main></RefundAdminShell>;
+  </div></RefundAdminShell>;
 }
 
 function RefundState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
   return <section className="refund-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
 }
-function RefundAdminShell({ active, children }: { active: "queue" | "detail"; children: ReactNode }) {
-  return <main className="product-page refund-admin-workspace"><header className="product-topbar"><a className="brand" href="/admin/refunds" aria-label="Fifth Wheel admin workspace"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a><div className="product-topbar-actions"><span className="product-workspace-label">ADMIN WORKSPACE</span><SignOutButton /></div></header><div className="product-layout"><StaffSidebar active="refunds" foot="Amounts remain owed until the payment provider confirms settlement." footIcon={<Wallet aria-hidden="true" />} /><section className="product-content refund-admin-content">{children}</section></div></main>;
+function RefundAdminShell({ children }: { active: "queue" | "detail"; children: ReactNode }) {
+  return <AppShell role="admin" active="refunds" className="refund-admin-workspace" contentClassName="refund-admin-content">{children}</AppShell>;
 }

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { AppShell } from "./app-shell";
 import { INVITATION_STATE_HEADING, INVITATION_STATE_PILL, REQUEST_STATE_LABEL, type RequestState } from "../copy/states.ts";
-import { GuestSidebar } from "./guest-nav";
 import {
   ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CircleAlert, ClipboardList, Clock3,
   House, Mail, MapPin, Share2, Table2, Ticket, UserRound, Utensils, X,
 } from "lucide-react";
-import { SignOutButton } from "./sign-out-button.tsx";
 import type { TableInvitationDeliveryState, TableInvitationHistorySummaryDTO } from "../table-invitations.contract.ts";
 import "./member-tables-workspace.css";
 
@@ -215,16 +214,7 @@ function formatTime(value: string | undefined): string {
 function titleCase(value: string): string { return value.charAt(0).toUpperCase() + value.slice(1); }
 
 export function MemberWorkspaceShell({ active, children }: { active: "tables" | "requests" | "seats"; children: ReactNode }) {
-  return <main className="product-page member-tables-page">
-    <header className="product-topbar">
-      <a className="brand" href="/member" aria-label="Fifth Wheel member home"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">MEMBER WORKSPACE</span><a className="account-action" href="/account/profile"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <GuestSidebar active={active === "seats" ? "seats" : active === "requests" ? "requests" : active === "tables" ? "tables" : undefined} foot={active === "seats" ? "A Seat appears here only after verified payment." : "A request is a step toward a Table, not an invitation or a confirmed Seat."} />
-      <div className="product-content member-tables-content">{children}</div>
-    </div>
-  </main>;
+  return <AppShell role="guest" active={active} className="member-tables-page" contentClassName="member-tables-content">{children}</AppShell>;
 }
 
 export function MemberTablesWorkspace() {

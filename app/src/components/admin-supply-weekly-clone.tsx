@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppShell } from "./app-shell";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, LoaderCircle, RefreshCw, ShieldCheck, Table2, Undo2, WifiOff } from "lucide-react";
 import type {
   WeeklyCloneError, WeeklyCloneOperationDTO, WeeklyCloneOperationListDTO, WeeklyCloneOperationListItemDTO, WeeklyClonePreviewDTO, WeeklyCloneResponse,
@@ -341,7 +342,7 @@ export function AdminSupplyWeeklyClone() {
     setOperationMemory(memory); storeOperationMemory(memory); setOperation(null); void fetchOperation(item.operationId);
   }
 
-  return <main className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
+  return <AppShell role="admin" active="tables"><div className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
     <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Copy a week</div>
     <header className="page-heading-row weekly-clone-heading">
       <div><h1 id="weekly-clone-heading">Copy a week</h1><p className="page-intro">Copy draft tables from one week to another. Only drafts are copied.</p></div>
@@ -416,5 +417,5 @@ export function AdminSupplyWeeklyClone() {
       {dialog === "clone" && <><div className="weekly-clone-dialog-icon"><Copy aria-hidden="true" /></div><h2 id="weekly-clone-dialog-title">Copy {preview?.eligibleCount ?? 0} drafts to the week of {preview ? formatDate(preview.targetWeekStart) : "the selected week"}?</h2><p>They’ll be drafts. Nothing goes live.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Cancel</button><button className="button button-primary" type="button" disabled={!preview || !previewFixtureWritesEnabled || actionState === "running"} onClick={() => { if (!preview) return; const memory: OperationMemory = { operationId: crypto.randomUUID(), sourceWeekStart: preview.sourceWeekStart, targetWeekStart: preview.targetWeekStart, expectedPlanHash: preview.planHash }; setDialog(null); void runClone(memory); }}><Copy aria-hidden="true" />Copy drafts</button></div></>}
       {dialog === "undo" && operation && <><div className="weekly-clone-dialog-icon"><Undo2 aria-hidden="true" /></div><h2 id="weekly-clone-dialog-title">Undo this copy?</h2><p>We’ll remove copied drafts that haven’t been edited or used. Anything edited stays.</p><div className="weekly-clone-dialog-actions"><button className="button button-outline" type="button" onClick={() => setDialog(null)}>Keep copies</button><button className="button button-primary" type="button" disabled={!operationFixtureWritesEnabled || actionState === "running"} onClick={() => void runUndo()}><Undo2 aria-hidden="true" />Undo copy</button></div></>}
     </dialog>
-  </main>;
+  </div></AppShell>;
 }

@@ -1,5 +1,5 @@
 import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { GuestSidebar } from "./guest-nav";
+import { AppShell } from "./app-shell";
 import {
   ArrowRight,
   BadgeCheck,
@@ -15,7 +15,6 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
-import { SignOutButton } from "./sign-out-button.tsx";
 import type {
   CompleteUploadResultDTO,
   IdentityStatus,
@@ -594,14 +593,7 @@ export function ProfileWorkspace() {
   const hasBlockingFields = profile ? profile.missingFields.length > 0 : true;
   const submitDisabled = !profile || !draft || dirty || hasBlockingFields || profile.identityStatus === "submitted" || submitState === "submitting" || Object.values(uploadState).some(Boolean);
 
-  return <main className="product-page">
-    <header className="product-topbar">
-      <a className="brand" href="/member" aria-label="Fifth Wheel member home"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><a className="account-action account-action-active" href="/account/profile" aria-current="page"><UserRound aria-hidden="true" />Account</a><SignOutButton /></div>
-    </header>
-    <div className="product-layout">
-      <GuestSidebar foot="Your profile stays private and is visible only to you and the authorized review team." />
-      <section className="product-content profile-content" aria-labelledby="profile-heading">
+  return <AppShell role="guest" accountActive contentClassName="profile-content" labelledBy="profile-heading">
         <div className="product-breadcrumb">Member <span>/</span> Account <span>/</span> Profile</div>
         {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading your profile</h2><p>Your saved details and review status are being checked.</p></section>}
         {loadState === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to view your profile</h2><p>This page is available to the member account connected to your app invitation.</p><a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
@@ -676,9 +668,7 @@ export function ProfileWorkspace() {
             </div>
           </form>
         </>}
-      </section>
-    </div>
-  </main>;
+      </AppShell>;
 }
 
 function Field(props: Readonly<{ id: string; label: string; hint?: string; error?: string; children: ReactNode }>) {
