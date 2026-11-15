@@ -250,3 +250,6 @@
 .review-decision-panel .decision-confirmation, .review-decision-panel .decision-request { flex: 1 1 100%; }
 .review-queue-item { grid-template-columns: minmax(0, 1fr) auto; min-height: 64px; }
 @media (max-width: 960px) { .review-detail-grid { grid-template-columns: 1fr; } }
+.ratings-section { margin-top: var(--space-6); }
+.ratings-section h2 { margin: 0; font-family: var(--display); font-size: var(--display-md); font-weight: 400; }
+.ratings-help { margin: var(--space-1) 0 var(--space-3); color: var(--text-muted); font-size: var(--text-staff); }

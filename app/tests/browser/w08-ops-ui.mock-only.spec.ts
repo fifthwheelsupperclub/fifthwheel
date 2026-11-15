@@ -38,7 +38,7 @@ test("admin decisions: blockers disable proceed, a valid Table proceeds with one
   await page.goto("/admin/table-decisions");
   await expect(page.getByRole("heading", { name: "Table decisions" })).toBeVisible();
   await expect(page.getByText("Needs 3–5 paid guests")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Confirm table" }).nth(1)).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Confirm table" })).toHaveCount(1);
   await page.screenshot({ path: `${shots}/w08-table-decisions-desktop-mock-only.png`, fullPage: true });
   await page.getByRole("button", { name: "Confirm table" }).first().click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();

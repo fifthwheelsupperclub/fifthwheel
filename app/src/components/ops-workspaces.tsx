@@ -66,17 +66,17 @@ export function AdminTableDecisions() {
     if (result.ok) { setConfirm(null); await reload(); } else setMessage(result.reason === "group_invalid" ? "This paid group no longer meets the rules, so it cannot proceed." : result.message);
   }
   return <Status area="admin-decisions" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-decisions">
-    <PageHeader title="Table decisions" description="Tables starting in the next 24 hours. Guests can’t pay for these until you decide. Confirm tables with 3–5 paid guests. Cancel any with fewer than 3." />
+    <PageHeader title="Table decisions" description="Tables starting in the next 24 hours. Guests can’t pay for these until you decide. Confirm tables with 3–5 paid guests. Cancel any with fewer than 3. Times are Atlanta time." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {load.data.items.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>No decisions needed</h2><p>Tables show up here 24 hours before they start.</p></section>
       : <ul className="ops-list">{load.data.items.map((t) => <li className="ops-card" key={t.tableId}>
         <div><h2>{t.title}</h2><p><MapPin aria-hidden="true" />{t.neighborhood} · {when(t.localDate, t.startLocalTime)}</p>
-          <p className="ops-meta"><span className={`status-pill ${t.status === "proceeding" ? "status-pill-success" : "status-pill-warning"}`}>{t.status === "proceeding" ? "Confirmed" : t.status === "suspended" ? "On hold, needs review" : "Needs a decision"}</span><span>{t.paidCount} paid guest{t.paidCount === 1 ? "" : "s"}</span></p>
+          <p className="ops-meta"><StatusBadge tone={t.status === "proceeding" ? "success" : t.status === "suspended" ? "danger" : "pending"}>{t.status === "proceeding" ? "Confirmed" : t.status === "suspended" ? "On hold, needs review" : "Needs a decision"}</StatusBadge><span>{t.paidCount} paid guest{t.paidCount === 1 ? "" : "s"}</span></p>
           {t.blockers.length > 0 && <ul className="ops-blockers">{t.blockers.map((b) => <li key={b}>{blockerText[b] ?? b}</li>)}</ul>}</div>
         <div className="ops-actions">
           {t.status !== "proceeding" && (confirm?.tableId === t.tableId
             ? <><button className="button button-primary" type="button" disabled={busy === t.tableId} onClick={() => void proceed()}>{busy === t.tableId ? "Confirming…" : "Confirm"}</button><button className="button button-outline" type="button" onClick={() => setConfirm(null)}>Back</button></>
-            : <button className="button button-primary" type="button" disabled={!t.canProceed} onClick={() => setConfirm({ tableId: t.tableId, operationId: crypto.randomUUID() })}>Confirm table</button>)}
+            : t.canProceed ? <button className="button button-primary" type="button" onClick={() => setConfirm({ tableId: t.tableId, operationId: crypto.randomUUID() })}>Confirm table</button> : null)}
           <a className="button button-outline" href={`/admin/tables/${t.tableId}`}>Manage</a></div></li>)}</ul>}
   </Shell>}</Status>;
 }
@@ -241,17 +241,17 @@ export function AdminConductReports() {
     if (result.ok) await reports.reload(); else setMessage(result.message);
   }
   return <Status area="admin-feedback" load={reports.load} retry={() => void reports.reload()}>{reports.load.state === "ready" && <Shell area="admin-feedback">
-    <PageHeader title="Conduct reports" description="Only admins can see reports." />
+    <PageHeader title="Conduct reports" description="Only admins can see reports and ratings." />
     {message && <p className="ops-alert" role="alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {reports.load.data.items.length === 0 ? <section className="ops-state"><h2>No reports</h2><p>Reports from guests who attended appear here.</p></section>
       : <ul className="ops-list">{reports.load.data.items.map((r) => <li className="ops-card ops-card-stack" key={r.reportId}>
         <div><h2>{r.tableTitle}</h2><p className="ops-meta"><StatusBadge tone={r.status === "new" ? "pending" : r.status === "resolved" ? "success" : "neutral"}>{r.status === "new" ? "New" : r.status === "reviewing" ? "Reviewing" : "Resolved"}</StatusBadge>{r.held && <StatusBadge tone="warning">On hold</StatusBadge>}<span>{instantDate(r.createdAt)}</span></p>
           <p>From {r.author}{r.subject ? ` about ${r.subject}` : ""}</p><p className="ops-report-body">{r.body}</p></div>
         <div className="ops-actions"><Field label="Status" className="ops-field"><select value={r.status} onChange={(event) => void update(r, event.currentTarget.value as Report["status"], r.held)}><option value="new">New</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option></select></Field>
-          <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Keep (don’t delete)</label>
+          <label className="ops-check"><input type="checkbox" checked={r.held} onChange={(event) => void update(r, r.status, event.currentTarget.checked)} />Hold (don’t auto-delete)</label>
           {!r.held && Date.now() - new Date(r.createdAt).getTime() > 365 * 86_400_000 && <Button variant="danger" onClick={() => setPendingDelete(r)}>Delete report…</Button>}</div></li>)}</ul>}
     <ConfirmDialog open={pendingDelete !== null} title="Delete report?" confirmLabel="Delete report" destructive busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={() => pendingDelete && void remove(pendingDelete)}>This permanently deletes the report from {pendingDelete?.tableTitle}. This can’t be undone.</ConfirmDialog>
-    <PageHeader title="Ratings" description="Averages show once 3 or more guests respond." />
+    <section className="ratings-section" aria-labelledby="ratings-title"><h2 id="ratings-title">Ratings</h2><p className="ratings-help">Averages show once 3 or more guests respond.</p></section>
     {ratings.load.state === "ready" && (ratings.load.data.tables.length === 0 ? <section className="ops-state"><h2>No ratings yet</h2></section>
       : <ul className="ops-list">{ratings.load.data.tables.map((t) => <li className="ops-card" key={t.tableId}><div><h2>{t.title}</h2><p>{eventDate(t.localDate)} · {t.responses} response{t.responses === 1 ? "" : "s"}</p></div>
         <span className="status-pill">{t.overallAverage === null ? "Not enough responses yet" : `${t.overallAverage.toFixed(2)} overall`}</span></li>)}</ul>)}
