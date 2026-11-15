@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AuthLayout } from "../components/auth-layout";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, CircleAlert, Mail, ShieldCheck } from "lucide-react";
 
@@ -49,20 +50,7 @@ function SignInPage() {
     }
   }
 
-  return <main className="auth-page">
-    <section className="auth-story" aria-label="Fifth Wheel">
-      <a className="brand" href="/" aria-label="Fifth Wheel home">
-        <span className="brand-mark">FW</span>
-        <span className="brand-name">fifth wheel<span className="brand-period">.</span></span>
-      </a>
-      <div className="auth-story-copy">
-        <p className="eyebrow">Atlanta, around the table</p>
-        <h1>Good nights<br />start <em>with hello.</em></h1>
-        <p>Sign in to see your tables.</p>
-      </div>
-    </section>
-
-    <section className="auth-card-wrap">
+  return <AuthLayout eyebrow="Atlanta, around the table" headline={<>Good nights<br />start <em>with hello.</em></>} lead="Sign in to see your tables.">
       <div className="auth-card">
         <span className="auth-icon"><Mail aria-hidden="true" /></span>
         <p className="eyebrow">SIGN IN</p>
@@ -98,6 +86,5 @@ function SignInPage() {
         <p className="auth-footnote">New here? <a href="https://fifthwheel.community/#waitlist" target="_blank" rel="noreferrer">Join the Atlanta waitlist</a>.</p>
         <p className="auth-boundary">Joining the waitlist doesn’t give you access right away. We’ll email you when you’re in.</p>
       </div>
-    </section>
-  </main>;
+  </AuthLayout>;
 }

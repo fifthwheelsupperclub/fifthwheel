@@ -81,8 +81,8 @@ function SystemStatePage({
       <h1 id="system-state-title">{title}</h1>
       <p className="system-state-message" role={kind === "error" ? "alert" : undefined}>{message}</p>
       <div className="system-state-actions">
-        {onRetry && <button className="button button-outline" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
-        <Link className="button button-primary" to="/"><House aria-hidden="true" />Go to home</Link>
+        {onRetry && <button className="button button-primary" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
+        <Link className={`button ${onRetry ? "button-outline" : "button-primary"}`} to="/"><House aria-hidden="true" />Go to home</Link>
       </div>
     </div>
   </main>;

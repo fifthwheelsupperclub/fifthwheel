@@ -255,3 +255,12 @@
 .ratings-help { margin: var(--space-1) 0 var(--space-3); color: var(--text-muted); font-size: var(--text-staff); }
 .ops-summary { margin: 0 0 var(--space-4); color: var(--text-muted); font-size: var(--text-base); }
 .ops-summary strong { color: var(--text); font-size: var(--text-lg); }
+
+/* ---- Auth pages on phones (T-28): short brand panel so the form is on screen ---- */
+@media (max-width: 640px) {
+  .auth-story { min-height: 0; padding: 20px 24px 8px; }
+  .auth-story-copy { padding: 14px 0 10px; }
+  .auth-story-copy .eyebrow, .auth-story-copy > p:last-child { display: none; }
+  .auth-story-copy h1 { font-size: 34px; }
+  .auth-card-wrap { padding-top: 20px; }
+}

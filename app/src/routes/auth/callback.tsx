@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AuthLayout } from "../../components/auth-layout";
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleAlert, LogOut, MailCheck, ShieldCheck } from "lucide-react";
 
@@ -130,20 +131,10 @@ function AuthCallbackPage() {
     }
   }
 
-  return <main className="auth-page callback-page">
-    <section className="auth-story" aria-label="Fifth Wheel">
-      <a className="brand" href="/" aria-label="Fifth Wheel home">
-        <span className="brand-mark">FW</span>
-        <span className="brand-name">fifth wheel<span className="brand-period">.</span></span>
-      </a>
-      <div className="auth-story-copy">
-        <p className="eyebrow">A seat at the table</p>
-        <h1>Your next<br />chapter <em>starts here.</em></h1>
-        <p>One more step to sign in.</p>
-      </div>
-    </section>
-
-    <section className="auth-card-wrap">
+  const failed = !validCallback || state === "error";
+  return <AuthLayout className="callback-page" eyebrow={failed ? "Atlanta, around the table" : "A seat at the table"}
+    headline={failed ? <>Good nights<br />start <em>with hello.</em></> : <>Your next<br />chapter <em>starts here.</em></>}
+    lead={failed ? "Sign in to see your tables." : "One more step to sign in."}>
       <div className="auth-card callback-card">
         {!validCallback ? <>
           <span className="auth-icon auth-icon-error"><CircleAlert aria-hidden="true" /></span>
@@ -193,6 +184,5 @@ function AuthCallbackPage() {
           {(state === "signed-out" || state === "signed-out-uncertain") && <a className="button button-outline callback-link" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>}
         </>}
       </div>
-    </section>
-  </main>;
+  </AuthLayout>;
 }
