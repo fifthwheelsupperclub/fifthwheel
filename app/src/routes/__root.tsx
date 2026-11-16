@@ -2,6 +2,7 @@ import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/r
 import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowLeft, CircleAlert, House, RotateCcw } from "lucide-react";
 import css from "../styles.css?url";
+import componentsCss from "../styles/components.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,6 +14,8 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: css },
+      // Loaded after styles.css so shared components win ties with legacy page rules.
+      { rel: "stylesheet", href: componentsCss },
       { rel: "preload", href: "/fonts/fraunces-roman-latin.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
       { rel: "preload", href: "/fonts/inter-latin.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
     ],
@@ -78,10 +81,9 @@ function SystemStatePage({
       <h1 id="system-state-title">{title}</h1>
       <p className="system-state-message" role={kind === "error" ? "alert" : undefined}>{message}</p>
       <div className="system-state-actions">
-        {onRetry && <button className="button button-outline" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
-        <Link className="button button-primary" to="/"><House aria-hidden="true" />Go to home</Link>
+        {onRetry && <button className="button button-primary" type="button" onClick={onRetry}><RotateCcw aria-hidden="true" />Try again</button>}
+        <Link className={`button ${onRetry ? "button-outline" : "button-primary"}`} to="/"><House aria-hidden="true" />Go to home</Link>
       </div>
-    <p className="system-state-footnote">FIFTH WHEEL · ATLANTA</p>
     </div>
   </main>;
 }

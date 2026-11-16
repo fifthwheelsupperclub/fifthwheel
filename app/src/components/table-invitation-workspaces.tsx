@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { EmailTabs } from "./email-tabs";
+import { PageState } from "./ui/page-state";
+import { clockAfter, eventDate, eventTime, eventWhen, timestamp } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, LoaderCircle, Mail, MapPin, RefreshCw, ShieldCheck, Table2, Ticket, UserRound, UsersRound } from "lucide-react";
@@ -102,15 +106,8 @@ function decodeReconcile(value: unknown): ReconcileTableInvitationDeliveryResult
     || !["accepted", "unknown"].includes(String(value.deliveryState)) || !isCount(value.attemptCount)) return null;
   return { invitationId: value.invitationId as string, deliveryState: value.deliveryState as "accepted" | "unknown", attemptCount: value.attemptCount };
 }
-function dateLabel(value: string) {
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
-}
-function timeLabel(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(2020, 0, 1, hour, minute));
-}
+const dateLabel = (value: string) => eventDate(value.slice(0, 10), { long: true });
+const timeLabel = (value: string) => eventTime(value);
 function deliveryCopy(state: TableInvitationDeliveryState): Readonly<{ label: string; detail: string; tone: DeliveryTone }> {
   switch (state) {
     case "queued": return { label: "Waiting to send", detail: "The invitation is active.", tone: "neutral" };
@@ -151,22 +148,22 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
   useEffect(() => { void load(); }, [load]);
 
   const content = <>
-    <div className="product-breadcrumb"><Link to="/requests">Requests</Link><span>›</span>Table invitation</div>
-    {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
-    {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in with the member account connected to your invitation." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="This invitation is for a different account" detail="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
-    {state === "not_found" && <InvitationState icon={<Ticket />} title="Invitation not found" detail="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>} />}
-    {state === "error" && <InvitationState icon={<CircleAlert />} title="Invitation details are temporarily unavailable" detail={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    <Link to="/requests" className="page-header-back"><ArrowLeft aria-hidden="true" />Requests</Link>
+    {state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Sign in with the email the invitation was sent to." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="This invitation is for a different account" message="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
+    {state === "not_found" && <PageState variant="empty" title="Invitation not found" message="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
+    {state === "error" && <PageState variant="error" title="Invitation details are temporarily unavailable" message={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again</button>} />}
     {state === "ready" && detail && <>
-      <div className="invitation-member-heading"><p className="eyebrow">TABLE INVITATION</p><h1>{detail.table.title}</h1><p className="page-intro"><CalendarDays aria-hidden="true" />{dateLabel(detail.table.localDate)}<span>·</span><Clock3 aria-hidden="true" />{timeLabel(detail.table.startLocalTime)}<span>·</span><MapPin aria-hidden="true" />{detail.table.neighborhood}</p></div>
+      <PageHeader className="invitation-member-heading" title={`You’re invited to ${detail.table.title}`} description={`${eventWhen(detail.table.localDate, detail.table.startLocalTime)} · ${detail.table.neighborhood}`} />
       <div className="invitation-member-grid">
-        <section className="invitation-member-card"><h2>You’re invited</h2><p>{detail.state === "active" ? `Pay to confirm your seat at ${detail.table.title}.` : invitationStateText(detail.state)}</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
+        <section className="invitation-member-card"><h2>Your seat</h2><p>{detail.state === "active" ? `Pay to confirm your seat at ${detail.table.title}.` : invitationStateText(detail.state)}</p><MemberCheckoutWorkspace invitationId={invitationId} /></section>
       </div>
-      <section className="invitation-itinerary-section"><div className="invitation-section-heading"><span><Table2 aria-hidden="true" /></span><div><p className="eyebrow">TABLE DETAILS</p><h2>Evening itinerary</h2></div></div>
-        {detail.table.itineraryAvailable ? <ol className="invitation-stops">{detail.table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="invitation-stop-number">0{index + 1}</span><div><p className="eyebrow">{stop.role.toUpperCase()} · {stop.minutesFromStart === 0 ? "START" : `+${stop.minutesFromStart} MIN`}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
+      <section className="invitation-itinerary-section">
+        <div className="invitation-itinerary-head"><h2>Evening itinerary</h2>{detail.table.itineraryAvailable && <a className="button button-tertiary" href={`/tables/${encodeURIComponent(detail.table.tableId)}`}>Full details</a>}</div>
+        {detail.table.itineraryAvailable ? <ol className="invitation-stops">{detail.table.stops.map((stop, index) => <li key={`${stop.role}-${index}`}><span className="invitation-stop-number">0{index + 1}</span><div><p className="eyebrow">{stop.role.charAt(0).toUpperCase() + stop.role.slice(1)} · {clockAfter(detail.table.startLocalTime, stop.minutesFromStart)}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
           : <p className="invitation-itinerary-unavailable">The full plan isn’t available right now. Your invitation is still here.</p>}
       </section>
-      <div className="invitation-member-actions"><Link className="button button-outline" to="/requests"><ArrowLeft aria-hidden="true" />Back to Requests</Link>{detail.table.itineraryAvailable && <a className="button button-primary" href={`/tables/${encodeURIComponent(detail.table.tableId)}`}>View Table details<ArrowRight aria-hidden="true" /></a>}</div>
     </>}
   </>;
   return state === "unauthenticated"
@@ -179,7 +176,7 @@ function InvitationPublicShell({ invitationId, children }: { invitationId: strin
   return <main className="product-page member-tables-page public-table-page">
     <header className="product-topbar">
       <a className="brand" href="/" aria-label="Fifth Wheel home"><span className="brand-mark">FW</span><span className="brand-name">fifth wheel<span className="brand-period">.</span></span></a>
-      <div className="product-topbar-actions"><span className="product-workspace-label">TABLE INVITATION</span><a className="account-action" href={`/sign-in?returnTo=${encodeURIComponent(continuation)}`}>Sign in<ArrowRight aria-hidden="true" /></a></div>
+      <div className="product-topbar-actions"><a className="account-action" href={`/sign-in?returnTo=${encodeURIComponent(continuation)}`}>Sign in<ArrowRight aria-hidden="true" /></a></div>
     </header>
     <div className="public-table-content">{children}</div>
   </main>;
@@ -263,8 +260,8 @@ export function AdminTableInvitationDeliveryWorkspace() {
   }
 
   return <AppShell role="admin" active="invitations" className="table-invitation-admin-page">
-      <div className="product-breadcrumb">Operations<span>›</span>Table invitation delivery</div>
-      <div className="page-heading-row table-invitation-admin-heading"><div><h1>Invitation emails</h1><p className="page-intro">Status of each invitation email. “Sent” means Resend accepted it, not that it reached the inbox.</p></div><button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button></div>
+      <PageHeader className="table-invitation-admin-heading" title="Invitation emails" description="Invitation emails and whether they were delivered. “Sent” means our email service accepted it." actions={<button className="icon-action" type="button" aria-label="Refresh invitations" onClick={() => void load()} disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
+      <EmailTabs current="invitations" />
       {message && <div className="table-invitation-alert" role="status"><CircleAlert aria-hidden="true" />{message}</div>}
       {state === "loading" && <InvitationState icon={<LoaderCircle className="spin" />} title="Loading…" />}
       {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}
@@ -275,9 +272,9 @@ export function AdminTableInvitationDeliveryWorkspace() {
         const delivery = deliveryCopy(item.delivery.state);
         return <article className="admin-invitation-card" key={item.invitationId}>
           <div className="admin-invitation-main"><span className="admin-invitation-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">{item.invitationState === "active" ? "OPEN" : item.invitationState === "revoked" ? "WITHDRAWN" : "CLOSED"}</p><h2>{item.guest.displayName}</h2><p className="table-card-meta"><Table2 aria-hidden="true" />{item.table.title}<span>·</span><CalendarDays aria-hidden="true" />{dateLabel(item.table.localDate)}<span>·</span><MapPin aria-hidden="true" />{item.table.neighborhood}</p></div></div>
-          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.delivery.lastAttemptAt))}` : " · not sent yet"}</small></div>
+          <div className={`admin-invitation-delivery tone-${delivery.tone}`}><strong>{delivery.label}</strong><span>{delivery.detail}</span><small>{item.delivery.attemptCount} {item.delivery.attemptCount === 1 ? "attempt" : "attempts"}{item.delivery.lastAttemptAt ? ` · last ${timestamp(item.delivery.lastAttemptAt)}` : " · not sent yet"}</small></div>
           {item.delivery.safeErrorCode && <p className="admin-invitation-safe-error">Error code: {item.delivery.safeErrorCode.replaceAll("_", " ")}</p>}
-          <details className="admin-invitation-attempts"><summary>History <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(attempt.startedAt))}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
+          <details className="admin-invitation-attempts"><summary>History <span>({item.attempts.length})</span></summary><ol>{item.attempts.map((attempt) => <li key={attempt.attemptNumber}><span>Attempt {attempt.attemptNumber} · {attempt.state}</span><time>{timestamp(attempt.startedAt)}</time>{attempt.safeErrorCode && <small>{attempt.safeErrorCode.replaceAll("_", " ")}</small>}</li>)}</ol></details>
           {item.delivery.state === "failed" ? <button className="button button-outline admin-invitation-retry" type="button" onClick={() => void retry(item)} disabled={retryId === item.invitationId || item.invitationState !== "active"}>{retryId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{retryId === item.invitationId ? "Sending…" : "Send again"}</button>
               : item.delivery.state === "unknown" ? <><p className="admin-invitation-recovery-note"><CircleAlert aria-hidden="true" />We don’t know if this was sent. Checking won’t send another email.</p><button className="button button-outline admin-invitation-retry" type="button" onClick={() => void reconcile(item)} disabled={reconcileId === item.invitationId}>{reconcileId === item.invitationId ? <LoaderCircle className="spin" /> : <RefreshCw />}{reconcileId === item.invitationId ? "Checking…" : "Check status"}</button></>
               : null}

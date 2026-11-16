@@ -82,6 +82,15 @@ test("W06.3–W06.4 roster queue/detail/approval UI uses intercepted contract fi
     await expect(adminPage.getByText("Riley Morgan")).toBeVisible();
     await expect(adminPage.getByText("A selected profile needs current administrator approval.")).toBeVisible();
     await expect(adminPage.getByText("Group works")).toBeVisible();
+    // T-19: one Selected panel holds the picks, rule check and primary action; applicants only flag problems.
+    const selectedPane = adminPage.locator("#roster-selected");
+    await expect(selectedPane.getByRole("heading", { name: /Selected \(3 of 3–5\)/ })).toBeVisible();
+    await expect(selectedPane.getByText("Group works")).toBeVisible();
+    await expect(selectedPane.getByRole("button", { name: "Approve roster" })).toBeVisible();
+    await expect(selectedPane.getByText("Works", { exact: true })).toHaveCount(0);
+    await expect(adminPage.locator(".roster-applicant").filter({ hasText: "Maya Chen" }).getByText("Eligible")).toHaveCount(0);
+    await expect(adminPage.locator(".roster-applicant").filter({ hasText: "Riley Morgan" }).getByText("Needs review")).toBeVisible();
+    await expect(adminPage.getByText("This proposal is read-only for your current workspace permissions.")).toHaveCount(0);
     await expect(adminPage.getByRole("button", { name: "Approve roster" })).toBeVisible();
     await adminPage.getByRole("button", { name: "Approve roster" }).click();
     const dialog = adminPage.getByRole("dialog", { name: "Approve this roster?" });

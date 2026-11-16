@@ -1,5 +1,7 @@
 import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
+import { PageHeader } from "./ui/page-header";
 import {
   ArrowRight,
   BadgeCheck,
@@ -594,23 +596,22 @@ export function ProfileWorkspace() {
   const submitDisabled = !profile || !draft || dirty || hasBlockingFields || profile.identityStatus === "submitted" || submitState === "submitting" || Object.values(uploadState).some(Boolean);
 
   return <AppShell role="guest" accountActive contentClassName="profile-content" labelledBy="profile-heading">
-        <div className="product-breadcrumb">Member <span>/</span> Account <span>/</span> Profile</div>
-        {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading your profile</h2><p>Your saved details and review status are being checked.</p></section>}
-        {loadState === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to view your profile</h2><p>This page is available to the member account connected to your app invitation.</p><a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-        {loadState === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>You don’t have access yet</h2><p>If you’re on the waitlist, we’ll email you when you’re in.</p><a className="button button-outline" href="/member">Back to home<ArrowRight aria-hidden="true" /></a></section>}
-        {loadState === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Your profile could not load</h2><p>Your saved information has not been changed. Try again when service is available.</p><button className="button button-outline" type="button" onClick={() => void loadProfile()}>Try again<ArrowRight aria-hidden="true" /></button></section>}
+        {loadState === "loading" && <PageState variant="loading" title="Loading your profile" message="Your saved details and review status are being checked." />}
+        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your profile" message="Sign in with the email you used to join." action={<a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {loadState === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you’re on the waitlist, we’ll email you when you’re in." action={<a className="button button-outline" href="/member">Back to home<ArrowRight aria-hidden="true" /></a>} />}
+        {loadState === "error" && <PageState variant="error" title="Your profile could not load" message="Your saved information has not been changed. Try again when service is available." action={<button className="button button-outline" type="button" onClick={() => void loadProfile()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
         {loadState === "ready" && profile && draft && <>
-          <div className="page-heading-row profile-heading-row"><div><p className="eyebrow">ACCOUNT / PROFILE</p><h1 id="profile-heading">A good introduction<br /><em>starts with you.</em></h1><p className="page-intro">Tell us who you are and who you would like to meet. These details stay private.</p></div><span className={`status-pill ${profile.identityStatus === "approved" ? "status-pill-success" : profile.identityStatus === "resubmission_required" ? "status-pill-alert" : ""}`}>{statusLabel(profile.identityStatus)}</span></div>
+          <PageHeader titleId="profile-heading" title="Your profile" description="Only you and the Fifth Wheel team can see this." />
           <section className="profile-review-status" aria-label="Identity review status" data-status={profile.identityStatus}>
-            <span className="profile-status-icon">{profile.identityStatus === "approved" ? <BadgeCheck aria-hidden="true" /> : profile.identityStatus === "submitted" ? <Clock3 aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}</span>
-            <div><p className="eyebrow">PROFILE REVIEW</p><h2>{profile.identityStatus === "approved" ? "Approved" : profile.identityStatus === "submitted" ? "In review" : profile.identityStatus === "resubmission_required" ? "Changes needed" : "Not submitted"}</h2><p>{statusCopy(profile.identityStatus)}</p>{profile.latestCorrectionReason && profile.identityStatus === "resubmission_required" && <p className="correction-reason"><strong>Requested correction:</strong> {profile.latestCorrectionReason}</p>}</div>
+            <div><h2>{profile.identityStatus === "approved" ? "Approved" : profile.identityStatus === "submitted" ? "In review" : profile.identityStatus === "resubmission_required" ? "Changes needed" : "Not submitted"}</h2><p>{statusCopy(profile.identityStatus)}</p>{profile.latestCorrectionReason && profile.identityStatus === "resubmission_required" && <p className="correction-reason"><strong>Requested correction:</strong> {profile.latestCorrectionReason}</p>}</div>
           </section>
           {currentApproved && returnTo && <p className="profile-version-guidance"><Table2 aria-hidden="true" /><span>{returnTo === "/tables" ? "Your profile is approved. Continue browsing Tables." : "Your profile is approved. Continue to the Table you selected."}</span><a className="text-action" href={returnTo}>{returnTo === "/tables" ? "Continue to Tables" : "Continue to Table"}<ArrowRight aria-hidden="true" /></a></p>}
-          <p className="profile-version-guidance"><ShieldCheck aria-hidden="true" /><span>Changing your date of birth, gender, photos or selfie means we’ll review your profile again. Other changes don’t.</span></p>
+          {profile.identityStatus === "approved" && <p className="profile-version-guidance"><ShieldCheck aria-hidden="true" /><span>Changing your date of birth, gender, photos or selfie means we’ll review your profile again. Other changes don’t.</span></p>}
+          {profile.missingFields.length > 0 && <section className="profile-missing-summary" id="profile-missing" tabIndex={-1} aria-label="Profile completion requirements"><p className="eyebrow">STILL NEEDED</p><ul>{profile.missingFields.map((field) => <li key={field}>{friendlyMissingField(field)}</li>)}</ul></section>}
           {currentApproved && profile.files.some((file) => file.state === "deleted") && <p className="evidence-retention-note"><ShieldCheck aria-hidden="true" />We remove review images on a set schedule. Your approved profile stays approved after they are removed. Changes to your identity details need another review.</p>}
           <form className="profile-form" onSubmit={(event) => { event.preventDefault(); void saveProfile(); }} noValidate>
             <section className="profile-section" aria-labelledby="profile-basics-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><UserRound aria-hidden="true" /></span><div><p className="eyebrow">01 / ABOUT YOU</p><h2 id="profile-basics-heading">The essentials</h2><p>Required for a complete member profile.</p></div></div>
+              <h2 className="profile-section-title" id="profile-basics-heading">About you</h2>
               <div className="profile-form-grid">
                 <Field id="firstName" label="First name" error={fieldMessage(serverErrors, "firstName")}><input id="firstName" name="firstName" autoComplete="given-name" maxLength={100} value={draft.firstName} onChange={(event) => updateDraft("firstName", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "firstName"))} /></Field>
                 <Field id="lastName" label="Last name" error={fieldMessage(serverErrors, "lastName")}><input id="lastName" name="lastName" autoComplete="family-name" maxLength={100} value={draft.lastName} onChange={(event) => updateDraft("lastName", event.currentTarget.value)} aria-invalid={Boolean(fieldMessage(serverErrors, "lastName"))} /></Field>
@@ -623,7 +624,7 @@ export function ProfileWorkspace() {
             </section>
 
             <section className="profile-section" aria-labelledby="profile-preferences-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><ImagePlus aria-hidden="true" /></span><div><p className="eyebrow">02 / YOUR PREFERENCES</p><h2 id="profile-preferences-heading">Who you would like to meet</h2><p>Choose all that apply.</p></div></div>
+              <h2 className="profile-section-title" id="profile-preferences-heading">Who you’d like to meet</h2>
               <ChoiceGroup id="openTo" legend="I’m open to meeting" description="Choose all that apply." error={fieldMessage(serverErrors, "openTo")}>
                 {openToOptions.map((item) => <label className="choice-card" key={item.value}><input type="checkbox" name="openTo" value={item.value} checked={draft.openTo.includes(item.value)} onChange={(event) => updateDraft("openTo", event.currentTarget.checked ? [...draft.openTo, item.value] : draft.openTo.filter((value) => value !== item.value))} /><span>{item.label}</span></label>)}
               </ChoiceGroup>
@@ -641,7 +642,7 @@ export function ProfileWorkspace() {
             </section>
 
             <section className="profile-section" aria-labelledby="profile-details-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><Camera aria-hidden="true" /></span><div><p className="eyebrow">03 / MORE ABOUT YOU</p><h2 id="profile-details-heading">A little more, if you like</h2><p>These details are optional and are not automated eligibility filters.</p></div></div>
+              <h2 className="profile-section-title" id="profile-details-heading">More about you (optional)</h2>
               <div className="profile-form-grid">
                 <Field id="phone" label="Phone number" hint="Optional."><input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={40} value={draft.phone} onChange={(event) => updateDraft("phone", event.currentTarget.value)} /></Field>
                 <Field id="oneLiner" label="One-line introduction" hint="Optional."><input id="oneLiner" name="oneLiner" maxLength={240} value={draft.oneLiner} onChange={(event) => updateDraft("oneLiner", event.currentTarget.value)} /></Field>
@@ -649,16 +650,16 @@ export function ProfileWorkspace() {
             </section>
 
             <section className="profile-section evidence-section" aria-labelledby="profile-evidence-heading">
-              <div className="profile-section-heading"><span className="profile-section-icon"><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">04 / PHOTOS FOR REVIEW</p><h2 id="profile-evidence-heading">Photos for review</h2><p>Only Fifth Wheel staff see these. We compare your photos and selfie by hand. We don’t check ID or run background checks.</p></div></div>
+              <h2 className="profile-section-title" id="profile-evidence-heading">Photos for review</h2><p className="profile-section-note">Only Fifth Wheel staff see these. We compare your photos and selfie by hand. We don’t check ID or run background checks.</p>
               <EvidenceUpload kind="photo" title="Profile photos" description="Add at least one clear photo. Up to six." files={photoFiles} busyFile={fileBusy} uploadMessage={uploadState.photo} previewUrls={previewUrls} onUpload={(file) => void uploadFile("photo", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
               <EvidenceUpload kind="selfie" title="Private selfie" description="A separate selfie is required for the review team." files={selfieFiles} busyFile={fileBusy} uploadMessage={uploadState.selfie} previewUrls={previewUrls} onUpload={(file) => void uploadFile("selfie", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
               {fileError && <p className="form-error file-error" role="alert"><CircleAlert aria-hidden="true" />{fileError}</p>}
               <p className="profile-privacy-note"><ShieldCheck aria-hidden="true" />We remove hidden image details before review and delete the images on a set schedule. Your approved profile stays complete after the images are removed unless your identity details change.</p>
             </section>
 
-            {profile.missingFields.length > 0 && <section className="profile-missing-summary" aria-label="Profile completion requirements"><p className="eyebrow">STILL NEEDED</p><ul>{profile.missingFields.map((field) => <li key={field}>{friendlyMissingField(field)}</li>)}</ul></section>}
             {formMessage && <div className={`profile-feedback ${saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? "profile-feedback-error" : ""}`} role={saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? "alert" : "status"} aria-live="polite">{saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? <CircleAlert aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}{formMessage}{(saveState === "conflict" || submitState === "conflict") && <button className="text-action" type="button" onClick={() => void loadProfile()}>Reload current profile</button>}</div>}
-            <div className="profile-form-actions">
+            <div className="profile-form-actions profile-action-bar">
+              {submitDisabled && profile.missingFields.length > 0 && <a className="profile-missing-link" href="#profile-missing" onClick={() => document.getElementById("profile-missing")?.focus()}>{profile.missingFields.length} {profile.missingFields.length === 1 ? "item" : "items"} still needed</a>}
               <button className="button button-outline" type="button" onClick={() => void saveProfile()} disabled={!dirty || saveState === "saving"}>
                 {saveState === "saving" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{saveState === "saving" ? "Saving…" : "Save changes"}
               </button>

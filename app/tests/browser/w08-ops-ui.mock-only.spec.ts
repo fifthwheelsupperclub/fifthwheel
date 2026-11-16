@@ -38,7 +38,7 @@ test("admin decisions: blockers disable proceed, a valid Table proceeds with one
   await page.goto("/admin/table-decisions");
   await expect(page.getByRole("heading", { name: "Table decisions" })).toBeVisible();
   await expect(page.getByText("Needs 3–5 paid guests")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Confirm table" }).nth(1)).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Confirm table" })).toHaveCount(1);
   await page.screenshot({ path: `${shots}/w08-table-decisions-desktop-mock-only.png`, fullPage: true });
   await page.getByRole("button", { name: "Confirm table" }).first().click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
@@ -65,10 +65,13 @@ test("host attendance: check-in, flag, and the closed-until-proceeding state", a
   await expect(page.getByText("Check-in opens once staff record")).toBeVisible();
   await expect(page.getByRole("button", { name: "Check in" }).first()).toBeDisabled();
   await expect(page.getByText("Maya")).toBeVisible();
+  await expect(page.getByText("0 of 2")).toBeVisible();
   canCheckIn = true;
   await page.reload();
   await page.getByRole("button", { name: "Check in" }).first().click();
   await expect(page.getByText(/Checked in/)).toBeVisible();
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await expect(page.getByText("Flag a cancellation request to bring it")).toHaveCount(0);
   await page.getByRole("button", { name: "Flag for admin" }).click();
   await expect(page.getByText(/flagged for admin/)).toBeVisible();
   expect(seen.find((s) => s.path.endsWith("/check-in"))?.body).toEqual({ seatId: seatA });
@@ -107,6 +110,7 @@ test("restaurant workspace shows service counts and host contact without guest d
     services: [{ tableId, title: "Autumn Table", role: "drinks", serviceLocalDate: "2026-12-12", serviceLocalTime: "19:00", paidCount: 4, status: "proceeding", notes: "Reserve the back table",
       hostContacts: [{ displayName: "Hannah Host", businessContact: "hannah@host.example" }] }] }) }, []);
   await page.goto("/restaurant");
+  await expect(page.getByRole("heading", { name: "Service times", level: 1 })).toBeVisible();
   await expect(page.getByText("4 guests expected")).toBeVisible();
   await expect(page.getByText(/hannah@host.example/)).toBeVisible();
   await expect(page.getByText("Reserve the back table")).toBeVisible();

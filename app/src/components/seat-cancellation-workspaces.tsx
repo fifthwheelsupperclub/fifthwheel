@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { PageState } from "./ui/page-state";
+import { eventWhen, instantDate, timestamp } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Ticket, UserRound, Wallet } from "lucide-react";
@@ -83,7 +86,7 @@ async function getJson<T>(url: string, parse: (data: unknown) => T | null): Prom
   return { response, envelope: parseEnvelope(await response.json().catch(() => null), parse) };
 }
 function money(cents: number): string { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100); }
-function dateLabel(value: string): string { return new Intl.DateTimeFormat("en-US", { dateStyle: "full", timeStyle: "short" }).format(new Date(value)); }
+const dateLabel = (value: string) => timestamp(value);
 function requestReason(reason: RequestAvailabilityReason): string {
   switch (reason) {
     case "available": return "";
@@ -158,25 +161,24 @@ export function MemberSeatCancellationWorkspace({ seatId }: { seatId: string }) 
       const envelope = parseEnvelope(await response.json().catch(() => null), parseRequest);
       if (!response.ok || !envelope) throw new Error("We could not confirm the cancellation request. Refresh to check its saved status.");
       if (!envelope.ok) { setMessage(envelope.error.safeMessage); return; }
-      setReason(""); await load(); setMessage("Request sent. We’ll let you know.");
+      setReason(""); await load();
     } catch (error) { setMessage(error instanceof Error ? error.message : "We could not confirm the cancellation request."); }
     finally { setBusy(false); }
   };
   const pendingRequest = data?.items.find((item) => item.state === "pending") ?? null;
   return <MemberWorkspaceShell active="seats"><div className="cancellation-page">
-    <div className="product-breadcrumb"><Link to="/my-seats/$seatId" params={{ seatId }}>My Seats</Link><span>›</span><span>Cancellation request</span></div>
+    <Link to="/my-seats/$seatId" params={{ seatId }} className="page-header-back"><ArrowLeft aria-hidden="true" />My Seats</Link>
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading cancellation status" detail="Checking your saved request and Seat availability." />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Cancellation requests are private to the member account that owns this Seat." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/my-seats/${seatId}/cancellation`)}`}>Sign in<ArrowRight aria-hidden="true" /></a>} />}
     {state === "forbidden" && <CancellationState icon={<ShieldCheck />} title="This Seat is not available to this account" detail="Check that you signed in with the member account that owns this Seat." />}
     {state === "not_found" && <CancellationState icon={<Ticket />} title="Seat not found" detail="This Seat is not available to the current account." action={<Link className="button button-outline" to="/my-seats">Back to My Seats</Link>} />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="Cancellation status is unavailable" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>
-      <header className="cancellation-heading"><h1>Ask to cancel</h1><p>We’ll review your request and let you know here and by email.</p></header>
+      <PageHeader title={pendingRequest ? "Cancellation requested" : data.items[0]?.state === "approved" ? "Cancellation approved" : data.items[0]?.state === "denied" ? "Cancellation declined" : "Ask to cancel"} description={pendingRequest ? undefined : data.requestAvailability.canRequest ? "We’ll review your request and let you know here and by email." : undefined} />
       {pendingRequest && <section className="cancellation-retention-note" role="note"><CheckCircle2 aria-hidden="true" /><div>{data.seatState === "completed" ? <><strong>The Table is complete.</strong><p>Your cancellation request remains under review.</p></> : data.seatState === "cancelled" ? <><strong>The Table and your Seat have been cancelled.</strong><p>Your cancellation request remains under review.</p></> : <><strong>Your seat is still yours until we decide.</strong><p>You can still come and vote.</p></>}</div></section>}
       {message && <p className="cancellation-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
-      {data.items.length > 0 && <section className="cancellation-request-card"><p className="eyebrow">REQUEST HISTORY</p><h2>{pendingRequest ? "Request history" : "Previous requests"}</h2><ol className="cancellation-history">{data.items.map((item) => <li key={item.requestId}><div className="cancellation-history-heading"><strong>{stateTitle(item.state)}</strong><time dateTime={item.requestedAt}>{dateLabel(item.requestedAt)}</time></div>{item.memberReason && <div className="cancellation-reason"><strong>Your note</strong><p>{item.memberReason}</p></div>}{item.memberSafeReason && <div className="cancellation-reason"><strong>Team response</strong><p>{item.memberSafeReason}</p></div>}{item.state === "approved" && <ApprovedRefundMessage refundCents={item.refundCents} />}</li>)}</ol></section>}
+      {data.items.length > 0 && <section className="cancellation-request-card"><h2>{pendingRequest ? "Your request" : "Previous requests"}</h2><ol className="cancellation-history">{data.items.map((item) => <li key={item.requestId}><div className="cancellation-history-heading"><strong>{stateTitle(item.state)}</strong><time dateTime={item.requestedAt}>{dateLabel(item.requestedAt)}</time></div>{item.memberReason && <div className="cancellation-reason"><strong>Your note</strong><p>{item.memberReason}</p></div>}{item.memberSafeReason && <div className="cancellation-reason"><strong>Team response</strong><p>{item.memberSafeReason}</p></div>}{item.state === "approved" && <ApprovedRefundMessage refundCents={item.refundCents} />}</li>)}</ol></section>}
       {data.requestAvailability.canRequest ? <section className="cancellation-request-card"><h2>{data.items.length > 0 ? "Ask again" : "Ask to cancel this seat"}</h2><p>We’ll decide whether to cancel your seat and whether you’ll get a refund.</p>{requestReason(data.requestAvailability.reason) && <div className="cancellation-availability available" role="status"><Clock3 aria-hidden="true" />{requestReason(data.requestAvailability.reason)}</div>}<form onSubmit={submit} className="cancellation-form"><label htmlFor="cancellation-member-reason">Anything we should know? (optional)</label><textarea id="cancellation-member-reason" rows={4} maxLength={2000} value={reason} onChange={(event) => setReason(event.currentTarget.value)} placeholder="" /><span className="cancellation-count">{reason.length}/2000</span><button className="button button-primary" type="submit" disabled={busy || Boolean(pendingRequest)}>{busy ? <LoaderCircle className="member-seat-spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{busy ? "Sending…" : "Send request"}</button></form></section> : !pendingRequest && <section className="cancellation-request-card"><div className="cancellation-availability unavailable" role="status"><Clock3 aria-hidden="true" />{requestReason(data.requestAvailability.reason)}</div></section>}
-      <div className="cancellation-footer-actions"><Link className="button button-outline" to="/my-seats/$seatId" params={{ seatId }}><ArrowLeft aria-hidden="true" />Back to Seat details</Link><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
     </>}
   </div></MemberWorkspaceShell>;
 }
@@ -204,8 +206,7 @@ export function AdminCancellationsQueue() {
   }, []);
   useEffect(() => { void load(); }, [load]);
   return <AdminCancellationShell active="queue"><div className="cancellation-admin-page">
-    <div className="product-breadcrumb"><span>ADMIN WORKSPACE</span><span>›</span><span>Cancellations</span></div>
-    <header className="cancellation-heading"><p className="eyebrow"></p><h1>Cancellation requests</h1><p>Decide whether to cancel each seat and how much to refund.</p></header>
+    <PageHeader title="Cancellation requests" description="Decide whether to cancel each seat and how much to refund." />
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Fcancellations">Sign in</a>} />}
     {state === "forbidden" && <CancellationState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can decide cancellations and refunds." />}
@@ -215,7 +216,7 @@ export function AdminCancellationsQueue() {
 }
 
 function AdminCancellationCard({ item }: { item: AdminCancellationQueueItemDTO }) {
-  return <article className="cancellation-admin-card"><div className="cancellation-admin-card-main"><span className="cancellation-admin-avatar"><UserRound aria-hidden="true" /></span><div><p className="eyebrow">REQUESTED {new Date(item.request.requestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p><h2>{item.member.displayName}</h2><p>{item.table.title} · {item.table.localDate} · {item.table.startLocalTime}</p><p className="cancellation-admin-seat"><Ticket aria-hidden="true" />{adminSeatStatusLabel(item.seat.state)} · Paid {money(item.seat.amountCents)} · Refundable {money(item.seat.refundAvailableCents)}</p></div></div><Link className="button button-outline" to="/admin/cancellations/$requestId" params={{ requestId: item.request.requestId }}>Review request<ArrowRight aria-hidden="true" /></Link></article>;
+  return <article className="cancellation-admin-card"><div className="cancellation-admin-card-main"><span className="cancellation-admin-avatar"><UserRound aria-hidden="true" /></span><div><p className="eyebrow">REQUESTED {instantDate(item.request.requestedAt)}</p><h2>{item.member.displayName}</h2><p>{item.table.title} · {eventWhen(item.table.localDate, item.table.startLocalTime)}</p><p className="cancellation-admin-seat"><Ticket aria-hidden="true" />{adminSeatStatusLabel(item.seat.state)} · Paid {money(item.seat.amountCents)} · Refundable {money(item.seat.refundAvailableCents)}</p></div></div><Link className="button button-outline" to="/admin/cancellations/$requestId" params={{ requestId: item.request.requestId }}>Review request<ArrowRight aria-hidden="true" /></Link></article>;
 }
 
 export function AdminCancellationDetail({ requestId }: { requestId: string }) {
@@ -255,31 +256,31 @@ export function AdminCancellationDetail({ requestId }: { requestId: string }) {
     finally { setBusy(false); }
   };
   return <AdminCancellationShell active="detail"><div className="cancellation-admin-page">
-    <div className="product-breadcrumb"><Link to="/admin/cancellations">Cancellations</Link><span>›</span><span>Review request</span></div>
+    <Link to="/admin/cancellations" className="page-header-back"><ArrowLeft aria-hidden="true" />Cancellations</Link>
     {state === "loading" && <CancellationState icon={<LoaderCircle className="member-seat-spin" />} title="Loading…" />}
     {state === "unauthenticated" && <CancellationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." />}
     {state === "forbidden" && <CancellationState icon={<ShieldCheck />} title="You don’t have access to this page" detail="Only admins can decide cancellations and refunds." />}
     {state === "not_found" && <CancellationState icon={<Ticket />} title="Request not found" detail="It may have been removed or is outside this workspace." action={<Link className="button button-outline" to="/admin/cancellations">Back to queue</Link>} />}
     {state === "error" && <CancellationState icon={<AlertCircle />} title="We couldn’t load this request" detail={message} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
     {state === "ready" && data && <>
-      <header className="cancellation-heading"><p className="eyebrow">REQUEST</p><h1>{data.member.displayName}</h1><p>{data.table.title} · {data.table.localDate} · {data.table.startLocalTime}</p></header>
+      <PageHeader title={data.member.displayName} description={<>{data.table.title} · {eventWhen(data.table.localDate, data.table.startLocalTime)}</>} />
       {message && <p className="cancellation-alert" role="status"><CheckCircle2 aria-hidden="true" />{message}</p>}
       <section className="cancellation-admin-context"><div><p className="eyebrow">SEAT</p><h2>{data.seat.state.replaceAll("_", " ")}</h2><p>Paid {money(data.seat.amountCents)} · Refundable {money(data.refundBalance.refundAvailableCents)}</p></div><div><p className="eyebrow">REQUESTED</p><p>{dateLabel(data.request.requestedAt)}</p></div>{data.request.memberReason && <div className="cancellation-admin-member-note"><p className="eyebrow">THEIR NOTE</p><p>{data.request.memberReason}</p></div>}</section>
       {data.request.memberSafeReason && <section className="cancellation-admin-context"><div><p className="eyebrow">YOUR REPLY</p><p>{data.request.memberSafeReason}</p></div></section>}
       {data.request.state === "pending" ? <section className="cancellation-decision-card"><p className="eyebrow">DECISION</p><h2>Cancel this seat?</h2><p> {denialSeatOutcome(data.seat.state)} Approving adds the refund to Refunds. Send it from there.</p>
-        <label htmlFor="cancellation-safe-reason">Message to the guest</label><textarea id="cancellation-safe-reason" maxLength={500} rows={4} value={safeReason} onChange={(event) => setSafeReason(event.currentTarget.value)} placeholder="They’ll see this." />
         <div className="cancellation-refund-field"><span>Refund decision</span><label><input type="radio" name="refund-choice" checked={refundChoice === "full"} onChange={() => setRefundChoice("full")} />Full refund · {money(data.refundBalance.refundAvailableCents)}</label><label><input type="radio" name="refund-choice" checked={refundChoice === "partial"} onChange={() => setRefundChoice("partial")} />Partial refund</label>{refundChoice === "partial" && <label className="cancellation-partial-input">Refund amount in dollars<input inputMode="decimal" type="number" min="0.01" max={(data.refundBalance.refundAvailableCents / 100).toFixed(2)} step="0.01" value={partialDollars} onChange={(event) => setPartialDollars(event.currentTarget.value)} /></label>}<label><input type="radio" name="refund-choice" checked={refundChoice === "none"} onChange={() => setRefundChoice("none")} />No refund</label><p>Amount still available to refund: {money(data.refundBalance.refundAvailableCents)}. Amount already owed for other refunds: {money(data.refundBalance.refundCommittedCents)}.</p></div>
+        <label htmlFor="cancellation-safe-reason">Message to the guest</label><textarea id="cancellation-safe-reason" maxLength={500} rows={4} value={safeReason} onChange={(event) => setSafeReason(event.currentTarget.value)} placeholder="They’ll see this." />
         <div className="cancellation-decision-actions"><button className="button button-outline" type="button" disabled={busy} onClick={() => setDecision("deny")}>{denialButtonLabel(data.seat.state)}</button><button className="button button-primary" type="button" disabled={busy || safeReason.trim().length < 3 || refundChoice === null || refundChoice === "partial" && amount <= 0 || amount > data.refundBalance.refundAvailableCents} onClick={() => setDecision("approve")}>Approve cancellation<ArrowRight aria-hidden="true" /></button></div>
-        {decision && <div className="cancellation-confirm" role="alertdialog" aria-labelledby="cancellation-confirm-title"><h3 id="cancellation-confirm-title">{decision === "approve" ? "Approve this cancellation?" : "Decline this request?"}</h3><p>{decision === "approve" ? `The seat will be cancelled. ${amount > 0 ? `Approving adds a ${money(amount)} refund to Refunds. Send it from there.` : "No refund will be added."}` : `${denialSeatOutcome(data.seat.state)} No refund will be added.`}</p><p className="cancellation-confirm-reason">Member will see: “{safeReason.trim()}”</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => setDecision(null)}>Back</button><button className="button button-primary" type="button" disabled={busy || safeReason.trim().length < 1 || decision === "approve" && (refundChoice === "partial" && amount <= 0 || amount > data.refundBalance.refundAvailableCents)} onClick={() => void submitDecision()}>{busy ? "Saving…" : decision === "approve" ? "Approve" : "Decline"}</button></div></div>}
+        {decision && <div className="cancellation-confirm" role="alertdialog" aria-labelledby="cancellation-confirm-title"><h3 id="cancellation-confirm-title">{decision === "approve" ? "Approve this cancellation?" : "Decline this request?"}</h3><p>{decision === "approve" ? `The seat will be cancelled. ${amount > 0 ? `Approving adds a ${money(amount)} refund to Refunds. Send it from there.` : "No refund will be added."}` : `${denialSeatOutcome(data.seat.state)} No refund will be added.`}</p><p className="cancellation-confirm-reason">Guest will see: “{safeReason.trim()}”</p><div><button className="button button-outline" type="button" disabled={busy} onClick={() => setDecision(null)}>Back</button><button className="button button-primary" type="button" disabled={busy || safeReason.trim().length < 1 || decision === "approve" && (refundChoice === "partial" && amount <= 0 || amount > data.refundBalance.refundAvailableCents)} onClick={() => void submitDecision()}>{busy ? "Saving…" : decision === "approve" ? "Approve" : "Decline"}</button></div></div>}
       </section> : <section className="cancellation-request-card"><p className="eyebrow">DECISION SAVED</p><h2>{data.request.state === "approved" ? "Approved" : deniedSeatHeading(data.seat.state)}</h2>{data.request.memberSafeReason && <p>{data.request.memberSafeReason}</p>}{data.request.state === "approved" && data.request.refundCents !== null && <p>{data.request.refundCents === 0 ? "No refund." : `${money(data.request.refundCents)} refund added to Refunds. Send it from there.`}</p>}</section>}
-      <div className="cancellation-footer-actions"><Link className="button button-outline" to="/admin/cancellations"><ArrowLeft aria-hidden="true" />Back to queue</Link><button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
     </>}
   </div></AdminCancellationShell>;
 }
 
 function parseDollars(value: string): number { if (!/^\d{1,2}(?:\.\d{1,2})?$/.test(value)) return 0; return Math.round(Number(value) * 100); }
-function CancellationState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail?: string; action?: ReactNode }) {
-  return <section className="cancellation-state" role="status"><span>{icon}</span><h2>{title}</h2>{detail && <p>{detail}</p>}{action}</section>;
+function CancellationState({ title, detail, action }: { icon?: ReactNode; title: string; detail?: string; action?: ReactNode }) {
+  const variant = /^Loading/.test(title) ? "loading" : /couldn’t|unavailable/i.test(title) ? "error" : /^Sign in/.test(title) ? "signed-out" : /access|available to this account/i.test(title) ? "no-access" : "empty";
+  return <PageState variant={variant} title={title} message={detail} action={action} />;
 }
 function AdminCancellationShell({ children }: { active: "queue" | "detail"; children: ReactNode }) {
   return <AppShell role="admin" active="cancellations" className="cancellation-admin-workspace" contentClassName="cancellation-admin-content">{children}</AppShell>;

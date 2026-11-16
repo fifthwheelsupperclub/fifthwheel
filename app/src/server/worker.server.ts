@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "node:process";
 import { deliverNotices } from "./notice-delivery.server.ts";
 import { createNoticeSender } from "./notice-sender.server.ts";
+import { createReconciliationRuntime } from "./stripe-reconciliation.server.ts";
 import { createRefundWorkerRuntime } from "./refunds-runtime.server.ts";
 import { createTableInvitationDeliveryWorkerRuntime } from "./table-invitations-runtime.server.ts";
 
@@ -14,6 +15,7 @@ export type WorkerDeps = Readonly<{
   purgeVotes?: () => Promise<unknown>;
   deliverNotices?: () => Promise<unknown>;
   runRetention?: () => Promise<unknown>;
+  reconcile?: () => Promise<unknown>;
   recordHeartbeat?: (ok: boolean, summary: Record<string, unknown>) => Promise<unknown>;
 }>;
 
@@ -58,11 +60,15 @@ export async function runWorkerPass(deps: WorkerDeps, refundsReady: boolean) {
   if (deps.runRetention) {
     try { summary.retention = await deps.runRetention(); } catch { summary.retention = "error"; }
   }
+  if (deps.reconcile) {
+    // Reported but not part of `ok`: a Stripe outage must not make the five-minute heartbeat look unhealthy. The overview flags a stale check instead.
+    try { summary.reconciliation = await deps.reconcile(); } catch { summary.reconciliation = "error"; }
+  }
   summary.ok = summary.invitations !== "error" && summary.refunds !== "error" && summary.votePurge !== "error" && summary.retention !== "error" && summary.notices !== "error";
   if (deps.recordHeartbeat) {
     // The heartbeat records that a pass ran (and whether it was clean); counts only, never content.
     const compact = (v: unknown) => (typeof v === "string" ? v : "ran");
-    const outcomes = Object.fromEntries(["invitations", "refunds", "votePurge", "notices", "retention"].filter((k) => summary[k] !== undefined).map((k) => [k, compact(summary[k])]));
+    const outcomes = Object.fromEntries(["invitations", "refunds", "votePurge", "notices", "retention", "reconciliation"].filter((k) => summary[k] !== undefined).map((k) => [k, compact(summary[k])]));
     try { await deps.recordHeartbeat(summary.ok === true, outcomes); }
     catch { summary.heartbeat = "error"; summary.ok = false; }
   }
@@ -72,12 +78,14 @@ export async function runWorkerPass(deps: WorkerDeps, refundsReady: boolean) {
 export async function handleWorkerRequest(request: Request, environment: Environment = env, deps?: WorkerDeps): Promise<Response> {
   const headers = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
   if (!isAuthorized(request, environment)) return Response.json({ ok: false }, { status: 401, headers });
+  const reconcile = deps ? undefined : createReconciliationRuntime(environment, (name, args) => rpc(environment, name, args ?? {}));
   const resolved: WorkerDeps = deps ?? {
     deliverInvitation: () => createTableInvitationDeliveryWorkerRuntime(environment).deliverNext(),
     runRefunds: () => createRefundWorkerRuntime(environment.REFUND_WORKER_SECRET ?? "", environment).runOnce(10),
     deliverNotices: () => { const sender = createNoticeSender(environment); return deliverNotices({ rpc: (name, args) => rpc(environment, name, args ?? {}), send: sender.send, appOrigin: sender.appOrigin }); },
     purgeVotes: () => rpc(environment, "purge_vote_data"),
     runRetention: () => rpc(environment, "run_retention"),
+    ...(reconcile ? { reconcile } : {}),
     recordHeartbeat: (ok, summary) => rpc(environment, "record_worker_heartbeat", { p_ok: ok, p_summary: summary }),
   };
   const summary = await runWorkerPass(resolved, environment.REFUND_WORKER_READY === "true");

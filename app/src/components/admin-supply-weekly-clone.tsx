@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { eventDate, timestamp } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, LoaderCircle, RefreshCw, ShieldCheck, Table2, Undo2, WifiOff } from "lucide-react";
 import type {
@@ -109,17 +111,8 @@ function defaultWeekStart(): string {
   const delta = (weekday + 6) % 7;
   return addDays(today, -delta);
 }
-function formatDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return "Date unavailable";
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(date);
-}
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "time unavailable";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
+const formatDate = (value: string) => eventDate(value);
+const formatTimestamp = (value: string) => timestamp(value);
 function stateLabel(state: WeeklyCloneOperationDTO["state"]): string {
   const labels: Record<WeeklyCloneOperationDTO["state"], string> = {
     running: "Copying drafts", partial: "Some drafts copied", outcome_unknown: "Result needs a check", completed: "Drafts copied",
@@ -343,16 +336,12 @@ export function AdminSupplyWeeklyClone() {
   }
 
   return <AppShell role="admin" active="tables"><div className="weekly-clone-page" data-client-ready={clientReady ? "true" : "false"}>
-    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Copy a week</div>
-    <header className="page-heading-row weekly-clone-heading">
-      <div><h1 id="weekly-clone-heading">Copy a week</h1><p className="page-intro">Copy draft tables from one week to another. Only drafts are copied.</p></div>
-      <span className="status-pill status-pill-neutral"><CalendarDays aria-hidden="true" />Atlanta calendar weeks</span>
-    </header>
+    <a href="/admin/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
+    <PageHeader className="weekly-clone-heading" titleId="weekly-clone-heading" title="Copy a week" description="Copy draft tables from one week to another. Only drafts are copied." />
 
-    <aside className="weekly-clone-trust-note"><ShieldCheck aria-hidden="true" /><div><strong>Drafts only</strong><p>Only drafts are copied.</p></div></aside>
 
     <section className="weekly-clone-card weekly-clone-schedule" aria-labelledby="weekly-preview-title">
-      <div className="weekly-clone-section-heading"><div><h2 id="weekly-preview-title">1 · Pick weeks</h2><p>Same day and time, different week.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />America/New_York</span></div>
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-preview-title">Pick weeks</h2><p>Same day and time, different week.</p></div><span className="weekly-clone-timezone"><Clock3 aria-hidden="true" />Atlanta time</span></div>
       <form className="weekly-clone-week-form" onSubmit={loadPreview}>
         <label className="weekly-clone-field"><span>Copy from (week of)</span><input type="date" value={sourceWeekStart} onChange={(event) => { setSourceWeekStart(event.currentTarget.value); setPreview(null); }} aria-describedby="weekly-source-hint" /><small id="weekly-source-hint">The preview includes draft records scheduled within this week.</small></label>
         <div className="weekly-clone-shift" aria-hidden="true"><ArrowRight /></div>
@@ -364,7 +353,7 @@ export function AdminSupplyWeeklyClone() {
     </section>
 
     {previewState === "ready" && preview && <section className="weekly-clone-card weekly-clone-preview" aria-labelledby="weekly-plan-title">
-      <div className="weekly-clone-section-heading"><div><p className="eyebrow">02 / REVIEW PLAN</p><h2 id="weekly-plan-title">Drafts to review</h2><p>{formatDate(preview.sourceWeekStart)} through {formatDate(addDays(preview.sourceWeekStart, 6))} → {formatDate(preview.targetWeekStart)} through {formatDate(addDays(preview.targetWeekStart, 6))} <span className="weekly-clone-delta">{dayDelta > 0 ? "+" : ""}{dayDelta} {Math.abs(dayDelta) === 1 ? "week" : "weeks"}</span></p></div><div className="weekly-clone-counts"><span><strong>{preview.eligibleCount}</strong> eligible</span><span><strong>{preview.conflictCount}</strong> need review</span></div></div>
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-plan-title">Drafts to review</h2><p>{formatDate(preview.sourceWeekStart)} through {formatDate(addDays(preview.sourceWeekStart, 6))} → {formatDate(preview.targetWeekStart)} through {formatDate(addDays(preview.targetWeekStart, 6))} <span className="weekly-clone-delta">{dayDelta > 0 ? "+" : ""}{dayDelta} {Math.abs(dayDelta) === 1 ? "week" : "weeks"}</span></p></div><div className="weekly-clone-counts"><span><strong>{preview.eligibleCount}</strong> eligible</span><span><strong>{preview.conflictCount}</strong> need review</span></div></div>
       <div className={`weekly-clone-provider ${preview.providerState === "fixture" ? "is-fixture" : ""}`} role="status">
         {preview.providerState === "fixture" ? <Check aria-hidden="true" /> : preview.providerState === "unavailable" ? <WifiOff aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
         <span>{preview.providerState === "fixture" ? "Test mode: changes don’t reach Airtable" : preview.providerState === "disabled_unmapped" ? "Airtable isn’t set up yet" : preview.providerState === "ready" ? "Editing is turned off here" : "Airtable is unavailable"}</span>
@@ -381,7 +370,7 @@ export function AdminSupplyWeeklyClone() {
     </section>}
 
     <section className="weekly-clone-card weekly-clone-recent" aria-labelledby="weekly-recent-title">
-      <div className="weekly-clone-section-heading"><div><h2 id="weekly-recent-title">Recent copies</h2></div><button className="button button-outline" type="button" disabled={operationListState === "loading"} onClick={() => void loadOperationList()}><RefreshCw aria-hidden="true" />Refresh list</button></div>
+      <div className="weekly-clone-section-heading"><div><h2 id="weekly-recent-title">Recent copies</h2></div>{operationListState !== "error" && operationListState !== "unauthenticated" && operationListState !== "forbidden" && <button className="button button-outline" type="button" disabled={operationListState === "loading"} onClick={() => void loadOperationList()}><RefreshCw aria-hidden="true" />Refresh list</button>}</div>
       {operationListState === "loading" && <div className="weekly-clone-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading…</div>}
       {(operationListState === "error" || operationListState === "unauthenticated" || operationListState === "forbidden") && <div className="weekly-clone-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" /><span>{operationListMessage}</span><button className="button button-outline" type="button" onClick={() => void loadOperationList()}>Try again</button></div>}
       {operationListState === "ready" && operationList?.items.length === 0 && <div className="weekly-clone-empty weekly-clone-empty-compact"><Table2 aria-hidden="true" /><h3>None yet</h3><p></p></div>}

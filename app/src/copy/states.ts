@@ -6,7 +6,7 @@ export type RequestState = "pending" | "withdrawn" | "declined" | "closed_by_tab
 export type InvitationState = "active" | "revoked" | "closed";
 
 export const REQUEST_STATE_LABEL: Record<RequestState, string> = {
-  pending: "SEAT REQUEST · PENDING",
+  pending: "Requested",
   withdrawn: "Withdrawn",
   declined: "Declined",
   closed_by_table: "Table cancelled",

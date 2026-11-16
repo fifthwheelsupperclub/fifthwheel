@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StatusBadge } from "./ui/status-badge";
+import { eventDate, eventTime, instantDate } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
 import { AppShell } from "./app-shell";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -147,19 +150,9 @@ function apiErrorText(code: string, fallback: string) {
   };
   return labels[code] ?? fallback;
 }
-function fmtDate(value: string) {
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(date);
-}
-function fmtTime(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(2020, 0, 1, hour, minute));
-}
-function fmtRequestDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "date unavailable" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
+const fmtDate = (value: string) => eventDate(value.slice(0, 10));
+const fmtTime = (value: string) => eventTime(value);
+const fmtRequestDate = (value: string) => instantDate(value);
 const issueLabels: Record<string, string> = {
   select_three_to_five: "Choose 3–5 people for the roster.", candidate_ineligible: "One or more selected people no longer meet the Table requirements.",
   candidate_not_found: "A selected person is no longer available.", request_not_pending: "A selected Seat request is no longer active.",
@@ -175,6 +168,7 @@ const readOnlyLabels: Record<NonNullable<RosterData["table"]["readOnlyReason"]>,
   unpublished: "This Table is no longer published. The roster is available for review only.",
   revision_changed: "The published Table details changed after this roster was saved. This saved roster is read-only; start a new roster using the current Table details.",
 };
+const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 function issueText(code: string) { return issueLabels[code] ?? "The group needs review under a roster rule."; }
 
 function StaffShell({ actor, children }: { actor: Actor; active: "queue" | "detail"; children: ReactNode }) {
@@ -204,12 +198,8 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
   useEffect(() => { void load(); }, [load]);
   const admin = actor === "admin";
   return <StaffShell actor={actor} active="queue">
-    <div className="product-breadcrumb">{admin ? "People" : "Host tools"}<span>›</span>{admin ? "Seat requests" : "Assigned Tables"}</div>
-    <div className="page-heading-row roster-heading">
-      <div><h1>{admin ? "Seat requests" : "Your tables"}</h1>
-        <p className="page-intro">{admin ? "Pick a group of 3–5 for each table." : "Suggest a group for each table. An admin approves it."}</p></div>
-      <button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh Tables" disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>
-    </div>
+    <PageHeader className="roster-heading" title={admin ? "Seat requests" : "Your tables"} description={admin ? "Pick a group of 3–5 for each table." : "Suggest a group for each table. An admin approves it."}
+      actions={<button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh Tables" disabled={state === "loading"}><RefreshCw aria-hidden="true" /></button>} />
     {state === "loading" ? <div className="roster-state" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading Tables…</span></div>
       : state === "unauthenticated" ? <WorkspaceState icon={<ShieldCheck />} title="Sign in to continue" detail="This workspace is available to authorized staff only." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Fseat-requests">Sign in<ArrowRight /></a>} />
       : state === "forbidden" ? <WorkspaceState icon={<ShieldCheck />} title="You do not have access to this workspace" detail="Ask an administrator to confirm your staff role or Table assignment." />
@@ -218,13 +208,13 @@ function QueueWorkspace({ actor }: { actor: Actor }) {
       : <>
         <div className="roster-queue-meta"><span><UsersRound aria-hidden="true" />{tables.length} {tables.length === 1 ? "Table" : "Tables"}</span><span>{admin ? "Published and upcoming" : "Your current assignments"}</span></div>
         <div className="roster-queue-list">{tables.map((table) => <article className="roster-queue-card" key={table.tableId}>
-          <div className="roster-card-icon"><Table2 aria-hidden="true" /></div><div className="roster-card-copy">
-            <div className="roster-card-title"><h2>{table.title}</h2><span className="status-pill status-pill-pending">{table.currentProposal ? table.currentProposal.state.replaceAll("_", " ") : "Needs a roster"}</span></div>
+          <div className="roster-card-copy">
+            <div className="roster-card-title"><h2>{table.title}</h2><StatusBadge tone="pending">{table.currentProposal ? titleCase(table.currentProposal.state.replaceAll("_", " ")) : "Needs a roster"}</StatusBadge></div>
             <div className="roster-card-meta"><span><CalendarDays aria-hidden="true" />{fmtDate(table.localDate)}</span><span><Clock3 aria-hidden="true" />{fmtTime(table.startLocalTime)}</span><span><MapPin aria-hidden="true" />{table.neighborhood}</span></div>
             <p>{table.pendingRequestCount} {table.pendingRequestCount === 1 ? "request" : "requests"}{table.currentProposal ? ` · ${table.currentProposal.selectedCount} picked` : " · not started"}</p>
           </div>
           <Link className="button button-outline roster-open" to={admin ? "/admin/seat-requests/$tableId" : "/host/tables/$tableId/roster"} params={{ tableId: table.tableId }}>
-            Open<ArrowRight aria-hidden="true" />
+            {admin ? "Open" : "Roster"}<ArrowRight aria-hidden="true" />
           </Link>
           <a className="button button-outline roster-open" href={`/host/attendance/${encodeURIComponent(table.tableId)}`}>Attendance</a>
         </article>)}</div>
@@ -374,56 +364,48 @@ function RosterDetail({ actor, tableId }: { actor: Actor; tableId: string }) {
   const canApprove = admin && !!permissions?.canApprove && !!proposal && proposal.state === "submitted" && proposal.validation.valid && !stale;
 
   return <StaffShell actor={actor} active="detail">
-    <div className="product-breadcrumb"><Link to={admin ? "/admin/seat-requests" : "/host/assigned-tables"}>{admin ? "Seat requests" : "Assigned Tables"}</Link><span>›</span>{data?.table.title ?? "Roster"}</div>
+    <Link to={admin ? "/admin/seat-requests" : "/host/assigned-tables"} className="page-header-back"><ArrowLeft aria-hidden="true" />{admin ? "Seat requests" : "Assigned Tables"}</Link>
     {state === "loading" ? <div className="roster-state" role="status"><LoaderCircle className="spin" aria-hidden="true" /><span>Loading applicants…</span></div>
       : state === "unauthenticated" ? <WorkspaceState icon={<ShieldCheck />} title="Sign in to continue" detail="This workspace is available to authorized staff only." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(location.pathname)}`}>Sign in<ArrowRight /></a>} />
       : state === "forbidden" ? <WorkspaceState icon={<ShieldCheck />} title="This Table is not assigned to you" detail="You can only review rosters for Tables currently assigned to your host account." action={<Link className="button button-outline" to="/host/assigned-tables">Back to assigned Tables<ArrowLeft /></Link>} />
       : state === "not_found" ? <WorkspaceState icon={<Table2 />} title="Table unavailable" detail="This Table is not available in this workspace. It may no longer be published or assigned." action={<Link className="button button-outline" to={admin ? "/admin/seat-requests" : "/host/assigned-tables"}>Back to Tables<ArrowLeft /></Link>} />
       : state === "error" || !data ? <WorkspaceState icon={<CircleAlert />} title="Roster is temporarily unavailable" detail="We could not load the current applicants and proposal. Try again." action={<button className="button button-outline" onClick={() => void load()}><RefreshCw />Try again</button>} />
       : <>
-        <div className="page-heading-row roster-heading">
-          <div><p className="eyebrow">{admin ? "ROSTER REVIEW" : "HOST PROPOSAL"}</p><h1>{data.table.title}</h1>
-            <p className="page-intro">{fmtDate(data.table.localDate)} at {fmtTime(data.table.startLocalTime)} · {data.table.neighborhood}. {admin ? "Review Seat requests and approve a group that meets the Table rules." : "Suggest a group for this Table, then send it to an administrator for approval."}</p></div>
-          <button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh roster" disabled={busy !== null}><RefreshCw aria-hidden="true" /></button>
-        </div>
+        <PageHeader className="roster-heading" eyebrow={admin ? "ROSTER REVIEW" : "HOST PROPOSAL"} title={data.table.title}
+          description={<>{fmtDate(data.table.localDate)} at {fmtTime(data.table.startLocalTime)} · {data.table.neighborhood}. {admin ? "Review Seat requests and approve a group that meets the Table rules." : "Suggest a group for this Table, then send it to an administrator for approval."}</>}
+          actions={<button className="icon-action" type="button" onClick={() => void load()} aria-label="Refresh roster" disabled={busy !== null}><RefreshCw aria-hidden="true" /></button>} />
         {notice && <div className={`roster-notice ${notice.tone}`} role={notice.tone === "bad" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{notice.text}</div>}
         {data.table.readOnlyReason && <div className="roster-notice bad" role="status"><CircleAlert aria-hidden="true" />{readOnlyLabels[data.table.readOnlyReason]}</div>}
         {!data.table.readOnlyReason && stale && <div className="roster-notice bad" role="alert"><CircleAlert aria-hidden="true" />This roster uses older Table details. Reload and start a new roster before continuing.</div>}
-        <div className="roster-summary-grid">
-          <section className="roster-summary-card"><span className="roster-summary-icon"><UsersRound aria-hidden="true" /></span><span className="eyebrow">REQUESTS</span><strong>{data.applicants.items.length}</strong><small>{eligibleCount} can be picked</small></section>
-          <section className="roster-summary-card"><span className="roster-summary-icon"><Table2 aria-hidden="true" /></span><span className="eyebrow">ROSTER</span><strong>{proposal ? proposal.state.replaceAll("_", " ") : "Not started"}</strong><small>{proposal ? "" : "Pick 3–5 people"}</small></section>
-          <section className="roster-summary-card"><span className="roster-summary-icon"><ShieldCheck aria-hidden="true" /></span><span className="eyebrow">TABLE DETAILS</span><strong className="roster-revision">{data.table.readOnlyReason ? "Changed" : "Current"}</strong><small>{data.table.readOnlyReason ? readOnlyLabels[data.table.readOnlyReason] : ""}</small></section>
-        </div>
-        <section className="roster-section">
-          <div className="roster-section-heading"><div><p className="eyebrow">SEAT REQUESTS</p><h2>People who asked to join</h2><p>Listed by request time. The selected group must meet the age and openness rules shown below.</p></div>
-            <span className="status-pill">{selected.size} selected <span aria-hidden="true">·</span> choose 3–5</span></div>
-          {data.applicants.items.length === 0 ? <div className="roster-empty-inline"><UsersRound aria-hidden="true" /><strong>No pending Seat requests</strong><span>When members request a Seat, their current eligibility will appear here.</span></div>
-            : <div className="roster-applicants">{data.applicants.items.map((candidate) => {
-              const checked = selected.has(candidate.requestId);
-              const disabled = !canEdit || (!candidate.eligible && !checked) || (!checked && selected.size >= 5);
-              return <label className={`roster-applicant ${checked ? "selected" : ""} ${!candidate.eligible ? "ineligible" : ""}`} key={candidate.requestId}>
-                <input type="checkbox" checked={checked} disabled={disabled} onChange={() => setSelected((previous) => { const next = new Set(previous); checked ? next.delete(candidate.requestId) : next.add(candidate.requestId); return next; })} aria-label={`Select ${candidate.displayName}`} />
-                <span className="roster-applicant-avatar"><UserRoundCheck aria-hidden="true" /></span>
-                <span className="roster-applicant-main"><strong>{candidate.displayName}</strong><small>Requested {fmtRequestDate(candidate.requestCreatedAt)}{candidate.recommendationRank !== null ? ` · #${candidate.recommendationRank}` : ""}</small>
-                  {candidate.reasonCodes.length > 0 && <span className="roster-reasons">{candidate.reasonCodes.map(issueText).join(" ")}</span>}</span>
-                <span className={`status-pill ${candidate.eligible ? "status-pill-success" : "status-pill-warning"}`}>{candidate.eligible ? "Eligible" : "Needs review"}</span>
-              </label>;
-            })}</div>}
-          {data.applicants.nextCursor && <button className="button button-outline roster-more-applicants" type="button" onClick={() => void loadMoreApplicants()} disabled={loadingMoreApplicants}>
-            {loadingMoreApplicants ? <LoaderCircle className="spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}
-            {loadingMoreApplicants ? "Loading applicants…" : "Load more applicants"}
-          </button>}
-        </section>
-        <section className="roster-section roster-proposal-section">
-          <div className="roster-section-heading"><div><p className="eyebrow">ROSTER DRAFT</p><h2>{admin ? "Current roster draft" : "Roster"}</h2><p>Save the group as a draft, then submit it for an administrator to review.</p></div>
-            {proposal && <span className="status-pill status-pill-pending">Version {proposal.revision} · {proposal.state.replaceAll("_", " ")}</span>}</div>
+        <div className="roster-split">
+          <section className="roster-applicants-pane" aria-labelledby="roster-applicants-title">
+            <h2 id="roster-applicants-title">People who asked to join</h2>
+            <p className="roster-pane-note">{data.applicants.items.length} {data.applicants.items.length === 1 ? "request" : "requests"} · {eligibleCount} can be picked · listed by request time</p>
+            {data.applicants.items.length === 0 ? <div className="roster-empty-inline"><UsersRound aria-hidden="true" /><strong>No pending Seat requests</strong><span>When guests request a Seat, their current eligibility will appear here.</span></div>
+              : <div className="roster-applicants">{data.applicants.items.map((candidate) => {
+                const checked = selected.has(candidate.requestId);
+                const disabled = !canEdit || (!candidate.eligible && !checked) || (!checked && selected.size >= 5);
+                return <label className={`roster-applicant ${checked ? "selected" : ""} ${!candidate.eligible ? "ineligible" : ""}`} key={candidate.requestId}>
+                  <input type="checkbox" checked={checked} disabled={disabled} onChange={() => setSelected((previous) => { const next = new Set(previous); checked ? next.delete(candidate.requestId) : next.add(candidate.requestId); return next; })} aria-label={`Select ${candidate.displayName}`} />
+                  <span className="roster-applicant-main"><strong>{candidate.displayName}</strong><small>Requested {fmtRequestDate(candidate.requestCreatedAt)}{candidate.recommendationRank !== null ? ` · #${candidate.recommendationRank}` : ""}</small>
+                    {candidate.reasonCodes.length > 0 && <span className="roster-reasons">{candidate.reasonCodes.map(issueText).join(" ")}</span>}</span>
+                  {!candidate.eligible && <StatusBadge tone="warning">Needs review</StatusBadge>}
+                </label>;
+              })}</div>}
+            {data.applicants.nextCursor && <button className="button button-outline roster-more-applicants" type="button" onClick={() => void loadMoreApplicants()} disabled={loadingMoreApplicants}>
+              {loadingMoreApplicants ? <LoaderCircle className="spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}
+              {loadingMoreApplicants ? "Loading applicants…" : "Load more applicants"}
+            </button>}
+          </section>
+          <aside className="roster-selected-pane" id="roster-selected" aria-labelledby="roster-selected-title">
+            <div className="roster-selected-head"><h2 id="roster-selected-title">Selected ({selected.size} of 3–5)</h2>{proposal && <StatusBadge tone={proposal.state === "approved" ? "success" : "pending"}>{titleCase(proposal.state.replaceAll("_", " "))}</StatusBadge>}</div>
           {proposal?.validation && <div className={`roster-validation ${proposal.validation.valid ? "valid" : "invalid"}`}>
             <div><span className="roster-validation-icon">{proposal.validation.valid ? <Check aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}</span><strong>{proposal.validation.valid ? "Group works" : "Group needs changes"}</strong><small>{proposal.validation.valid ? "The current group meets the rules for this Table." : "We check each person’s age, preferred age range, and who is open to meeting whom."}</small></div>
             {proposal.validation.issues.length > 0 && <ul>{proposal.validation.issues.map((issue, index) => <li key={`${issue.code}-${index}`}>{issueText(issue.code)}{issue.guestIds?.length ? ` · ${issue.guestIds.length} affected` : ""}</li>)}</ul>}
           </div>}
-          <div className="roster-selected-list" aria-live="polite">
-            {selectedRows.length === 0 ? <p className="roster-selected-empty">Select people above to start this roster.</p> : selectedRows.map((row) => <div className="roster-selected-row" key={row.requestId}><span>{row.displayName}</span><span>{row.eligible ? "Works" : "No longer fits"}</span></div>)}
-          </div>
+            <div className="roster-selected-list" aria-live="polite">
+              {selectedRows.length === 0 ? <p className="roster-selected-empty">Select people to start this roster.</p> : selectedRows.map((row) => <div className="roster-selected-row" key={row.requestId}><span>{row.displayName}</span>{!row.eligible && <span>No longer fits</span>}</div>)}
+            </div>
           {data.table.readOnlyReason && proposal?.selectedGuests.length ? <div className="roster-historical-selection">
             <p className="eyebrow">SAVED ROSTER · VERSION {proposal.revision}</p>
             <h3>Selected guests</h3>
@@ -439,11 +421,12 @@ function RosterDetail({ actor, tableId }: { actor: Actor; tableId: string }) {
               {busy === "submit" ? <LoaderCircle className="spin" /> : <ArrowRight />}Send for approval</button>}
             {canApprove && <button className="button button-primary" type="button" disabled={busy !== null} onClick={() => setConfirmApproval(true)}>
               <Check aria-hidden="true" />Approve roster</button>}
-            <button className="icon-action" type="button" aria-label="Reload" onClick={() => void load()} disabled={busy !== null}><RefreshCw aria-hidden="true" /></button>
           </div>
           {proposal?.state === "approved" && <div className="roster-approved-note"><Check aria-hidden="true" /><span>This roster is approved. Separate Table invitations are queued, but this screen does not confirm that email was delivered or that anyone paid.</span></div>}
-          {!permissions?.canEditProposal && proposal?.state !== "approved" && <p className="roster-permission-note">This proposal is read-only for your current workspace permissions.</p>}
-        </section>
+            {!permissions?.canEditProposal && !canApprove && proposal?.state !== "approved" && <p className="roster-permission-note">{admin ? "You don’t have permission to change this roster." : "An admin approves rosters."}</p>}
+          </aside>
+        </div>
+        <div className="roster-mobile-bar"><span>{selected.size} selected</span><a className="button button-primary" href="#roster-selected">Review roster</a></div>
         {confirmApproval && <div className="roster-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmApproval(false); }}>
           <section ref={approvalDialogRef} className="roster-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="roster-approve-title">
             <span className="roster-state-icon"><ShieldCheck aria-hidden="true" /></span><h2 id="roster-approve-title">Approve this roster?</h2>

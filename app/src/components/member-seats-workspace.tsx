@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { PageState } from "./ui/page-state";
+import { StatusBadge } from "./ui/status-badge";
+import { clockAfter, instantDate, instantTime, timestamp } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
 import { Link } from "@tanstack/react-router";
 import {
   AlertCircle, ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, CreditCard,
@@ -12,7 +16,7 @@ import type {
 } from "../seats.contract.ts";
 import "./member-seats-workspace.css";
 
-type PageState = "loading" | "ready" | "unauthenticated" | "forbidden" | "not_found" | "error";
+type LoadState = "loading" | "ready" | "unauthenticated" | "forbidden" | "not_found" | "error";
 type ApiEnvelope<T> = MemberSeatResponse<T>;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const seatStates = new Set<MemberSeatDTO["state"]>(["confirmed", "cancellation_requested", "cancelled", "completed"]);
@@ -165,15 +169,9 @@ async function readEnvelope<T>(response: Response, parse: (data: unknown) => T |
   return parseEnvelope(await response.json().catch(() => null), parse);
 }
 
-function dateLabel(value: string, timeZone: string, withWeekday = false): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone, month: "long", day: "numeric", year: "numeric", weekday: withWeekday ? "long" : undefined }).format(new Date(value));
-}
-function timeLabel(value: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value));
-}
-function dateTimeLabel(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
+const dateLabel = (value: string, timeZone: string, withWeekday = false) => instantDate(value, { tz: timeZone, long: withWeekday });
+const timeLabel = (value: string, timeZone: string) => instantTime(value, { tz: timeZone });
+const dateTimeLabel = (value: string) => timestamp(value);
 function money(amountCents: number, currency: string): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amountCents / 100);
 }
@@ -222,7 +220,7 @@ function checkoutCopy(value: MemberPendingCheckoutDTO): Readonly<{ title: string
 }
 
 export function MemberSeatsListWorkspace() {
-  const [state, setState] = useState<PageState>("loading");
+  const [state, setState] = useState<LoadState>("loading");
   const [items, setItems] = useState<readonly MemberSeatDTO[]>([]);
   const [pending, setPending] = useState<readonly MemberPendingCheckoutDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -265,26 +263,32 @@ export function MemberSeatsListWorkspace() {
   const past = items.filter((item) => item.participationState === "past").sort((a, b) => b.table.startsAt.localeCompare(a.table.startsAt));
   const canLoadMore = cursor !== null;
 
+  // Payments still settling refresh on their own; guests have no refresh button.
+  useEffect(() => {
+    if (state !== "ready" || pending.length === 0) return;
+    const timer = window.setInterval(() => { void load(); }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [state, pending.length, load]);
+
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
-    <div className="product-breadcrumb"><span>MEMBER WORKSPACE</span><span>·</span><span>My Seats</span></div>
-    <div className="member-seats-heading"><div><p className="eyebrow">YOUR EVENINGS</p><h1>My Seats</h1><p className="page-intro">Your upcoming and past tables.</p></div><button className="icon-action" type="button" aria-label="Refresh My Seats" onClick={() => void load()} disabled={refreshing}><RefreshCw aria-hidden="true" className={refreshing ? "member-seat-spin" : ""} /></button></div>
-    {message && <p className={`member-seat-notice ${state === "error" ? "is-error" : ""}`} role={state === "error" ? "alert" : "status"}><AlertCircle aria-hidden="true" />{message}</p>}
-    {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading your Seats" detail="Checking the latest saved payment and Seat status." />}
-    {state === "unauthenticated" && <SeatState icon={<ShieldCheck />} title="Sign in to view your Seats" detail="Your payment and Seat records are private to your member account." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fmy-seats">Sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <SeatState icon={<ShieldCheck />} title="Member access is required" detail="This workspace is available to admitted members." />}
-    {state === "error" && <SeatState icon={<AlertCircle />} title="My Seats is temporarily unavailable" detail={message || "Try again shortly. No Seat or payment status has changed."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    <PageHeader className="member-seats-heading" title="My Seats" />
+    {message && state === "ready" && <p className="member-seat-notice" role="status"><AlertCircle aria-hidden="true" />{message}</p>}
+    {state === "loading" && <PageState variant="loading" title="Loading your seats" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your seats" message="Sign in with the email you used to join." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fmy-seats">Sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you joined the waitlist, we’ll email you when you’re in." />}
+    {state === "error" && <PageState variant="error" title="We couldn’t load your seats" message="Try again in a moment. Nothing about your seats or payments has changed." action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again</button>} />}
     {state === "ready" && <>
-      {pending.length > 0 && <section className="member-seat-section" aria-labelledby="checkout-status-title"><div className="member-seat-section-heading"><div><h2 id="checkout-status-title">Payments in progress</h2></div><span>{pending.length}</span></div><div className="member-pending-list">{pending.map((attempt) => <PendingCheckoutCard key={attempt.attemptId} value={attempt} />)}</div></section>}
-      {current.length > 0 && <SeatGroup title="Upcoming Seats" eyebrow="CURRENT" items={current} />}
-      {past.length > 0 && <SeatGroup title="Past Seats" eyebrow="HISTORY" items={past} />}
-      {items.length === 0 && pending.length === 0 && <section className="member-seat-empty"><span><Ticket aria-hidden="true" /></span><p className="eyebrow">YOUR NEXT EVENING</p><h2>No seats yet</h2><p>When you pay for an invitation, your seat shows up here.</p><div><a className="button button-primary" href="/tables">Browse Tables<ArrowRight aria-hidden="true" /></a><a className="button button-outline" href="/requests">View Requests</a></div></section>}
-      {canLoadMore && <div className="member-seat-load-more"><button className="button button-outline" type="button" onClick={() => void load(cursor, true)} disabled={loadingMore}>{loadingMore ? <LoaderCircle className="member-seat-spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{loadingMore ? "Loading more…" : "Load more"}</button></div>}
+      {current.length > 0 && <section className="seat-section" aria-labelledby="seats-upcoming"><h2 id="seats-upcoming">Upcoming</h2><div className="seat-list">{current.map((seat) => <SeatCard key={seat.seatId} seat={seat} />)}</div></section>}
+      {pending.length > 0 && <section className="seat-section" aria-labelledby="seats-payments"><h2 id="seats-payments">Payments</h2><div className="seat-list">{pending.map((attempt) => <PendingCheckoutCard key={attempt.attemptId} value={attempt} />)}</div></section>}
+      {past.length > 0 && <details className="seat-past"><summary>Past evenings ({past.length})</summary><div className="seat-list">{past.map((seat) => <SeatCard key={seat.seatId} seat={seat} />)}</div></details>}
+      {items.length === 0 && pending.length === 0 && <PageState variant="empty" title="No seats yet" message="When you pay for an invitation, your seat shows up here." action={<a className="button button-primary" href="/tables">Browse tables</a>} />}
+      {canLoadMore && <div className="member-seat-load-more"><button className="button button-outline" type="button" onClick={() => void load(cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading more…" : "Load more"}</button></div>}
     </>}
   </div></MemberWorkspaceShell>;
 }
 
 export function MemberSeatDetailWorkspace({ seatId }: { seatId: string }) {
-  const [state, setState] = useState<PageState>("loading");
+  const [state, setState] = useState<LoadState>("loading");
   const [seat, setSeat] = useState<MemberSeatDetailDTO | null>(null);
   const [message, setMessage] = useState("");
   const load = useCallback(async () => {
@@ -306,23 +310,40 @@ export function MemberSeatDetailWorkspace({ seatId }: { seatId: string }) {
   useEffect(() => { void load(); }, [load]);
   const seatStatus = seat ? seatStateCopy(seat.state) : null;
 
+  const startMs = seat ? Date.parse(seat.table.startsAt) : 0;
+  const now = Date.now();
+  const tonight = Boolean(seat && seat.state !== "cancelled" && now >= startMs - 3 * 3_600_000 && now <= startMs + 12 * 3_600_000);
+  const calendar = seat?.calendar.available && seat.calendar.href ? seat.calendar.href : null;
+  const canCancel = Boolean(seat && seat.state !== "cancelled" && seat.state !== "completed");
+
   return <MemberWorkspaceShell active="seats"><div className="member-seats-page">
-    <div className="product-breadcrumb"><Link to="/my-seats">My Seats</Link><span>›</span><span>Seat details</span></div>
-    {state === "loading" && <SeatState icon={<LoaderCircle className="member-seat-spin" />} title="Loading Seat details" detail="Checking the saved payment, itinerary and current status." />}
-    {state === "unauthenticated" && <SeatState icon={<ShieldCheck />} title="Sign in to continue" detail="Seat details are private to the member account." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/my-seats/${seatId}`)}`}>Sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <SeatState icon={<ShieldCheck />} title="This Seat is not available to this account" detail="Check that you signed in with the member account that owns this Seat." />}
-    {state === "not_found" && <SeatState icon={<Ticket />} title="Seat not found" detail="This Seat is not available to the current account." action={<Link className="button button-outline" to="/my-seats"><ArrowLeft aria-hidden="true" />Back to My Seats</Link>} />}
-    {state === "error" && <SeatState icon={<AlertCircle />} title="Seat details are temporarily unavailable" detail={message || "Try again shortly. Your saved Seat status has not changed."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+    <Link to="/my-seats" className="page-header-back"><ArrowLeft aria-hidden="true" />My Seats</Link>
+    {state === "loading" && <PageState variant="loading" title="Loading seat details" />}
+    {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Sign in with the email you used to join." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/my-seats/${seatId}`)}`}>Sign in<ArrowRight aria-hidden="true" /></a>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="This Seat is not available to this account" message="Check that you signed in with the email that owns this seat." />}
+    {state === "not_found" && <PageState variant="empty" title="Seat not found" message="This seat is not available to the current account." action={<Link className="button button-outline" to="/my-seats">Back to My Seats</Link>} />}
+    {state === "error" && <PageState variant="error" title="We couldn’t load this seat" message={message || "Try again in a moment. Your seat has not changed."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again</button>} />}
     {state === "ready" && seat && seatStatus && <>
-      <div className="member-seat-detail-heading"><p className="eyebrow">{seat.participationState === "current" ? "CURRENT SEAT" : "PAST SEAT"}</p><h1>{seat.table.title}</h1><p className="member-seat-meta"><CalendarDays aria-hidden="true" />{dateLabel(seat.table.startsAt, seat.table.timeZone, true)}<span>·</span><Clock3 aria-hidden="true" />{timeLabel(seat.table.startsAt, seat.table.timeZone)}<span>·</span><MapPin aria-hidden="true" />{seat.table.neighborhood}</p></div>
-      <section className={`member-seat-status tone-${seatStatus.tone}`} role="status"><span>{seatStatus.tone === "good" ? <CheckCircle2 aria-hidden="true" /> : seatStatus.tone === "warning" ? <Clock3 aria-hidden="true" /> : <Ticket aria-hidden="true" />}</span><div><p className="eyebrow">{seat.state.replaceAll("_", " ").toUpperCase()}</p><h2>{seatStatus.title}</h2><p>{seatStatus.detail}</p></div></section>
-      <div className="member-seat-detail-grid">
-        <section className="member-seat-card"><div className="member-seat-card-heading"><span><CreditCard aria-hidden="true" /></span><div><p className="eyebrow">PAYMENT</p><h2>{paymentCopy(seat.payment.state)}</h2></div></div><div className="member-seat-facts"><div><dt>Amount</dt><dd>{money(seat.payment.amountCents, seat.payment.currency)}</dd></div><div><dt>Paid</dt><dd>{seat.payment.paidAt ? dateTimeLabel(seat.payment.paidAt) : seat.payment.state === "unknown" ? "Status unknown" : "Not available"}</dd></div><div><dt>Receipt</dt><dd>{seat.payment.receipt.state === "available" ? <a href={seat.payment.receipt.url} target="_blank" rel="noopener noreferrer">View receipt<ArrowRight aria-hidden="true" /></a> : seat.payment.receipt.state === "unknown" ? "Receipt status unknown" : "Receipt unavailable"}</dd></div></div></section>
-        <section className="member-seat-card"><div className="member-seat-card-heading"><span><ShieldCheck aria-hidden="true" /></span><div><p className="eyebrow">REFUND</p><h2>{seat.refund ? refundCopy(seat.refund.state) : "No refund is due for this seat"}</h2></div></div>{seat.refund ? <><div className="member-seat-facts"><div><dt>Amount</dt><dd>{money(seat.refund.amountCents, seat.refund.currency)}</dd></div><div><dt>Status</dt><dd>{refundCopy(seat.refund.state)}</dd></div></div><p className="member-seat-card-copy">{refundDetailCopy(seat.refund.state)}</p></> : <p className="member-seat-card-copy">If that changes, the refund status will appear here.</p>}</section>
-      </div>
-      <section className="member-seat-card member-seat-itinerary"><div className="member-seat-card-heading"><span><Utensils aria-hidden="true" /></span><div><p className="eyebrow">TABLE DETAILS</p><h2>Evening itinerary</h2></div></div><ol className="member-seat-stops">{seat.table.itinerary.map((stop, index) => <li key={stop.role}><span className="member-seat-step">0{index + 1}</span><div><p className="eyebrow">{stop.role.toUpperCase()} · {stop.minutesFromStart === 0 ? "START" : `+${stop.minutesFromStart} MIN`}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol></section>
-      <section className="member-seat-card member-seat-cancellation"><div className="member-seat-card-heading"><span><FileText aria-hidden="true" /></span><div><p className="eyebrow">CANCELLATION HISTORY</p><h2>{cancellationTitle(seat.cancellation.status)}</h2></div></div>{seat.cancellation.history.length === 0 ? <p className="member-seat-card-copy">There are no cancellation requests for this Seat.</p> : <ol className="member-seat-cancellation-history">{seat.cancellation.history.map((entry) => <li key={entry.requestId}><div><strong>{cancellationEntryTitle(entry.status)}</strong><time dateTime={entry.requestedAt}>Requested {dateTimeLabel(entry.requestedAt)}</time>{entry.decidedAt && <time dateTime={entry.decidedAt}>Decision {dateTimeLabel(entry.decidedAt)}</time>}</div>{entry.safeReason && <p>{entry.safeReason}</p>}</li>)}</ol>}</section>
-      <div className="member-seat-detail-actions"><Link className="button button-outline" to="/my-seats"><ArrowLeft aria-hidden="true" />Back to My Seats</Link>{seat.state !== "cancelled" && seat.state !== "completed" && <Link className="button button-outline" to="/my-seats/$seatId/cancellation" params={{ seatId }}>{seat.state === "cancellation_requested" ? "View cancellation request" : "Ask to cancel"}<ArrowRight aria-hidden="true" /></Link>}{seat.state !== "cancelled" && <a className="button button-outline" href={`/tonight/${encodeURIComponent(seat.table.tableId)}`}>Tonight</a>}{seat.calendar.available && seat.calendar.href && <a className="button button-primary" href={seat.calendar.href} download><Download aria-hidden="true" />Add to calendar</a>}<button className="button button-outline" type="button" onClick={() => void load()}><RefreshCw aria-hidden="true" />Check again</button></div>
+      <PageHeader title={seat.table.title} description={`${instantDate(seat.table.startsAt, { tz: seat.table.timeZone, long: true })} · ${timeLabel(seat.table.startsAt, seat.table.timeZone)} · ${seat.table.neighborhood}`}
+        actions={tonight ? <a className="button button-primary" href={`/tonight/${encodeURIComponent(seat.table.tableId)}`}>Open tonight’s page</a> : calendar && seat.participationState === "current" ? <a className="button button-primary" href={calendar} download><Download aria-hidden="true" />Add to calendar</a> : undefined} />
+      <section className={`seat-status tone-${seatStatus.tone}`} role="status"><h2>{seatStatus.title}</h2><p>{seatStatus.detail}</p></section>
+      <section className="seat-block" aria-labelledby="seat-payment"><h2 id="seat-payment">Payment</h2>
+        <dl className="seat-facts">
+          <div><dt>Status</dt><dd>{paymentCopy(seat.payment.state)}</dd></div>
+          <div><dt>Amount</dt><dd>{money(seat.payment.amountCents, seat.payment.currency)}</dd></div>
+          <div><dt>Paid</dt><dd>{seat.payment.paidAt ? dateTimeLabel(seat.payment.paidAt) : seat.payment.state === "unknown" ? "Status unknown" : "Not available"}</dd></div>
+          <div><dt>Receipt</dt><dd>{seat.payment.receipt.state === "available" ? <a href={seat.payment.receipt.url} target="_blank" rel="noopener noreferrer">View receipt</a> : seat.payment.receipt.state === "unknown" ? "Receipt status unknown" : "Receipt unavailable"}</dd></div>
+          {seat.refund && <div><dt>Refund</dt><dd>{refundCopy(seat.refund.state)} · {money(seat.refund.amountCents, seat.refund.currency)}</dd></div>}
+          {!seat.refund && seat.cancellation.status === "pending" && <div><dt>Refund</dt><dd>Decided after your cancellation is reviewed</dd></div>}
+        </dl>
+        {seat.refund && <p className="seat-note">{refundDetailCopy(seat.refund.state)}</p>}
+      </section>
+      <section className="seat-block seat-itinerary" aria-labelledby="seat-itinerary"><h2 id="seat-itinerary">Evening itinerary</h2>
+        <ol className="member-seat-stops">{seat.table.itinerary.map((stop, index) => <li key={stop.role}><span className="member-seat-step">0{index + 1}</span><div><p className="eyebrow">{stop.role.charAt(0).toUpperCase() + stop.role.slice(1)} · {clockAfter(seat.table.startLocalTime, stop.minutesFromStart)}</p><h3>{stop.venueName}</h3><p>{stop.venueAddress}</p>{stop.publicNotes && <small>{stop.publicNotes}</small>}</div></li>)}</ol>
+      </section>
+      {seat.cancellation.history.length > 1 && <details className="seat-block seat-history"><summary>Cancellation history ({seat.cancellation.history.length})</summary>
+        <ol className="member-seat-cancellation-history">{seat.cancellation.history.map((entry) => <li key={entry.requestId}><div><strong>{cancellationEntryTitle(entry.status)}</strong><time dateTime={entry.requestedAt}>Requested {dateTimeLabel(entry.requestedAt)}</time>{entry.decidedAt && <time dateTime={entry.decidedAt}>Decision {dateTimeLabel(entry.decidedAt)}</time>}</div>{entry.safeReason && <p>{entry.safeReason}</p>}</li>)}</ol></details>}
+      {canCancel && <p className="seat-cancel-link"><Link to="/my-seats/$seatId/cancellation" params={{ seatId }}>{seat.state === "cancellation_requested" ? "View cancellation request" : "Ask to cancel"}</Link></p>}
     </>}
   </div></MemberWorkspaceShell>;
 }
@@ -332,23 +353,25 @@ function uniqueBy<T>(items: readonly T[], key: (item: T) => string): T[] {
   return items.filter((item) => { const value = key(item); if (seen.has(value)) return false; seen.add(value); return true; });
 }
 
-function SeatGroup({ title, eyebrow, items }: { title: string; eyebrow: string; items: readonly MemberSeatDTO[] }) {
-  return <section className="member-seat-section"><div className="member-seat-section-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div><span>{items.length}</span></div><div className="member-seat-list">{items.map((seat) => <SeatCard key={seat.seatId} seat={seat} />)}</div></section>;
-}
-
 function SeatCard({ seat }: { seat: MemberSeatDTO }) {
   const status = seatStateCopy(seat.state);
-  return <article className="member-seat-list-card"><div className="member-seat-list-main"><span className="member-seat-list-icon"><Ticket aria-hidden="true" /></span><div><p className="eyebrow">{status.title}</p><h3>{seat.table.title}</h3><p className="member-seat-list-meta"><CalendarDays aria-hidden="true" />{dateLabel(seat.table.startsAt, seat.table.timeZone, true)}<span>·</span><Clock3 aria-hidden="true" />{timeLabel(seat.table.startsAt, seat.table.timeZone)}<span>·</span><MapPin aria-hidden="true" />{seat.table.neighborhood}</p></div></div><div className="member-seat-list-status"><strong>{paymentCopy(seat.payment.state)}</strong><span>{seat.refund ? refundCopy(seat.refund.state) : seat.payment.state === "unknown" ? "Status needs review" : money(seat.payment.amountCents, seat.payment.currency)}</span></div><Link className="button button-outline" to="/my-seats/$seatId" params={{ seatId: seat.seatId }}>View details<ArrowRight aria-hidden="true" /></Link></article>;
+  const tone = status.tone === "good" ? "success" : status.tone === "warning" ? "pending" : "neutral";
+  return <Link className="seat-card" to="/my-seats/$seatId" params={{ seatId: seat.seatId }}>
+    <span><h3>{seat.table.title}</h3><small>{dateLabel(seat.table.startsAt, seat.table.timeZone)} · {timeLabel(seat.table.startsAt, seat.table.timeZone)} · {seat.table.neighborhood}</small></span>
+    <StatusBadge tone={tone}>{status.title}</StatusBadge>
+  </Link>;
 }
 
 function PendingCheckoutCard({ value }: { value: MemberPendingCheckoutDTO }) {
   const state = checkoutCopy(value);
   const support = value.nextAction === "contact_support";
-  return <article className="member-pending-card"><span className="member-pending-icon"><CreditCard aria-hidden="true" /></span><div className="member-pending-main"><p className="eyebrow">PAYMENT STATUS</p><h3>{value.table.title}</h3><p className="member-seat-list-meta"><CalendarDays aria-hidden="true" />{dateLabel(value.table.startsAt, value.table.timeZone, true)}<span>·</span><MapPin aria-hidden="true" />{value.table.neighborhood}</p><p className="member-pending-copy"><strong>{state.title}</strong>{state.detail}</p>{value.state === "refund_pending" ? <div className="member-pending-price">Amount received {money(value.payment.amountCents, value.payment.currency)}{value.refund && <span> · Refund {money(value.refund.amountCents, value.refund.currency)} pending</span>}</div> : <span className="member-pending-price">Amount due {money(value.price.amountCents, value.price.currency)}</span>}{support && <p className="member-support-note">{value.state === "refund_pending" ? "Contact the team if you need help with your refund. You don’t need to pay again." : "The payment service could not confirm this attempt. Contact the team before starting another payment."}</p>}</div>{state.href && state.action && <a className="button button-outline" href={state.href}>{state.action}<ArrowRight aria-hidden="true" /></a>}</article>;
-}
-
-function SeatState({ icon, title, detail, action }: { icon: ReactNode; title: string; detail: string; action?: ReactNode }) {
-  return <section className="member-seat-state" role="status"><span>{icon}</span><h2>{title}</h2><p>{detail}</p>{action}</section>;
+  return <article className="seat-notice"><div>
+    <h3>{value.table.title}</h3>
+    <p className="seat-notice-meta">{dateLabel(value.table.startsAt, value.table.timeZone)} · {value.table.neighborhood}</p>
+    <p className="member-pending-copy"><strong>{state.title}</strong> {state.detail}</p>
+    {value.state === "refund_pending" ? <div className="member-pending-price">Amount received {money(value.payment.amountCents, value.payment.currency)}{value.refund && <span> · Refund {money(value.refund.amountCents, value.refund.currency)} pending</span>}</div> : <span className="member-pending-price">Amount due {money(value.price.amountCents, value.price.currency)}</span>}
+    {support && <p className="member-support-note">{value.state === "refund_pending" ? "Contact the team if you need help with your refund. You don’t need to pay again." : "The payment service could not confirm this attempt. Contact the team before starting another payment."}</p>}
+  </div>{state.href && state.action && <a className="button button-outline" href={state.href}>{state.action}</a>}</article>;
 }
 
 function cancellationTitle(status: MemberSeatCancellationDTO["status"]): string {

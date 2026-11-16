@@ -14,3 +14,10 @@ export function GuestSidebar({ active }: Readonly<{ active?: GuestNavKey }>) {
     {ITEMS.map(([key, href, label, Icon]) => <a key={key} className={`member-nav-link${key === active ? " active" : ""}`} href={href} aria-current={key === active ? "page" : undefined}><Icon aria-hidden="true" />{label}</a>)}
   </aside>;
 }
+
+// Phone navigation: fixed bottom tab bar (the sidebar is hidden below 820px).
+export function GuestTabs({ active }: Readonly<{ active?: GuestNavKey }>) {
+  return <nav className="bottom-tabs" aria-label="Member navigation (mobile)">
+    {ITEMS.map(([key, href, label, Icon]) => <a key={key} className={key === active ? "active" : undefined} href={href} aria-current={key === active ? "page" : undefined}><Icon aria-hidden="true" /><span>{label}</span></a>)}
+  </nav>;
+}

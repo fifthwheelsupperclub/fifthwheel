@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { buttonClass } from "./ui/button";
+import { PageState } from "./ui/page-state";
+import { clockAfter, eventTime, instantDate, instantTime } from "../format/datetime";
 import { AlertCircle, CheckCircle2, Clock3, HeartHandshake, LoaderCircle, MapPin, ShieldAlert, Star } from "lucide-react";
 import { MemberWorkspaceShell } from "./member-tables-workspace.tsx";
 import "./tonight-workspace.css";
@@ -19,11 +22,8 @@ type Reveal = { state: "pending" | "revealed" | "results_unavailable"; match: { 
 type Recap = { tableTitle: string; canSubmit: boolean; venues: { venueId: string; name: string }[]; rating: { overall: number; venueScores: Record<string, number>; note: string | null } | null;
   attendees: { guestId: string; firstName: string }[]; reports: { reportId: string; createdAt: string; status: string }[] };
 
-const clock = (iso: string) => new Intl.DateTimeFormat("en-US", { timeStyle: "short", timeZone: "America/New_York" }).format(new Date(iso));
-const stopTime = (date: string, time: string, minutes: number) => {
-  const [h, m] = time.split(":").map(Number); const total = h * 60 + m + minutes;
-  return new Intl.DateTimeFormat("en-US", { timeStyle: "short", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, 0, total)));
-};
+const clock = (iso: string) => instantTime(iso);
+const stopTime = (_date: string, time: string, minutes: number) => clockAfter(time, minutes);
 const stateMessage = (status: number, reason: string | null, fallback: string) => reason === "voting_closed" ? "Voting has closed." : reason === "voting_not_open" ? "Voting has not opened yet."
   : reason === "ballot_conflict" ? "You’ve already voted." : reason === "feedback_not_open" ? "Feedback opens after voting closes."
   : status === 403 ? "Voting is limited to guests who were checked in before it opened." : fallback;
@@ -49,10 +49,11 @@ export function TonightWorkspace({ tableId }: Readonly<{ tableId: string }>) {
   }, [phase, load]);
 
   return <MemberWorkspaceShell active="seats"><div className="tonight-page">
-    {tonight.state === "loading" && <p className="tonight-note" role="status"><LoaderCircle className="tonight-spin" aria-hidden="true" />Loading…</p>}
-    {tonight.state === "error" && <section className="tonight-note" role="alert"><AlertCircle aria-hidden="true" /><h1>{tonight.status === 401 ? "Sign in to continue" : tonight.status === 404 || tonight.status === 403 ? "Not available" : "Unavailable right now"}</h1>
-      <p>{tonight.status === 404 || tonight.status === 403 ? "This page is for guests at this table." : tonight.message}</p>
-      {tonight.status === 401 ? <a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/tonight/${tableId}`)}`}>Sign in</a> : <a className="button button-outline" href="/my-seats">Back to My Seats</a>}</section>}
+    {tonight.state === "loading" && <PageState variant="loading" title="Loading…" />}
+    {tonight.state === "error" && <PageState variant={tonight.status === 401 ? "signed-out" : tonight.status === 404 || tonight.status === 403 ? "no-access" : "error"}
+      title={tonight.status === 401 ? "Sign in to continue" : tonight.status === 404 || tonight.status === 403 ? "Not available" : "Unavailable right now"}
+      message={tonight.status === 404 || tonight.status === 403 ? "This page is for guests at this table." : tonight.message}
+      action={tonight.status === 401 ? <a className={buttonClass("primary")} href={`/sign-in?returnTo=${encodeURIComponent(`/tonight/${tableId}`)}`}>Sign in</a> : <a className={buttonClass("primary")} href="/my-seats">Back to My Seats</a>} />}
     {tonight.state === "ready" && <TonightBody data={tonight.data} base={base} reload={load} />}
   </div></MemberWorkspaceShell>;
 }
@@ -60,7 +61,7 @@ export function TonightWorkspace({ tableId }: Readonly<{ tableId: string }>) {
 function TonightBody({ data, base, reload }: Readonly<{ data: Tonight; base: string; reload: () => Promise<void> }>) {
   const { table, vote, attendance } = data;
   return <>
-    <header className="tonight-heading"><p className="eyebrow">TONIGHT</p><h1>{table.title}</h1><p><MapPin aria-hidden="true" />{table.neighborhood} · {table.startLocalTime} Atlanta time</p></header>
+    <header className="tonight-heading"><p className="eyebrow">TONIGHT</p><h1>{table.title}</h1><p><MapPin aria-hidden="true" />{table.neighborhood} · {eventTime(table.startLocalTime)}</p></header>
     <Section title="Your evening" icon={<Clock3 aria-hidden="true" />}>
       <ol className="tonight-stops">{table.stops.map((stop) => <li key={`${stop.role}-${stop.minutesFromStart}`}><strong>{stopTime(table.localDate, table.startLocalTime, stop.minutesFromStart)} · {stop.role}</strong><span>{stop.venueName}</span><small>{stop.venueAddress}</small>{stop.publicNotes && <small>{stop.publicNotes}</small>}</li>)}</ol>
       <p className={`tonight-pill ${attendance.checkedInAt ? "ok" : ""}`}>{attendance.checkedInAt ? <><CheckCircle2 aria-hidden="true" />Checked in at {clock(attendance.checkedInAt)}</> : "Not checked in yet. Your host checks guests in when you arrive."}</p>
@@ -171,7 +172,7 @@ function ReportForm({ recap, base, saved }: Readonly<{ recap: Recap; base: strin
     <label>What happened?<textarea value={body} maxLength={4000} rows={5} onChange={(event) => setBody(event.currentTarget.value)} required /></label>
     {state === "error" && <p role="alert" className="tonight-alert"><AlertCircle aria-hidden="true" />{message}</p>}
     {state === "sent" && <p className="tonight-pill ok" role="status"><CheckCircle2 aria-hidden="true" />Report sent. We’ll review it.</p>}
-    {recap.reports.length > 0 && <ul className="tonight-receipts">{recap.reports.map((r) => <li key={r.reportId}>Sent {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(r.createdAt))} · {({ new: "New", reviewing: "In review", resolved: "Resolved" } as Record<string, string>)[r.status] ?? r.status}</li>)}</ul>}
+    {recap.reports.length > 0 && <ul className="tonight-receipts">{recap.reports.map((r) => <li key={r.reportId}>Sent {instantDate(r.createdAt)} · {({ new: "New", reviewing: "In review", resolved: "Resolved" } as Record<string, string>)[r.status] ?? r.status}</li>)}</ul>}
     <button className="button button-primary" type="submit" disabled={body.trim().length === 0 || state === "working"}>{state === "working" ? "Sending…" : "Send private report"}</button>
   </form>;
 }

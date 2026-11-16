@@ -51,11 +51,9 @@ function EntryRoute() {
       <span className="system-state-icon" aria-hidden="true"><ShieldCheck /></span>
       <p className="eyebrow">FIFTH WHEEL</p>
       <h1 id="workspace-entry-title">Where to?</h1>
-      <div className="workspace-choice-list">{workspaces.map((workspace) => {
+      <div className="workspace-choice-list">{workspaces.filter((workspace) => workspace.available).map((workspace) => {
         const details = workspaceLabels[workspace.key];
-        return workspace.available
-          ? <a className="workspace-choice" key={workspace.key} href={details.href}><span className="workspace-choice-icon">{workspace.key === "admin" ? <ShieldCheck aria-hidden="true" /> : <UsersRound aria-hidden="true" />}</span><span><strong>{details.label}</strong><small>{details.description}</small></span><ArrowRight aria-hidden="true" /></a>
-          : <div className="workspace-choice workspace-choice-disabled" key={workspace.key} aria-disabled="true"><span className="workspace-choice-icon"><UsersRound aria-hidden="true" /></span><span><strong>{details.label}</strong><small>{details.description} Coming soon.</small></span></div>;
+        return <a className="workspace-choice" key={workspace.key} href={details.href}><span className="workspace-choice-icon">{workspace.key === "admin" ? <ShieldCheck aria-hidden="true" /> : <UsersRound aria-hidden="true" />}</span><span><strong>{details.label}</strong><small>{details.description}</small></span><ArrowRight aria-hidden="true" /></a>;
       })}</div>
     </section>
   </main>;
@@ -75,8 +73,8 @@ function EntryRoute() {
       <span className="system-state-icon" aria-hidden="true"><CircleAlert /></span>
       <p className="eyebrow">FIFTH WHEEL</p>
       <h1 id="entry-error-title">We couldn’t load your account.</h1>
-      <p className="system-state-message" role="alert">Try again.</p>
-      <div className="system-state-actions"><button className="button button-outline" type="button" onClick={() => window.location.reload()}><RefreshCw aria-hidden="true" />Try again</button><a className="button button-primary" href="/sign-in">Go to sign in</a></div>
+      <p className="system-state-message" role="alert">Check your connection and try again.</p>
+      <div className="system-state-actions"><button className="button button-primary" type="button" onClick={() => window.location.reload()}><RefreshCw aria-hidden="true" />Try again</button><a className="button button-tertiary" href="/sign-in">Sign in with a different email</a></div>
     </section>
   </main>;
 }

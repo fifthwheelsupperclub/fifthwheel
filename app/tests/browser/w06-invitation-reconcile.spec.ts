@@ -53,7 +53,7 @@ test("W06.5 unknown delivery check keeps uncertainty visible and never queues a 
     await expect(page.getByRole("button", { name: "Check delivery" })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    for (const label of ["Waitlist", "Identity review", "Seat requests", "Table invitation delivery", "Tables"]) {
+    for (const label of ["Waitlist", "Profile review", "Seat requests", "Emails", "Tables"]) {
       const link = page.getByRole("link", { name: label, exact: true });
       await expect(link).toBeVisible();
       const box = await link.boundingBox();

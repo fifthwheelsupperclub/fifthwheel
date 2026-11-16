@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { StatusBadge } from "./ui/status-badge";
+import { eventDate, timestamp } from "../format/datetime";
+import { PageHeader } from "./ui/page-header";
+import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, Ban, CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Database, FileCheck2, FilePlus2, LoaderCircle, MapPin, RefreshCw, Save, ShieldCheck, Table2, WifiOff } from "lucide-react";
@@ -106,18 +110,8 @@ function parseEnvelope<T>(body: unknown, valid: (value: unknown) => value is T):
   return null;
 }
 
-function formatDate(value: string, _time?: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return "Schedule unavailable";
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
-  if (!Number.isFinite(date.getTime())) return "Schedule unavailable";
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
-}
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Time unavailable";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" }).format(date) + " ET";
-}
+const formatDate = (value: string, _time?: string) => eventDate(value);
+const formatTimestamp = (value: string) => timestamp(value);
 function providerDescription(state: SupplyTableListDTO["providerState"]): Readonly<{ title: string; text: string; className: string; icon: typeof Database }> {
   switch (state) {
     case "fixture": return { title: "Test mode", text: "Changes don’t reach Airtable.", className: "supply-mode-fixture", icon: Database };
@@ -133,6 +127,14 @@ function operationIdFor(ref: { current: PendingOperation | null }, payload: unkn
   ref.current = { fingerprint, id };
   return id;
 }
+const FIELD_LABEL: Record<string, string> = { new_table: "New table", title: "Title", neighborhood: "Neighborhood", localDate: "Date", startLocalTime: "Start time", hostNotes: "Staff notes", schedule: "Date and time", stops: "Itinerary", venue: "Venue", source: "Airtable details" };
+const STOP_PART: Record<string, string> = { venueId: "venue", venueName: "venue", venueAddress: "address", minutesFromStart: "timing", publicNotes: "note" };
+function fieldLabel(field: string): string {
+  const m = /^stops\.(\w+)\.(\w+)$/.exec(field);
+  if (m) return `${m[1]![0]!.toUpperCase()}${m[1]!.slice(1)} ${STOP_PART[m[2]!] ?? m[2]}`;
+  return FIELD_LABEL[field] ?? field;
+}
+
 function emptyContent(): SupplyDraftContent {
   return {
     title: "", localDate: "", startLocalTime: "", neighborhood: "", hostNotes: "",
@@ -154,10 +156,10 @@ function AdminSupplyShell(props: Readonly<{ children: React.ReactNode }>) {
 }
 
 function StatePanel({ state, message, onRetry }: Readonly<{ state: LoadState; message: string; onRetry: () => void }>) {
-  if (state === "loading") return <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><LoaderCircle className="is-spinning" aria-hidden="true" /></span><h2>Loading…</h2><p>Reading the latest authorized supply snapshot.</p></section>;
-  if (state === "unauthenticated") return <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to manage Tables</h2><p>This workspace requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>;
-  if (state === "forbidden") return <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><ShieldCheck aria-hidden="true" /></span><h2>Table management is restricted</h2><p>Your current account is not authorized to view these supply records.</p><a className="button button-outline" href="/admin/waitlist">Return to admin workspace<ArrowRight aria-hidden="true" /></a></section>;
-  if (state === "error") return <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>We couldn’t load tables</h2><p>{message}</p><button className="button button-outline" type="button" onClick={onRetry}>Try again<RefreshCw aria-hidden="true" /></button></section>;
+  if (state === "loading") return <PageState variant="loading" title="Loading…" message="Reading the latest authorized supply snapshot." />;
+  if (state === "unauthenticated") return <PageState variant="signed-out" title="Sign in to manage Tables" message="This workspace requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />;
+  if (state === "forbidden") return <PageState variant="no-access" title="Table management is restricted" message="Your current account is not authorized to view these supply records." action={<a className="button button-outline" href="/admin/waitlist">Return to admin workspace<ArrowRight aria-hidden="true" /></a>} />;
+  if (state === "error") return <PageState variant="error" title="We couldn’t load tables" message={message} action={<button className="button button-outline" type="button" onClick={onRetry}>Try again<RefreshCw aria-hidden="true" /></button>} />;
   return null;
 }
 
@@ -298,8 +300,7 @@ function AdminSupplyTableList() {
   const closeDialog = useCallback(() => setDialog("closed"), []);
 
   return <AdminSupplyShell>
-    <div className="product-breadcrumb">Tables</div>
-    <div className="page-heading-row supply-management-heading"><div><h1 id="supply-list-heading">Tables</h1><p className="page-intro">Review details, make a draft, and approve changes before guests can see them.</p></div>{state === "ready" && list && <span className="status-pill status-pill-neutral"><Table2 aria-hidden="true" />{items.length} on this page</span>}</div>
+    <PageHeader className="supply-management-heading" titleId="supply-list-heading" title="Tables" description="Review details, make a draft, and approve changes before guests can see them." status={state === "ready" && list ? <span className="status-pill status-pill-neutral"><Table2 aria-hidden="true" />{items.length} on this page</span> : undefined} />
 
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadList(null, false)} />}
     {state === "ready" && list && provider && <>
@@ -318,10 +319,10 @@ function AdminSupplyTableList() {
         })}</div>
       </section>}
 
-      <section className="supply-list-controls"><div><p className="eyebrow">CURRENT TABLES</p><h2>Manage Tables</h2></div><div className="supply-list-actions"><label className="supply-search"><span className="visually-hidden">Search Tables on this page</span><input type="search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Search title or neighborhood" /></label><label className="supply-filter"><span className="visually-hidden">Filter by Table status</span><select value={filter} onChange={(event) => { setFilter(event.currentTarget.value); setItems([]); setCursor(null); }}><option value="">All statuses</option><option value="draft">Draft</option><option value="accepted">Approved</option><option value="published">Published</option><option value="review_required">Review needed</option><option value="upstream_missing">Source missing</option></select><ChevronDown aria-hidden="true" /></label><button className="icon-action" type="button" aria-label="Refresh Table list" onClick={() => void loadList(null, false)}><RefreshCw aria-hidden="true" /></button>{list.canCreateDraft && <><a className="button button-outline" href="/admin/tables/weekly-clone"><CalendarDays aria-hidden="true" />Weekly preview</a><button className="button button-primary" type="button" disabled={!fixtureMutationsEnabled || mutationState === "running" || mutationState === "unknown"} onClick={openManualDraft}><FilePlus2 aria-hidden="true" />Create draft</button></>}</div></section>
+      <section className="supply-list-controls"><div><p className="eyebrow">CURRENT TABLES</p><h2>Manage Tables</h2></div><div className="supply-list-actions"><label className="supply-search"><span className="visually-hidden">Search Tables on this page</span><input type="search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Search title or neighborhood" /></label><label className="supply-filter"><span className="visually-hidden">Filter by Table status</span><select value={filter} onChange={(event) => { setFilter(event.currentTarget.value); setItems([]); setCursor(null); }}><option value="">All statuses</option><option value="draft">Draft</option><option value="accepted">Approved</option><option value="published">Published</option><option value="review_required">Review needed</option><option value="upstream_missing">Source missing</option></select><ChevronDown aria-hidden="true" /></label><button className="icon-action" type="button" aria-label="Refresh Table list" onClick={() => void loadList(null, false)}><RefreshCw aria-hidden="true" /></button>{list.canCreateDraft && <><a className="button button-outline" href="/admin/tables/weekly-clone"><CalendarDays aria-hidden="true" />Copy a week</a><button className="button button-primary" type="button" disabled={!fixtureMutationsEnabled || mutationState === "running" || mutationState === "unknown"} onClick={openManualDraft}><FilePlus2 aria-hidden="true" />Create draft</button></>}</div></section>
 
       {mutationMessage && <div className={`supply-mutation-feedback ${mutationState === "error" || mutationState === "conflict" ? "is-error" : mutationState === "unknown" ? "is-warning" : ""}`} role={mutationState === "error" || mutationState === "conflict" || mutationState === "unknown" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{mutationMessage}{mutationState === "unknown" && <span>Keep this page open and try the same action again.</span>}</div>}
-      {visibleItems.length === 0 ? <section className="data-state supply-list-empty"><span className="data-state-icon">{search || filter ? <MapPin aria-hidden="true" /> : <Table2 aria-hidden="true" />}</span><h2>{search || filter ? "No Tables match these filters" : "No Table supply records yet"}</h2><p>{search || filter ? "Clear the search or lifecycle filter to see more records." : "A complete sync or an authorized draft will appear here. No sample records are shown."}</p>{(search || filter) && <button className="button button-outline" type="button" onClick={() => { setSearch(""); setFilter(""); void loadList(null, false, ""); }}>Clear filters</button>}</section> : <div className="supply-table-list" aria-label="Table supply records">{visibleItems.map((item) => <a className="supply-table-row" href={`/admin/tables/${encodeURIComponent(item.tableId)}`} key={item.tableId}><span className="supply-table-date"><CalendarDays aria-hidden="true" /><strong>{formatDate(item.localDate, item.startLocalTime)}</strong><small>{item.startLocalTime} Atlanta time</small></span><span className="supply-table-main"><strong>{item.title || "Untitled Table draft"}</strong><span><MapPin aria-hidden="true" />{item.neighborhood || "Neighborhood not set"}</span>{item.syncState === "missing" && <span className="supply-source-missing" role="status"><CircleAlert aria-hidden="true" />Source record missing in latest sync</span>}</span><span className={`status-pill ${item.lifecycle === "published" ? "status-pill-success" : item.lifecycle === "review_required" || item.lifecycle === "upstream_missing" ? "status-pill-warning" : "status-pill-pending"}`}>{lifecycleLabels[item.lifecycle]}</span><span className="supply-table-revision">{item.draftRevision === null ? "No draft" : `Draft v${item.draftRevision}`}</span><ArrowRight aria-hidden="true" /></a>)}</div>}
+      {visibleItems.length === 0 ? <PageState variant="empty" className="supply-list-empty" title={search || filter ? "No Tables match these filters" : "No Table supply records yet"} message={search || filter ? "Clear the search or lifecycle filter to see more records." : "A complete sync or an authorized draft will appear here. No sample records are shown."} action={(search || filter) ? <button className="button button-outline" type="button" onClick={() => { setSearch(""); setFilter(""); void loadList(null, false, ""); }}>Clear filters</button> : undefined} /> : <div className="supply-table-list" aria-label="Table supply records">{visibleItems.map((item) => <a className="supply-table-row" href={`/admin/tables/${encodeURIComponent(item.tableId)}`} key={item.tableId}><span className="supply-table-date"><CalendarDays aria-hidden="true" /><strong>{formatDate(item.localDate, item.startLocalTime)}</strong><small>{item.startLocalTime} Atlanta time</small></span><span className="supply-table-main"><strong>{item.title || "Untitled Table draft"}</strong><span><MapPin aria-hidden="true" />{item.neighborhood || "Neighborhood not set"}</span>{item.syncState === "missing" && <span className="supply-source-missing" role="status"><CircleAlert aria-hidden="true" />Source record missing in latest sync</span>}</span><span className={`status-pill ${item.lifecycle === "published" ? "status-pill-success" : item.lifecycle === "review_required" || item.lifecycle === "upstream_missing" ? "status-pill-warning" : "status-pill-pending"}`}>{lifecycleLabels[item.lifecycle]}</span><span className="supply-table-revision">{item.draftRevision === null ? "No draft" : `Draft v${item.draftRevision}`}</span><ArrowRight aria-hidden="true" /></a>)}</div>}
 
       {cursor && <div className="supply-pagination"><span>More Table records are available.</span><button className="button button-outline" type="button" onClick={() => void loadList(cursor, true)}>Load more Tables<ArrowRight aria-hidden="true" /></button></div>}
       {list.canCreateDraft && <section className="supply-sync-strip"><span className="supply-sync-strip-icon"><RefreshCw aria-hidden="true" /></span><div><h2>Check Airtable</h2><p>Pulls in new or changed tables for you to review. Nothing goes live.</p></div><button className="button button-outline" type="button" onClick={() => void runSync()} disabled={!fixtureMutationsEnabled || mutationState === "running" || (mutationState === "unknown" && pendingListAction !== "sync")}>{mutationState === "running" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{mutationState === "running" ? "Checking…" : mutationState === "unknown" && pendingListAction === "sync" ? "Check again" : "Check Airtable"}</button></section>}
@@ -538,11 +539,14 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
   const isStale = detail?.currentSyncState !== "current";
 
   return <AdminSupplyShell>
-    <div className="product-breadcrumb"><a href="/admin/tables"><ArrowLeft aria-hidden="true" />Tables</a><span>/</span>Table detail</div>
+    <a href="/admin/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadDetail()} />}
     {state === "ready" && detail && <>
-      <div className="page-heading-row supply-detail-heading"><div><p className="eyebrow">{lifecycleLabels[detail.lifecycle].toUpperCase()}</p><h1 id="supply-detail-title">{draft?.content.title || detail.published?.content.title || detail.accepted?.content.title || "Table draft"}</h1><p className="page-intro">{draft?.content.neighborhood || detail.published?.content.neighborhood || detail.accepted?.content.neighborhood || "Neighborhood not set"} · Updated {formatTimestamp(draft?.updatedAt ?? detail.published?.updatedAt ?? detail.accepted?.updatedAt ?? "")}</p></div><span className={`status-pill ${isStale ? "status-pill-warning" : "status-pill-neutral"}`}><Clock3 aria-hidden="true" />{detail.currentSyncState === "current" ? "Matches Airtable" : detail.currentSyncState === "stale" ? "Changed in Airtable" : "Removed from Airtable"}</span></div>
-      {provider && <section className={`supply-mode-inline ${provider.className}`}><ProviderIcon aria-hidden="true" /><span><strong>{provider.title}</strong><small>{fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here"}</small></span></section>}
+      <PageHeader className="supply-detail-heading" titleId="supply-detail-title"
+        title={draft?.content.title || detail.published?.content.title || detail.accepted?.content.title || "Table draft"}
+        description={`${draft?.content.neighborhood || detail.published?.content.neighborhood || detail.accepted?.content.neighborhood || "Neighborhood not set"} · Updated ${formatTimestamp(draft?.updatedAt ?? detail.published?.updatedAt ?? detail.accepted?.updatedAt ?? "")}`}
+        status={<StatusBadge tone={detail.lifecycle === "published" ? "success" : "pending"}>{lifecycleLabels[detail.lifecycle]}</StatusBadge>} />
+      {provider && <section className={`supply-mode-inline ${provider.className}`}><ProviderIcon aria-hidden="true" /><span><strong>{provider.title}</strong>{(fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here") !== provider.title && <small>{fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here"}</small>}</span></section>}
       {isStale && <section className="supply-detail-warning" role="status"><CircleAlert aria-hidden="true" /><div><strong>{detail.currentSyncState === "missing" ? "Removed from Airtable" : "Changed in Airtable"}</strong><p>{detail.currentSyncState === "missing" ? "This table isn’t in Airtable anymore. Guests still see the live version." : "Airtable has newer details. Review them below."}</p></div></section>}
       {mutationMessage && <div className={`supply-mutation-feedback ${mutationState === "error" || mutationState === "conflict" ? "is-error" : mutationState === "unknown" ? "is-warning" : ""}`} role={mutationState === "error" || mutationState === "conflict" || mutationState === "unknown" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{mutationMessage}{mutationState === "conflict" && <button className="text-action" type="button" onClick={() => void loadDetail()}>Reload current revision</button>}{mutationState === "unknown" && <small>Retry the same action while the operation is unchanged.</small>}</div>}
 
@@ -574,8 +578,8 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       </section>}
 
       {preview && draft && <section className="supply-preview-section" aria-labelledby="supply-preview-title"><div className="supply-section-heading"><div><p className="eyebrow">PREVIEW</p><h2 id="supply-preview-title">Check the details before approving.</h2><p>{preview.startsAt ? `Starts ${formatTimestamp(preview.startsAt)}.` : "This draft doesn’t have a valid start time yet."}</p></div><span className={`status-pill ${preview.valid ? "status-pill-success" : "status-pill-warning"}`}>{preview.valid ? "Ready" : "Needs fixes"}</span></div>
-        {preview.issues.length > 0 && <ul className="supply-validation-list">{preview.issues.map((issue, index) => <li key={`${issue.field}-${issue.stopRole ?? "table"}-${index}`}><CircleAlert aria-hidden="true" /><span><strong>{issue.stopRole ? `${issue.stopRole} · ` : ""}{issue.field}</strong>{issue.message}</span></li>)}</ul>}
-        {preview.changes.length > 0 && <div className="supply-change-list"><h3>Changes</h3>{preview.changes.map((change, index) => <div key={`${change.field}-${index}`}><strong>{change.field}</strong><span>{change.before ?? "No previous value"}</span><ArrowRight aria-hidden="true" /><span>{change.after ?? "Removed"}</span></div>)}</div>}
+        {preview.issues.length > 0 && <ul className="supply-validation-list">{preview.issues.map((issue, index) => <li key={`${issue.field}-${issue.stopRole ?? "table"}-${index}`}><CircleAlert aria-hidden="true" /><span><strong>{issue.stopRole ? `${issue.stopRole[0]!.toUpperCase()}${issue.stopRole.slice(1)} · ` : ""}{fieldLabel(issue.field)}</strong>{issue.message}</span></li>)}</ul>}
+        {preview.changes.length > 0 && <div className="supply-change-list"><h3>Changes</h3>{preview.changes.map((change, index) => <div key={`${change.field}-${index}`}><strong>{fieldLabel(change.field)}</strong><span>{change.before ?? "No previous value"}</span><ArrowRight aria-hidden="true" /><span>{change.after ?? "Removed"}</span></div>)}</div>}
         {preview.valid && preview.changes.length === 0 && <p className="supply-no-changes">This revision matches the current source snapshot.</p>}
         <div className="supply-review-actions"><p>{detail.currentSyncState === "missing" ? "This table isn’t in Airtable anymore. Guests still see the live version." : "Approved changes aren’t live until you publish."}</p><div><button className="button button-outline" type="button" disabled={detail.currentSyncState === "missing" || !detail.canAccept || !preview.canAccept || !fixtureMutationsEnabled || mutationState === "running"} onClick={() => setDialog("accept")}><BadgeCheck aria-hidden="true" />Approve changes</button><button className="button button-primary" type="button" disabled={detail.currentSyncState === "missing" || !detail.canPublish || !preview.canPublish || !fixtureMutationsEnabled || mutationState === "running"} onClick={() => setDialog("publish")}><Check aria-hidden="true" />Publish</button></div></div>
       </section>}

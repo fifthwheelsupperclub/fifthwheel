@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { instantDate } from "../../format/datetime";
+import { PageHeader } from "../../components/ui/page-header";
+import { PageState } from "../../components/ui/page-state";
 import { AppShell } from "../../components/app-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -42,11 +45,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function safeDate(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
+const safeDate = (value: string) => instantDate(value);
 
 function AdminWaitlistPage() {
   const [items, setItems] = useState<readonly WaitlistItem[]>([]);
@@ -285,24 +284,20 @@ function AdminWaitlistPage() {
   }
 
   return <AppShell role="admin" active="waitlist" labelledBy="waitlist-heading">
-        <div className="product-breadcrumb">People <span>/</span> Waitlist</div>
-        <div className="page-heading-row">
-          <div><h1 id="waitlist-heading">Waitlist</h1><p className="page-intro">People who signed up on the website. Approve them to send a sign-in link.</p></div>
-          <span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{loadState === "ready" ? `${items.length} on this page` : "Live list"}</span>
-        </div>
+        <PageHeader titleId="waitlist-heading" title="Waitlist" description="People who signed up on the website. Approve them to send a sign-in link."
+          status={loadState === "ready" ? <span className="status-pill status-pill-neutral"><UsersRound aria-hidden="true" />{items.length} on this page</span> : undefined}
+          actions={<button className="button button-tertiary" type="button" onClick={() => void loadWaitlist(cursor)} disabled={loadState === "loading"}>Refresh</button>} />
 
         <form className="waitlist-filters" onSubmit={submitSearch}>
           <label className="search-control" htmlFor="waitlist-search"><span className="visually-hidden">Search waitlist</span><Search aria-hidden="true" /><input id="waitlist-search" type="search" value={query} maxLength={120} onChange={(event) => setQuery(event.currentTarget.value)} placeholder="Search name or email" /></label>
-          <label className="filter-select-label" htmlFor="waitlist-neighborhood">Neighborhood<select id="waitlist-neighborhood" value={neighborhood} onChange={(event) => setNeighborhood(event.currentTarget.value)}><option value="">All neighborhoods</option>{neighborhoods.map((place) => <option key={place} value={place}>{place}</option>)}</select></label>
-          <button className="button button-outline" type="submit" disabled={loadState === "loading"}><Search aria-hidden="true" />Search</button>
-          <button className="icon-button" type="button" aria-label="Refresh waitlist" onClick={() => void loadWaitlist(cursor)} disabled={loadState === "loading"}><RefreshCw aria-hidden="true" /></button>
+          <label className="filter-select-label" htmlFor="waitlist-neighborhood">Neighborhood<select id="waitlist-neighborhood" value={neighborhood} onChange={(event) => { const next = event.currentTarget.value; setNeighborhood(next); neighborhoodRef.current = next; queryRef.current = query; setCursor(undefined); void loadWaitlist(); }}><option value="">All neighborhoods</option>{neighborhoods.map((place) => <option key={place} value={place}>{place}</option>)}</select></label>
         </form>
 
-        {loadState === "loading" && <section className="data-state" role="status" aria-live="polite"><span className="data-state-icon"><Clock3 aria-hidden="true" /></span><h2>Loading…</h2></section>}
-        {loadState === "unauthenticated" && <section className="data-state data-state-error"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Sign in to continue</h2><p>This admin page requires a verified staff account.</p><a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a></section>}
-        {loadState === "forbidden" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Admin access required</h2><p>Your account is not assigned to the admin workspace.</p></section>}
-        {loadState === "error" && <section className="data-state data-state-error" role="alert"><span className="data-state-icon"><CircleAlert aria-hidden="true" /></span><h2>Waitlist unavailable</h2><p>The list could not be loaded. Try again in a moment.</p><button className="button button-outline" type="button" onClick={() => void loadWaitlist(cursor)}>Try again<RefreshCw aria-hidden="true" /></button></section>}
-        {loadState === "ready" && items.length === 0 && <section className="data-state"><span className="data-state-icon"><UsersRound aria-hidden="true" /></span><h2>No matching signups</h2><p>Try a different name, email or neighborhood.</p></section>}
+        {loadState === "loading" && <PageState variant="loading" title="Loading…" />}
+        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="This admin page requires a verified staff account." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {loadState === "forbidden" && <PageState variant="no-access" title="Admin access required" message="Your account is not assigned to the admin workspace." />}
+        {loadState === "error" && <PageState variant="error" title="Waitlist unavailable" message="The list could not be loaded. Try again in a moment." action={<button className="button button-outline" type="button" onClick={() => void loadWaitlist(cursor)}>Try again<RefreshCw aria-hidden="true" /></button>} />}
+        {loadState === "ready" && items.length === 0 && <PageState variant="empty" title="No matching signups" message="Try a different name, email or neighborhood." />}
         {loadState === "ready" && items.length > 0 && <>
           <div className="waitlist-table-wrap">
             <table className="waitlist-table">
@@ -313,11 +308,12 @@ function AdminWaitlistPage() {
                 <td data-label="Joined">{safeDate(item.receivedAt)}</td>
                 <td data-label="Access"><AccessState item={item} /></td>
                 <td data-label="Action">{item.admissionState === "none"
-                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Review<ArrowRight aria-hidden="true" /></button>
+                  ? <button className="button button-primary button-small" type="button" onClick={() => openInvite(item)}>Approve…</button>
                   : item.admissionState === "deleted"
                     ? <span className="delivery-summary">Access removed</span>
                     : item.admissionState === "invited" && (item.latestDelivery?.state === "queued" || item.latestDelivery?.state === "unknown" || item.latestDelivery?.state === "failed")
                       ? <button className="button button-outline button-small" type="button" onClick={() => openInvite(item)}>{item.latestDelivery.state === "unknown" ? "Check status" : item.latestDelivery.state === "failed" ? "Send again" : "Send link"}<ArrowRight aria-hidden="true" /></button>
+                  : item.admissionState === "activated" ? null
                   : <span className="delivery-summary">{deliveryLabel(item.latestDelivery?.state, item.admissionState)}</span>}</td>
               </tr>)}</tbody>
             </table>

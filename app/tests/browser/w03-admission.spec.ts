@@ -531,7 +531,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   // The new marketing record is visible without changing the original fields.
   const search = adminJourney.page.getByRole("searchbox", { name: "Search waitlist" });
   await search.fill(memberEmail);
-  await adminJourney.page.getByRole("button", { name: "Search", exact: true }).click();
+  await search.press("Enter");
   const signupRow = adminJourney.page.getByRole("row").filter({ hasText: memberEmail });
   await expect(signupRow).toContainText("Jordan W03");
   await expect(signupRow).not.toContainText("Changed W03");
@@ -570,7 +570,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
 
   // Member identity is authenticated but lacks admin role; direct API access
   // must remain denied after the invited link activates the admission.
-  await signupRow.getByRole("button", { name: "Review" }).click();
+  await signupRow.getByRole("button", { name: "Approve…" }).click();
   const dialog = adminJourney.page.getByRole("dialog", { name: /^Approve / });
   await expect(dialog).toContainText("Table invitation and Seat are separate");
   await saveMilestoneScreenshot(adminJourney.page, "w03-invitation-confirmation-desktop.png");
@@ -694,7 +694,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const memberJourney = await clickActualEmailLink(browser, memberEmail, "You’re in: welcome to Fifth Wheel", "Sign in");
   expect(memberJourney.linkHref).toBe(originalInvitationHref);
   await expect(memberJourney.page).toHaveURL(`${appOrigin}/member`);
-  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
   await expect(memberJourney.page.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
   await expect(memberJourney.page.getByText(/Table invitations and Seats are separate/)).toBeVisible();
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
@@ -703,7 +703,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-390px.png");
   await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
   await memberJourney.page.reload();
-  await expect(memberJourney.page.getByText(`Signed in as ${memberEmail}.`)).toBeVisible();
+  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
 
   const deniedAdminPage = await memberJourney.context.newPage();
   await deniedAdminPage.goto(`${appOrigin}/admin/waitlist`);
