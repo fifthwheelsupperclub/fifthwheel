@@ -81,4 +81,13 @@ You confirmed the previous app holds no members, paid Seats or live charges, onl
 
 ## 10. Known gaps this runbook cannot close
 
-Nightly Stripe reconciliation is not built. A real send through Resend, a real Stripe sandbox journey and a real scheduler run have not happened. Release-owner decisions are open on retention periods, finance record retention, the T−48 reminder wording, refunds Stripe confirmed as failed, and terms copy (see [policy copy inventory](policy-copy-inventory.md)).
+Updated 2026-11-15. Closed since the first draft (evidence in the [task ledger](task-ledger.md)): Stripe test-mode payments and refunds on the real local stack (W07.7 money and fault suites), refund retry that no longer relies on Stripe's 24-hour idempotency window, and the nightly Stripe-vs-ledger reconciliation worker step with its overview card.
+
+Still open:
+
+- **Never run on a host:** no deploy, real send through Resend, run of the GitHub scheduler, or heartbeat alert has happened. The `pnpm start` entry point was only run locally.
+- **Live Stripe mode:** live keys, the live webhook endpoint and a real card are unverified until the owner-run dry run (§9 step 5).
+- **Stripe Dashboard payment methods** are not card-only (Link, Cash App, Klarna and bank are offered). Turn them off in the Dashboard before checkout opens.
+- **Reconciliation** only shows findings. There is no resolution workflow: staff fix the problem in Stripe or the ledger, and the next complete run clears the finding. It has not run in live mode.
+- **Not built:** deleting private identity photos from storage (§6), backup expiry, and an account-deletion screen (it's API only).
+- **Release-owner decisions:** retention periods, finance record retention, the T−48 reminder wording, refunds Stripe confirmed as failed, and terms copy (see [policy copy inventory](policy-copy-inventory.md)).
