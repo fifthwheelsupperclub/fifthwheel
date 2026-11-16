@@ -103,13 +103,11 @@ test("creates a magiclink with exact allowed callback and normalized recipient",
   assert.deepEqual(requestBody, { type: "magiclink", email, redirect_to: config.allowedCallbackUrls[0] });
 });
 
-test("rejects remote, HTTPS, credentialed, path-bearing and broadened callback configuration", () => {
+test("rejects plain-http remote hosts, credentialed, path-bearing and broadened callback configuration", () => {
   const badConfigs = [
-    { ...config, url: "https://127.0.0.1:56421" },
     { ...config, url: "http://supabase.example.test:56421" },
     { ...config, url: "http://user:pass@127.0.0.1:56421" },
     { ...config, url: "http://127.0.0.1:56421/nested" },
-    { ...config, siteUrl: "https://127.0.0.1:8085" },
     { ...config, siteUrl: "http://app.example.test" },
     { ...config, allowedCallbackUrls: ["http://127.0.0.1:8085/auth/callback", "http://127.0.0.1:8085/elsewhere"] },
     { ...config, allowedCallbackUrls: ["http://127.0.0.1:8085/auth/callback/"] },
@@ -266,4 +264,17 @@ test("maps provider rejection, uncertainty and malformed responses to safe error
     () => malformed.verifyCallback({ tokenHash: "0123456789abcdef0123456789abcdef", kind: "invite" }),
     (error: unknown) => error instanceof SupabaseAuthLinkError && error.code === "provider_data_invalid",
   );
+});
+
+test("accepts a hosted https Supabase project and https app origin", async () => {
+  const hosted = {
+    url: "https://projectref.supabase.co", publishableKey: "sb_publishable_x", secretKey: "sb_secret_x",
+    siteUrl: "https://app.example.test", allowedCallbackUrls: ["https://app.example.test/auth/callback"],
+  } as const;
+  const link = `${hosted.url}/auth/v1/verify?token_hash=${hashedToken}&type=magiclink&redirect_to=${encodeURIComponent(hosted.allowedCallbackUrls[0])}`;
+  const provider = createSupabaseAuthLinkProvider(hosted, async () => generatedLinkResponse({
+    action_link: link, verification_type: "magiclink", redirect_to: hosted.allowedCallbackUrls[0],
+  }));
+  const result = await provider.createMagicLink({ emailNormalized: email, redirectTo: hosted.allowedCallbackUrls[0], kind: "magiclink" });
+  assert.equal(result.actionLink, `https://app.example.test/auth/callback?token_hash=${hashedToken}&type=magiclink`);
 });
