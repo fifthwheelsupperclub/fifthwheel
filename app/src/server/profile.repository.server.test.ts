@@ -15,3 +15,12 @@ test("an unknown or foreign upload is not_found, not a retryable outage", async 
     (error: unknown) => error instanceof ProfileRepositoryError && error.code === "not_found",
   );
 });
+
+test("an upload grant for an unknown file is not_found", async () => {
+  const fetcher = (async () => new Response(JSON.stringify({ code: "P0002", message: "upload_not_found" }), { status: 500, headers: { "content-type": "application/json" } })) as typeof fetch;
+  const repository = createProfileRepository(config, { fetcher });
+  await assert.rejects(
+    repository.consumeUploadGrant({ authUserId: id, fileId: id, uploadTokenHash: "h", byteSize: 4 }),
+    (error: unknown) => error instanceof ProfileRepositoryError && error.code === "not_found",
+  );
+});

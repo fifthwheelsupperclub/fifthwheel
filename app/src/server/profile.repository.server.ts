@@ -128,7 +128,7 @@ function mapFile(value: unknown): StoredProfileFile {
 
 function mapRpcError(status: number, body: unknown): ProfileRepositoryError {
   const message = isRecord(body) && typeof body.message === "string" ? body.message : "";
-  if (status === 404 || message.includes("profile_not_found") || message.includes("file_not_found") || message.includes("upload_not_quarantined") || message.includes("member_not_admitted")) {
+  if (status === 404 || message.includes("profile_not_found") || message.includes("file_not_found") || message.includes("upload_not_quarantined") || message.includes("upload_not_found") || message.includes("member_not_admitted")) {
     return new ProfileRepositoryError("not_found");
   }
   if (status === 401 || status === 403 || message.includes("admin_required")) return new ProfileRepositoryError("forbidden");
