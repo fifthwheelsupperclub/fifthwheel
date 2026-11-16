@@ -69,3 +69,17 @@ test("run: not due skips Stripe; due records findings; an unreadable window is r
   assert.deepEqual(result, { findings: 1, complete: false });
   assert.equal((calls.at(-1)![1] as { p_complete: boolean }).p_complete, false);
 });
+
+test("run: more than 200 findings are recorded as 199 plus a truncation summary and never marked complete", async () => {
+  const rows: StripeSession[] = Array.from({ length: 250 }, (_, i) => sess(`pi_${i}`));
+  const stripe = { sessions: async () => ({ rows, complete: true }), refunds: async () => ({ rows: [], complete: true }) } as unknown as Parameters<typeof runReconciliation>[0]["stripe"];
+  const calls: Array<Record<string, unknown> | undefined> = [];
+  const rpc = async (name: string, args?: Record<string, unknown>) => { if (name === "claim_reconciliation_run") return { due: true, payments: [], refunds: [] }; calls.push(args); return 1; };
+  const result = await runReconciliation({ rpc, stripe, mode: "test", now: () => now });
+  assert.deepEqual(result, { findings: 250, complete: false });
+  const sent = calls[0] as { p_findings: Array<{ kind: string; detail: { total?: number } }>; p_complete: boolean };
+  assert.equal(sent.p_findings.length, 200);
+  assert.equal(sent.p_findings.at(-1)!.kind, "findings_truncated");
+  assert.equal(sent.p_findings.at(-1)!.detail.total, 250);
+  assert.equal(sent.p_complete, false);
+});
