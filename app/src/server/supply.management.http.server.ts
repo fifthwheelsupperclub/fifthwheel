@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   SupplyCreateDraftRequest, SupplyManagementErrorCode, SupplyRevisionActionRequest,
-  SupplyUpdateDraftRequest,
+  SupplySaveVenueRequest, SupplyUpdateDraftRequest,
 } from "../supply.management.contract.ts";
 import type { SupplyManagementResult, SupplyManagementService } from "./supply.management.contract.server.ts";
 import { assertExactOrigin } from "./origin.server.ts";
@@ -122,17 +122,23 @@ export function createSupplyManagementHttpHandlers(createService: Factory, expec
         return serviceResponse(await createService().listVenues({ accessToken: getToken(request), query }), correlationId);
       } catch { return serviceUnavailable(); }
     },
+    async saveVenue(request: Request, venueId: string): Promise<Response> {
+      const correlationId = randomUUID();
+      const originError = requirePostOrigin(request); if (originError) return originError;
+      if (!uuidPattern.test(venueId)) return error("invalid_input", "Use a valid venue identifier.", false, correlationId);
+      const body = await bodyFor(request); if (body instanceof Response) return body;
+      if (!validObject(body, ["name", "address", "neighborhood", "active"]) || typeof body.name !== "string" || typeof body.address !== "string"
+        || typeof body.neighborhood !== "string" || typeof body.active !== "boolean") return error("invalid_input", "Check the venue fields.", false, correlationId);
+      try { return serviceResponse(await createService().saveVenue({ accessToken: getToken(request), venueId, request: body as unknown as SupplySaveVenueRequest }), correlationId); }
+      catch { return serviceUnavailable(); }
+    },
     async createDraft(request: Request): Promise<Response> {
       const correlationId = randomUUID();
       const originError = requirePostOrigin(request); if (originError) return originError;
       const body = await bodyFor(request); if (body instanceof Response) return body;
       if (!validObject(body, ["operationId", "source"]) || !uuidPattern.test(String(body.operationId)) || typeof body.source !== "object" || body.source === null || Array.isArray(body.source)) return error("invalid_input", "Check the draft request.", false, correlationId);
       const source = body.source as Record<string, unknown>;
-      if (source.kind === "candidate") {
-        if (!validObject(source, ["kind", "revisionId", "tableId"]) || !uuidPattern.test(String(source.revisionId)) || !uuidPattern.test(String(source.tableId))) return error("invalid_input", "Select a valid staged candidate.", false, correlationId);
-      } else if (source.kind === "manual") {
-        if (!validObject(source, ["kind", "content"])) return error("invalid_input", "Check the new draft fields.", false, correlationId);
-      } else return error("invalid_input", "Select a valid draft source.", false, correlationId);
+      if (source.kind !== "manual" || !validObject(source, ["kind", "content"])) return error("invalid_input", "Check the new draft fields.", false, correlationId);
       try { return serviceResponse(await createService().createDraft({ accessToken: getToken(request), request: body as unknown as SupplyCreateDraftRequest }), correlationId); }
       catch { return serviceUnavailable(); }
     },

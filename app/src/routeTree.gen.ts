@@ -97,6 +97,7 @@ import { Route as ApiMemberProfileFilesRouteImport } from './routes/api/member/p
 import { Route as ApiMemberProfileSubmitRouteImport } from './routes/api/member/profile.submit'
 import { Route as ApiSupplyDraftsDraftIdRouteImport } from './routes/api/supply/drafts.$draftId'
 import { Route as ApiSupplyTablesTableIdRouteImport } from './routes/api/supply/tables.$tableId'
+import { Route as ApiSupplyVenuesVenueIdRouteImport } from './routes/api/supply/venues.$venueId'
 import { Route as ApiTablesTableIdRequestsRouteImport } from './routes/api/tables.$tableId.requests'
 import { Route as HostTablesTableIdRosterRouteImport } from './routes/host/tables.$tableId.roster'
 import { Route as ApiAdminCancellationsRequestIdDecisionRouteImport } from './routes/api/admin/cancellations.$requestId.decision'
@@ -605,6 +606,11 @@ const ApiSupplyTablesTableIdRoute = ApiSupplyTablesTableIdRouteImport.update({
   path: '/$tableId',
   getParentRoute: () => ApiSupplyTablesRoute,
 } as any)
+const ApiSupplyVenuesVenueIdRoute = ApiSupplyVenuesVenueIdRouteImport.update({
+  id: '/$venueId',
+  path: '/$venueId',
+  getParentRoute: () => ApiSupplyVenuesRoute,
+} as any)
 const ApiTablesTableIdRequestsRoute =
   ApiTablesTableIdRequestsRouteImport.update({
     id: '/requests',
@@ -950,7 +956,7 @@ export interface FileRoutesByFullPath {
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
-  '/api/supply/venues': typeof ApiSupplyVenuesRoute
+  '/api/supply/venues': typeof ApiSupplyVenuesRouteWithChildren
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
@@ -975,6 +981,7 @@ export interface FileRoutesByFullPath {
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
   '/api/supply/drafts/$draftId': typeof ApiSupplyDraftsDraftIdRouteWithChildren
   '/api/supply/tables/$tableId': typeof ApiSupplyTablesTableIdRoute
+  '/api/supply/venues/$venueId': typeof ApiSupplyVenuesVenueIdRoute
   '/api/tables/$tableId/requests': typeof ApiTablesTableIdRequestsRoute
   '/host/tables/$tableId/roster': typeof HostTablesTableIdRosterRoute
   '/api/admin/cancellations/$requestId/decision': typeof ApiAdminCancellationsRequestIdDecisionRoute
@@ -1082,7 +1089,7 @@ export interface FileRoutesByTo {
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
-  '/api/supply/venues': typeof ApiSupplyVenuesRoute
+  '/api/supply/venues': typeof ApiSupplyVenuesRouteWithChildren
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
@@ -1107,6 +1114,7 @@ export interface FileRoutesByTo {
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
   '/api/supply/drafts/$draftId': typeof ApiSupplyDraftsDraftIdRouteWithChildren
   '/api/supply/tables/$tableId': typeof ApiSupplyTablesTableIdRoute
+  '/api/supply/venues/$venueId': typeof ApiSupplyVenuesVenueIdRoute
   '/api/tables/$tableId/requests': typeof ApiTablesTableIdRequestsRoute
   '/host/tables/$tableId/roster': typeof HostTablesTableIdRosterRoute
   '/api/admin/cancellations/$requestId/decision': typeof ApiAdminCancellationsRequestIdDecisionRoute
@@ -1220,7 +1228,7 @@ export interface FileRoutesById {
   '/api/restaurant/workspace': typeof ApiRestaurantWorkspaceRoute
   '/api/supply/drafts': typeof ApiSupplyDraftsRouteWithChildren
   '/api/supply/tables': typeof ApiSupplyTablesRouteWithChildren
-  '/api/supply/venues': typeof ApiSupplyVenuesRoute
+  '/api/supply/venues': typeof ApiSupplyVenuesRouteWithChildren
   '/api/tables/$tableId': typeof ApiTablesTableIdRouteWithChildren
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/host/attendance/$tableId': typeof HostAttendanceTableIdRoute
@@ -1245,6 +1253,7 @@ export interface FileRoutesById {
   '/api/member/profile/submit': typeof ApiMemberProfileSubmitRoute
   '/api/supply/drafts/$draftId': typeof ApiSupplyDraftsDraftIdRouteWithChildren
   '/api/supply/tables/$tableId': typeof ApiSupplyTablesTableIdRoute
+  '/api/supply/venues/$venueId': typeof ApiSupplyVenuesVenueIdRoute
   '/api/tables/$tableId/requests': typeof ApiTablesTableIdRequestsRoute
   '/host/tables/$tableId/roster': typeof HostTablesTableIdRosterRoute
   '/api/admin/cancellations/$requestId/decision': typeof ApiAdminCancellationsRequestIdDecisionRoute
@@ -1384,6 +1393,7 @@ export interface FileRouteTypes {
     | '/api/member/profile/submit'
     | '/api/supply/drafts/$draftId'
     | '/api/supply/tables/$tableId'
+    | '/api/supply/venues/$venueId'
     | '/api/tables/$tableId/requests'
     | '/host/tables/$tableId/roster'
     | '/api/admin/cancellations/$requestId/decision'
@@ -1516,6 +1526,7 @@ export interface FileRouteTypes {
     | '/api/member/profile/submit'
     | '/api/supply/drafts/$draftId'
     | '/api/supply/tables/$tableId'
+    | '/api/supply/venues/$venueId'
     | '/api/tables/$tableId/requests'
     | '/host/tables/$tableId/roster'
     | '/api/admin/cancellations/$requestId/decision'
@@ -1653,6 +1664,7 @@ export interface FileRouteTypes {
     | '/api/member/profile/submit'
     | '/api/supply/drafts/$draftId'
     | '/api/supply/tables/$tableId'
+    | '/api/supply/venues/$venueId'
     | '/api/tables/$tableId/requests'
     | '/host/tables/$tableId/roster'
     | '/api/admin/cancellations/$requestId/decision'
@@ -1756,7 +1768,7 @@ export interface RootRouteChildren {
   ApiRestaurantWorkspaceRoute: typeof ApiRestaurantWorkspaceRoute
   ApiSupplyDraftsRoute: typeof ApiSupplyDraftsRouteWithChildren
   ApiSupplyTablesRoute: typeof ApiSupplyTablesRouteWithChildren
-  ApiSupplyVenuesRoute: typeof ApiSupplyVenuesRoute
+  ApiSupplyVenuesRoute: typeof ApiSupplyVenuesRouteWithChildren
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   HostAttendanceTableIdRoute: typeof HostAttendanceTableIdRoute
   ApiAdminMemberAccountsDeleteRoute: typeof ApiAdminMemberAccountsDeleteRoute
@@ -2403,6 +2415,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/supply/tables/$tableId'
       preLoaderRoute: typeof ApiSupplyTablesTableIdRouteImport
       parentRoute: typeof ApiSupplyTablesRoute
+    }
+    '/api/supply/venues/$venueId': {
+      id: '/api/supply/venues/$venueId'
+      path: '/$venueId'
+      fullPath: '/api/supply/venues/$venueId'
+      preLoaderRoute: typeof ApiSupplyVenuesVenueIdRouteImport
+      parentRoute: typeof ApiSupplyVenuesRoute
     }
     '/api/tables/$tableId/requests': {
       id: '/api/tables/$tableId/requests'
@@ -3167,6 +3186,18 @@ const ApiSupplyTablesRouteWithChildren = ApiSupplyTablesRoute._addFileChildren(
   ApiSupplyTablesRouteChildren,
 )
 
+interface ApiSupplyVenuesRouteChildren {
+  ApiSupplyVenuesVenueIdRoute: typeof ApiSupplyVenuesVenueIdRoute
+}
+
+const ApiSupplyVenuesRouteChildren: ApiSupplyVenuesRouteChildren = {
+  ApiSupplyVenuesVenueIdRoute: ApiSupplyVenuesVenueIdRoute,
+}
+
+const ApiSupplyVenuesRouteWithChildren = ApiSupplyVenuesRoute._addFileChildren(
+  ApiSupplyVenuesRouteChildren,
+)
+
 interface ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren {
   ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
@@ -3317,7 +3348,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRestaurantWorkspaceRoute: ApiRestaurantWorkspaceRoute,
   ApiSupplyDraftsRoute: ApiSupplyDraftsRouteWithChildren,
   ApiSupplyTablesRoute: ApiSupplyTablesRouteWithChildren,
-  ApiSupplyVenuesRoute: ApiSupplyVenuesRoute,
+  ApiSupplyVenuesRoute: ApiSupplyVenuesRouteWithChildren,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   HostAttendanceTableIdRoute: HostAttendanceTableIdRoute,
   ApiAdminMemberAccountsDeleteRoute: ApiAdminMemberAccountsDeleteRoute,

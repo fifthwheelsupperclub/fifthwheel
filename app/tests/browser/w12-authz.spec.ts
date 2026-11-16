@@ -61,6 +61,7 @@ function access(path: string, method: string, role: Role): Access {
   if (path.startsWith("/api/admin/")) return role === "admin" ? "allow" : "deny";
   if (path.startsWith("/api/restaurant/")) return isRest ? "allow" : "deny";
   if (path.startsWith("/api/host/")) return role === "admin" || role === "hostA" ? "allow" : "deny";
+  if (path === "/api/supply/venues/$venueId") return role === "admin" ? "allow" : "deny"; // venue curation is admin-only
   if (path.startsWith("/api/supply/") || path.startsWith("/api/curation/")) {
     if (role === "admin") return "allow";
     if (!isHost) return "deny";
@@ -88,7 +89,8 @@ function bodyFor(path: string, method: string): unknown {
   if (path.startsWith("/api/admin/invitation-deliveries/")) return {};
   if (path === "/api/admin/waitlist") return { signupId: uuid(), operationId: uuid() };
   if (path.endsWith("/seat-requests/$tableId/approve")) return { operationId: uuid(), expectedProposalRevision: 1 };
-  if (path === "/api/supply/drafts") return { operationId: uuid(), source: { kind: "candidate", revisionId: uuid(), tableId: uuid() } };
+  if (path === "/api/supply/drafts") return { operationId: uuid(), source: { kind: "manual", content: {} } };
+  if (path === "/api/supply/venues/$venueId") return { name: "W12 probe venue", address: "1 Probe Way", neighborhood: "Inman Park", active: true };
   if (path === "/api/supply/drafts/$draftId") return { operationId: uuid(), expectedDraftRevision: 1 };
   if (path.endsWith("/drafts/$draftId/preview")) return { expectedDraftRevision: 1 };
   if (path.endsWith("/weekly-clone/operations/$operationId/reconcile")) return {};

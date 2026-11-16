@@ -46,6 +46,7 @@ insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identi
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
   ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'approved',1,1,'Ops${i + 1}','Guest','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values ('venue','w080-venue-1',${q(venue)}),('venue','w080-venue-2',${q(venue2)});
+insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values (${q(venue)},'W08 Venue 1','1 Test Way','Inman Park',${q(admin)}),(${q(venue2)},'W08 Venue 2','2 Test Way','Inman Park',${q(admin)});
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${q(table)},'published','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
   (${q(revision)},${q(table)},1,'published',jsonb_build_object('title','W08 Table','localDate',to_char((now()+interval '12 hours') at time zone 'America/New_York','YYYY-MM-DD'),

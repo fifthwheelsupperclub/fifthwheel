@@ -91,10 +91,10 @@ function verifiedLocalTestStatus() {
 function assertSupplyMigrationAndTarget() {
   if (!existsSync(migrationPath) || !existsSync(managementMigrationPath) || !existsSync(candidateProjectionFixPath) || !existsSync(supplyListCapabilityPath)) fail("W05 supply migration source is missing; no fixture was created");
   const ready = run("psql", [dbUrl, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c",
-    "select (to_regclass('public.app_supply_sync_runs') is not null)::text || '|' || (to_regclass('public.app_supply_sync_revisions') is not null)::text || '|' || (to_regclass('public.app_supply_external_mappings') is not null)::text || '|' || (to_regclass('public.app_supply_control') is not null)::text || '|' || (to_regprocedure('public.begin_supply_sync(uuid,uuid)') is not null)::text || '|' || (to_regprocedure('public.finish_supply_sync(uuid,uuid,text,jsonb,text,jsonb,jsonb,jsonb,text,text,integer)') is not null)::text || '|' || (to_regprocedure('public.read_supply_sync_summary(uuid)') is not null)::text || '|' || (to_regclass('public.app_supply_table_heads') is not null)::text || '|' || (to_regclass('public.app_supply_table_revisions') is not null)::text || '|' || (to_regclass('public.app_supply_table_operations') is not null)::text || '|' || (to_regprocedure('public.list_supply_tables(uuid,text,text,integer)') is not null)::text || '|' || (to_regprocedure('public.create_supply_draft(uuid,jsonb)') is not null)::text || '|' || (position('vn.value->>''name''' in pg_get_functiondef('public.create_supply_draft(uuid,jsonb)'::regprocedure))>0)::text || '|' || (position('v_candidates,''nextCursor'',v_next,''canCreateDraft'',v_admin' in pg_get_functiondef('public.list_supply_tables(uuid,text,text,integer)'::regprocedure))>0)::text"], {
+    "select (to_regclass('public.app_supply_sync_runs') is not null)::text || '|' || (to_regclass('public.app_supply_sync_revisions') is not null)::text || '|' || (to_regclass('public.app_supply_external_mappings') is not null)::text || '|' || (to_regclass('public.app_supply_control') is not null)::text || '|' || (to_regprocedure('public.begin_supply_sync(uuid,uuid)') is not null)::text || '|' || (to_regprocedure('public.finish_supply_sync(uuid,uuid,text,jsonb,text,jsonb,jsonb,jsonb,text,text,integer)') is not null)::text || '|' || (to_regprocedure('public.read_supply_sync_summary(uuid)') is not null)::text || '|' || (to_regclass('public.app_supply_table_heads') is not null)::text || '|' || (to_regclass('public.app_supply_table_revisions') is not null)::text || '|' || (to_regclass('public.app_supply_table_operations') is not null)::text || '|' || (to_regprocedure('public.list_supply_tables(uuid,text,text,integer)') is not null)::text || '|' || (to_regprocedure('public.create_supply_draft(uuid,jsonb)') is not null)::text || '|' || (position('vn.value->>''name''' in pg_get_functiondef('public.create_supply_draft(uuid,jsonb)'::regprocedure))>0)::text || '|' || (position('v_candidates,''nextCursor'',v_next,''canCreateDraft'',v_admin' in pg_get_functiondef('public.list_supply_tables(uuid,text,text,integer)'::regprocedure))>0)::text || '|' || (to_regprocedure('public.save_supply_venue(uuid,uuid,text,text,text,boolean)') is not null)::text"], {
     env: { ...process.env, PGPASSWORD: "postgres" },
   }).trim();
-  if (ready !== "true|true|true|true|true|true|true|true|true|true|true|true|true|true") fail("W05 migrations are not applied to fifthwheel-rewrite-test; no fixture was created");
+  if (ready !== "true|true|true|true|true|true|true|true|true|true|true|true|true|true|true") fail("W05 migrations are not applied to fifthwheel-rewrite-test; no fixture was created");
   const access = run("psql", [dbUrl, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c",
     "select (select bool_and(c.relrowsecurity) from pg_class c where c.oid in ('public.app_supply_sync_runs'::regclass,'public.app_supply_sync_revisions'::regclass,'public.app_supply_external_mappings'::regclass,'public.app_supply_control'::regclass,'public.app_supply_table_heads'::regclass,'public.app_supply_table_revisions'::regclass,'public.app_supply_table_operations'::regclass))::text || '|' || (has_table_privilege('anon','public.app_supply_sync_runs','select') or has_table_privilege('authenticated','public.app_supply_sync_runs','select') or has_table_privilege('anon','public.app_supply_sync_revisions','select') or has_table_privilege('authenticated','public.app_supply_sync_revisions','select') or has_table_privilege('anon','public.app_supply_table_heads','select') or has_table_privilege('authenticated','public.app_supply_table_heads','select') or has_table_privilege('anon','public.app_supply_table_revisions','select') or has_table_privilege('authenticated','public.app_supply_table_revisions','select') or has_table_privilege('anon','public.app_supply_table_operations','select') or has_table_privilege('authenticated','public.app_supply_table_operations','select'))::text"], {
     env: { ...process.env, PGPASSWORD: "postgres" },
@@ -133,52 +133,6 @@ function baselineSupplyControl() {
   if (revision && !/^[0-9a-f-]{36}$/i.test(revision)) fail("existing staged pointer is malformed; no fixture was created");
   if (hash && !/^[a-f0-9]{64}$/.test(hash)) fail("existing candidate hash is malformed; no fixture was created");
   return { revision, hash };
-}
-
-async function printFixtureCandidateDiagnostics(fixture) {
-  const query = `select jsonb_build_object(
-    'runId', run.run_id,
-    'state', run.state,
-    'revisionId', rev.revision_id,
-    'revisionState', rev.state,
-    'isLatestStaged', rev.revision_id=(select latest_staged_revision_id from public.app_supply_control where singleton),
-    'hasIdAndTitle', candidate.value->>'id' is not null and candidate.value->>'title' is not null,
-    'candidateId', candidate.value->>'id',
-    'candidate', candidate.value
-  )::text
-from public.app_supply_sync_runs run
-join public.app_supply_sync_revisions rev on rev.run_id=run.run_id
-cross join lateral jsonb_array_elements(rev.normalized_candidate) candidate(value)
-where run.actor_user_id=${sqlLiteral(fixture.adminId)}::uuid
-  and candidate.value->>'sourceRecordId' like ${sqlLiteral(`fixture:${fixture.suffix}:table:%`)}
-order by run.started_at desc;`;
-  const diagnostic = spawnSync("psql", [dbUrl, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", query], {
-    cwd: appRoot, encoding: "utf8", env: { ...process.env, PGPASSWORD: "postgres" },
-  });
-  if (diagnostic.error || diagnostic.status !== 0) {
-    process.stderr.write("W05 diagnostic: staged fixture candidate lookup failed safely.\n");
-    return;
-  }
-  process.stderr.write(`W05 staged fixture candidate rows: ${diagnostic.stdout.trim() || "none"}\n`);
-  if (!diagnostic.stdout.trim()) return;
-  let row;
-  try { row = JSON.parse(diagnostic.stdout.trim().split(/\r?\n/)[0]); }
-  catch { process.stderr.write("W05 diagnostic: candidate row parse failed safely.\n"); return; }
-  const operationId = randomUUID();
-  const probe = await fetch(`${apiUrl}/rest/v1/rpc/create_supply_draft`, {
-    method: "POST",
-    headers: { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`, "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ p_actor_user_id: fixture.adminId, p_request: { operationId, source: { kind: "candidate", tableId: row.candidateId, revisionId: row.revisionId } } }),
-    cache: "no-store", redirect: "error",
-  });
-  let safeBody = {};
-  try {
-    const body = await probe.json();
-    if (body && typeof body === "object" && !Array.isArray(body)) {
-      safeBody = { code: typeof body.code === "string" ? body.code.slice(0, 60) : null, message: typeof body.message === "string" ? body.message.slice(0, 100) : null };
-    }
-  } catch { safeBody = { responseKind: "non_json" }; }
-  process.stderr.write(`W05 direct RPC diagnostic: HTTP ${probe.status} ${JSON.stringify(safeBody)}\n`);
 }
 
 async function printSupplyListRpcDiagnostics(fixture) {
@@ -236,6 +190,7 @@ begin
   delete from public.app_supply_table_revisions where table_id=any(v_table_ids);
   delete from public.app_table_runtime where table_id=any(v_table_ids);
   delete from public.app_supply_table_heads where table_id=any(v_table_ids);
+  delete from public.app_supply_venues where created_by=${actorId}::uuid;
 end
 $cleanup_supply_management$;
 delete from public.app_supply_external_mappings where left(source_record_id,length(${prefix}))=${prefix};
@@ -282,12 +237,12 @@ async function main() {
     process.env.W05_ADMIN_EMAIL = fixture.adminEmail;
     process.env.W05_NON_ADMIN_EMAIL = fixture.nonAdminEmail;
     process.env.W05_ADMIN_ID = fixture.adminId;
+    process.env.W05_RUN_SUFFIX = suffix;
     process.env.SUPPLY_PROVIDER_MODE = "fixture";
     process.env.SUPPLY_FIXTURE_RUN_ID = suffix;
     result = await runPlaywright();
     if (result !== 0) {
       await printSupplyListRpcDiagnostics(fixture);
-      await printFixtureCandidateDiagnostics(fixture);
     }
   } finally {
     let cleanupFailure = null;
@@ -306,7 +261,7 @@ async function main() {
     if (cleanupFailure) throw cleanupFailure;
   }
   if (result !== 0) process.exitCode = result;
-  else console.log("W05.1 and W05.2 guarded test-project browser journeys passed. Exact fixture users, role, run, supply draft/revisions/operations and mappings were removed; append-only audit events remain.");
+  else console.log("W05 guarded test-project browser journeys passed. Exact fixture users, role, venues, supply draft/revisions/operations and clone rows were removed; append-only audit events remain.");
 }
 
 main().catch((error) => {

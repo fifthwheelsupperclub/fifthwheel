@@ -90,8 +90,7 @@ export function createSupplyRuntime() {
     provider,
     service: createSupplySyncService({ resolvePrincipal, provider, repository }),
     managementService: createSupplyManagementService({
-      resolvePrincipal, repository: managementRepository, providerState: provider.state,
-      mutationsEnabled: provider.state === "fixture" && fixtureModeAllowed(),
+      resolvePrincipal, repository: managementRepository,
     }),
   });
 }

@@ -2,8 +2,8 @@
 
 import type {
   SupplyCreateDraftRequest, SupplyCreateDraftResultDTO, SupplyDraftContent, SupplyRevisionActionRequest,
-  SupplyRevisionSummaryDTO, SupplyTableDetailDTO, SupplyTableListDTO, SupplyUpdateDraftRequest,
-  SupplyVenueListDTO,
+  SupplyRevisionSummaryDTO, SupplySaveVenueRequest, SupplyTableDetailDTO, SupplyTableListDTO, SupplyUpdateDraftRequest,
+  SupplyVenueListDTO, SupplyVenueOptionDTO,
 } from "../supply.management.contract.ts";
 import type { SupabaseServerConfig } from "./supabase.server.ts";
 import type { SupplyManagementRepository, SupplyStoredTableDetail } from "./supply.management.contract.server.ts";
@@ -83,9 +83,9 @@ export function createSupplyManagementRepository(config: Config): SupplyManageme
     try { return await response.json() as unknown; } catch { throw new SupplyManagementRepositoryError("response_invalid"); }
   }
   function safeList(value: unknown): SupplyTableListDTO {
-    if (!isRecord(value) || typeof value.canCreateDraft !== "boolean" || !Array.isArray(value.items) || !Array.isArray(value.stagedCandidates)
+    if (!isRecord(value) || typeof value.canCreateDraft !== "boolean" || !Array.isArray(value.items)
       || (value.nextCursor !== null && typeof value.nextCursor !== "string")) throw new SupplyManagementRepositoryError("response_invalid");
-    return value as unknown as SupplyTableListDTO;
+    return { canCreateDraft: value.canCreateDraft, items: value.items, nextCursor: value.nextCursor } as SupplyTableListDTO;
   }
   return Object.freeze({
     async listTables(actorUserId: string, _assignedTableIds: readonly string[], input: Readonly<{ state?: string; cursor?: string; limit: number }>) {
@@ -103,6 +103,14 @@ export function createSupplyManagementRepository(config: Config): SupplyManageme
       const result = await rpc("list_supply_venues", { p_actor_user_id: actorUserId, p_query: query ?? null });
       if (!isRecord(result) || !Array.isArray(result.items)) throw new SupplyManagementRepositoryError("response_invalid");
       return result as unknown as SupplyVenueListDTO;
+    },
+    async saveVenue(actorUserId: string, venueId: string, request: SupplySaveVenueRequest) {
+      const result = await rpc("save_supply_venue", {
+        p_actor_user_id: actorUserId, p_venue_id: venueId, p_name: request.name, p_address: request.address,
+        p_neighborhood: request.neighborhood, p_active: request.active,
+      });
+      if (!isRecord(result) || !uuid(result.venueId) || typeof result.name !== "string" || typeof result.active !== "boolean") throw new SupplyManagementRepositoryError("response_invalid");
+      return Object.freeze({ venueId: result.venueId, name: result.name, address: String(result.address), neighborhood: String(result.neighborhood), active: result.active }) satisfies SupplyVenueOptionDTO;
     },
     async readDraftTableId(actorUserId: string, draftId: string) {
       const result = await rpc("read_supply_draft_table_id", { p_actor_user_id: actorUserId, p_draft_id: draftId });

@@ -196,6 +196,7 @@ function fixtureSql(f) {
     // As the draft->accept->publish flow leaves it; seeded rosters also mark the Table protected, as roster approval does.
     out.push(`update public.app_supply_table_heads set lifecycle='published',draft_revision_id=${sql(t.revision)},accepted_revision_id=${sql(t.revision)},published_revision_id=${sql(t.revision)},protected_by_activity=${t.k === 0 ? "false" : "true"} where table_id=${sql(t.id)};`);
     t.venues.forEach((v, j) => out.push(`insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values ('venue',${sql(`w12-${f.suffix}-${t.k}-${j}`)},${sql(v)});`));
+    t.venues.forEach((v, j) => out.push(`insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values (${sql(v)},${sql(`W12 venue ${f.tag} ${t.k}-${j}`)},${sql(`${j + 1} Test Way`)},'Inman Park',${sql(f.admin.id)}) on conflict (venue_id) do nothing;`));
     const requesters = f.members.filter((m) => m.table === t.k);
     requesters.forEach((m, i) => out.push(`insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state,created_at) values (${sql(m.request)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(t.title)},${sql(t.date)},'19:00','Inman Park','pending',now()-interval '${10 - i} hours');`));
     if (t.k === 0) continue; // T1's roster is curated in the browser
@@ -212,7 +213,7 @@ function fixtureSql(f) {
 
 // Deletes everything this run created, keyed by its exact Table, guest and user ids. Rows other runs own are never selected.
 function cleanupSql(f) {
-  const tabs = list(f.tables.map((t) => t.id)), guests = list(f.members.map((m) => m.guest));
+  const tabs = list(f.tables.map((t) => t.id)), guests = list(f.members.map((m) => m.guest)), vens = list(f.tables.flatMap((t) => t.venues));
   const users = list([f.admin.id, f.host.id, ...f.members.map((m) => m.id)].filter(Boolean));
   const adm = list([f.admin.admission, ...f.members.map((m) => m.admission)]), sig = list([f.admin.signup, ...f.members.map((m) => m.signup)]);
   return `begin;
@@ -269,6 +270,7 @@ delete from public.app_supply_table_revisions where table_id in (${tabs});
 delete from public.app_table_runtime where table_id in (${tabs});
 delete from public.app_supply_table_heads where table_id in (${tabs});
 delete from public.app_supply_external_mappings where entity_kind='venue' and left(source_record_id,17)=${sql(`w12-${f.suffix}-`)};
+delete from public.app_supply_venues where venue_id in (${vens});
 delete from public.app_profile_files where guest_id in (${guests});
 delete from public.app_identity_reviews where guest_id in (${guests});
 delete from public.app_member_profiles where guest_id in (${guests});

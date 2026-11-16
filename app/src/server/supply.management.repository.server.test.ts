@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSupplyManagementRepository, SupplyManagementRepositoryError } from "./supply.management.repository.server.ts";
 
+const venueId = "d7a6c8e2-51e8-4a2b-9672-052160a54101";
+const stop = { venueId, venueName: "Venue", venueAddress: "1 Test Way", publicNotes: "" };
 const request = {
   operationId: "d7a6c8e2-51e8-4a2b-9672-052160a54201",
-  source: { kind: "candidate" as const, revisionId: "d7a6c8e2-51e8-4a2b-9672-052160a54301", tableId: "7f7d8f66-30de-5de3-9ef1-53910370c301" },
+  source: { kind: "manual" as const, content: {
+    title: "Table", localDate: "2026-12-03", startLocalTime: "19:00", neighborhood: "Inman Park", hostNotes: "",
+    stops: [{ ...stop, role: "drinks" as const, minutesFromStart: 0 }, { ...stop, role: "dinner" as const, minutesFromStart: 45 }, { ...stop, role: "dessert" as const, minutesFromStart: 120 }] as const,
+  } },
 };
 
 function configuredRepository(body: unknown) {
@@ -19,7 +24,7 @@ function configuredRepository(body: unknown) {
   return { repository, calls };
 }
 
-test("candidate RPC forwards only the server credential and maps PostgREST function errors safely", async () => {
+test("draft RPC forwards only the server credential and maps PostgREST function errors safely", async () => {
   const { repository, calls } = configuredRepository({ code: "42883", message: "operator does not exist: record ->> unknown" });
   await assert.rejects(repository.createDraft("d7a6c8e2-51e8-4a2b-9672-052160a54001", request), (error: unknown) => {
     assert.ok(error instanceof SupplyManagementRepositoryError);
@@ -30,7 +35,7 @@ test("candidate RPC forwards only the server credential and maps PostgREST funct
   const headers = new Headers(calls[0]?.headers);
   assert.equal(headers.get("authorization"), "Bearer server-secret-test-only");
   assert.equal(headers.get("apikey"), "server-secret-test-only");
-  assert.equal(JSON.parse(String(calls[0]?.body)).p_request.source.kind, "candidate");
+  assert.equal(JSON.parse(String(calls[0]?.body)).p_request.source.kind, "manual");
 });
 
 test("only explicit RPC not_found maps a 404 to a domain not-found error", async () => {

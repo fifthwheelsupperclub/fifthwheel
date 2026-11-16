@@ -65,8 +65,8 @@ test("W05.3 authorized admin previews, clones, reloads and safely undoes a weekl
     expect(supplyResponse.status()).toBe(200);
     const supply = await supplyResponse.json() as { data?: { items?: Array<{ tableId: string; title: string }> } };
     const suffix = process.env.SUPPLY_FIXTURE_RUN_ID;
-    const sourceTemplate = supply.data?.items?.find((row) => row.title === `Synthetic Thursday Table ${suffix} · reviewed`);
-    expect(sourceTemplate, "the preceding W05.2 journey must leave its synthetic published Table").toBeTruthy();
+    const sourceTemplate = supply.data?.items?.find((row) => row.title === `W05 Curated Table ${suffix}`);
+    expect(sourceTemplate, "the preceding W05 curation journey must leave its published Table").toBeTruthy();
     const detailResponse = await admin.request.get(`${appOrigin}/api/supply/tables/${encodeURIComponent(sourceTemplate!.tableId)}`);
     expect(detailResponse.status()).toBe(200);
     const detail = await detailResponse.json() as { data?: { published?: { content?: Record<string, unknown> } } };
