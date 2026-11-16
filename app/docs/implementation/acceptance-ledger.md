@@ -70,3 +70,24 @@ Rule applied: a scenario is `accepted` only when the real database or browser pa
 | A32, A33 | ready for verification | Profile preference round-trip (W04 runner); member states on real routes | Real-stack Tonight/recap journey |
 
 Blocked on you: Stripe access (A09–A15 provider evidence), release-owner policy and copy decisions ([policy copy inventory](policy-copy-inventory.md)), hosted project, domain and secrets, and any live action.
+
+## 2026-11-16 status addendum (supersedes the 2026-11-15 rows below where they differ)
+
+Evidence: the real-stack journey runner (`node scripts/run-w12-journey-browser.mjs`, 11/11 on the final run, fixtures cleaned), the permission and direct-route sweep (`node scripts/run-w12-authz.mjs`, 1550 pass / 0 fail / 1 deliberately skipped of 1551), and four extended DB harnesses. All on the isolated local stack with Stripe test mode and Mailpit; nothing hosted.
+
+| Scenario | Status | Evidence now | Still missing |
+|---|---|---|---|
+| A06 | accepted (local stack) | Journey stage 1: approve, replay (no duplicates), stale revision refused | none new |
+| A07 | accepted (local stack) | Journey stage 8: T−48 reminder in Mailpit | Real Resend send; owner sign-off on wording |
+| A09, A10, A11 | accepted (local stack, Stripe test mode) | Money and fault suites; journey stage 2 | Live-mode dry run; final-slot race on a host |
+| A12 | accepted (local stack) | Seat-confirmed email arrives (stage 2); failed-email recovery in earlier suites | Real Resend |
+| A13, A14, A15 | accepted (local stack, Stripe test mode) | Stage 6: partial refund then Table cancel refunds the remainder; refund queue shows Table-cancel obligations (fix 56261d8) | Live-mode refund; missing email for the extra remainder and cancel-Table dialog wording after a partial refund (open) |
+| A16, A17 | accepted (local stack) | Stages 3 and 7 | Pre-T−24 checkout pause is a warning only (P2) |
+| A18 | accepted (local stack) | Sweep: restaurant scoped to its own venue, wrong venue refused | none new |
+| A19, A20 | accepted (local stack) | Stage 4 plus second-granularity boundaries in `test-w09-vote-db.mjs` | none new |
+| A21 | accepted (local stack) | Stage 5 | none new |
+| A22 | accepted (local stack) | Sweep over every API and page route in every role | Re-run on staging |
+| A02, A03 | accepted for the local stack | Evidence reads by host, restaurant and another member refused (sweep); evidence deleted from storage by the worker (stage 9c) | Keyboard/320px pass |
+| A25, A32–A35 | ready for verification | Footer Terms/Privacy/support links on every layout | Person-led accessibility and visual comparison (W12.3) |
+
+Decision recorded 2026-11-16: hosts see first names only on rosters; admins see full names (`roster.service.server.ts`).
