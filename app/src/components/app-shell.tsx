@@ -1,6 +1,7 @@
 import { UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { GuestSidebar, GuestTabs, type GuestNavKey } from "./guest-nav";
+import { LegalFooter } from "./legal-footer";
 import { SignOutButton } from "./sign-out-button";
 import { StaffMenu, StaffSidebar, type StaffNavKey, type StaffRole } from "./staff-nav";
 
@@ -33,7 +34,7 @@ export function AppShell(props: Props) {
     </header>
     <div className="product-layout">
       {role === "guest" ? <GuestSidebar active={props.active} /> : <StaffSidebar role={role} active={props.active} />}
-      <main id="content" className={`product-content${contentClassName ? ` ${contentClassName}` : ""}`} aria-labelledby={labelledBy}>{children}</main>
+      <main id="content" className={`product-content${contentClassName ? ` ${contentClassName}` : ""}`} aria-labelledby={labelledBy}>{children}<LegalFooter /></main>
       {role === "guest" && <GuestTabs active={props.active} />}
     </div>
   </div>;

@@ -270,3 +270,8 @@
 .ops-meta .badge { white-space: normal; text-align: left; }
 /* The shell's content area already pads the page; ops pages must not add a second layer. */
 .ops-workspace .ops-content { padding: 0; }
+
+.legal-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--text-xs); }
+.legal-footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.legal-footer a { color: var(--muted-strong); overflow-wrap: anywhere; }
+.legal-footer a:hover { color: var(--text); }
