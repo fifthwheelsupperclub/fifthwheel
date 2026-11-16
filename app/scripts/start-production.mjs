@@ -22,9 +22,11 @@ createServer(async (req, res) => {
     }
     const body = req.method === "GET" || req.method === "HEAD" ? undefined : Readable.toWeb(req);
     const response = await app.fetch(new Request(url, { method: req.method, headers: req.headers, body, duplex: "half" }));
-    res.writeHead(response.status, Object.fromEntries(response.headers));
-    const cookies = response.headers.getSetCookie?.() ?? [];
-    if (cookies.length) res.setHeader("set-cookie", cookies);
+    // Set-Cookie must go in as an array before writeHead: fromEntries keeps only the last one, and setHeader after writeHead throws.
+    const headers = Object.fromEntries(response.headers);
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length) headers["set-cookie"] = cookies;
+    res.writeHead(response.status, headers);
     if (response.body) Readable.fromWeb(response.body).pipe(res); else res.end();
   } catch {
     if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" });
