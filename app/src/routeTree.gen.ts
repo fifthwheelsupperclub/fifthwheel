@@ -143,7 +143,6 @@ import { Route as ApiMeTableInvitationsInvitationIdCheckoutReturnRouteImport } f
 import { Route as ApiMemberProfileFilesFileIdCompleteRouteImport } from './routes/api/member/profile.files.$fileId.complete'
 import { Route as ApiMemberProfileFilesFileIdContentRouteImport } from './routes/api/member/profile.files.$fileId.content'
 import { Route as ApiMemberProfileFilesFileIdReadUrlRouteImport } from './routes/api/member/profile.files.$fileId.read-url'
-import { Route as ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport } from './routes/api/admin/supply/weekly-clone.operations.$operationId.reconcile'
 import { Route as ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRouteImport } from './routes/api/admin/supply/weekly-clone.operations.$operationId.undo'
 
 const IndexRoute = IndexRouteImport.update({
@@ -879,12 +878,6 @@ const ApiMemberProfileFilesFileIdReadUrlRoute =
     path: '/read-url',
     getParentRoute: () => ApiMemberProfileFilesFileIdRoute,
   } as any)
-const ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute =
-  ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport.update({
-    id: '/reconcile',
-    path: '/reconcile',
-    getParentRoute: () => ApiAdminSupplyWeeklyCloneOperationsOperationIdRoute,
-  } as any)
 const ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute =
   ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRouteImport.update({
     id: '/undo',
@@ -1027,7 +1020,6 @@ export interface FileRoutesByFullPath {
   '/api/member/profile/files/$fileId/complete': typeof ApiMemberProfileFilesFileIdCompleteRoute
   '/api/member/profile/files/$fileId/content': typeof ApiMemberProfileFilesFileIdContentRoute
   '/api/member/profile/files/$fileId/read-url': typeof ApiMemberProfileFilesFileIdReadUrlRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRoutesByTo {
@@ -1160,7 +1152,6 @@ export interface FileRoutesByTo {
   '/api/member/profile/files/$fileId/complete': typeof ApiMemberProfileFilesFileIdCompleteRoute
   '/api/member/profile/files/$fileId/content': typeof ApiMemberProfileFilesFileIdContentRoute
   '/api/member/profile/files/$fileId/read-url': typeof ApiMemberProfileFilesFileIdReadUrlRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRoutesById {
@@ -1299,7 +1290,6 @@ export interface FileRoutesById {
   '/api/member/profile/files/$fileId/complete': typeof ApiMemberProfileFilesFileIdCompleteRoute
   '/api/member/profile/files/$fileId/content': typeof ApiMemberProfileFilesFileIdContentRoute
   '/api/member/profile/files/$fileId/read-url': typeof ApiMemberProfileFilesFileIdReadUrlRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRouteTypes {
@@ -1439,7 +1429,6 @@ export interface FileRouteTypes {
     | '/api/member/profile/files/$fileId/complete'
     | '/api/member/profile/files/$fileId/content'
     | '/api/member/profile/files/$fileId/read-url'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1572,7 +1561,6 @@ export interface FileRouteTypes {
     | '/api/member/profile/files/$fileId/complete'
     | '/api/member/profile/files/$fileId/content'
     | '/api/member/profile/files/$fileId/read-url'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   id:
     | '__root__'
@@ -1710,7 +1698,6 @@ export interface FileRouteTypes {
     | '/api/member/profile/files/$fileId/complete'
     | '/api/member/profile/files/$fileId/content'
     | '/api/member/profile/files/$fileId/read-url'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   fileRoutesById: FileRoutesById
 }
@@ -2738,13 +2725,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMemberProfileFilesFileIdReadUrlRouteImport
       parentRoute: typeof ApiMemberProfileFilesFileIdRoute
     }
-    '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': {
-      id: '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
-      path: '/reconcile'
-      fullPath: '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
-      preLoaderRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport
-      parentRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdRoute
-    }
     '/api/admin/supply/weekly-clone/operations/$operationId/undo': {
       id: '/api/admin/supply/weekly-clone/operations/$operationId/undo'
       path: '/undo'
@@ -3199,14 +3179,11 @@ const ApiSupplyVenuesRouteWithChildren = ApiSupplyVenuesRoute._addFileChildren(
 )
 
 interface ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren {
-  ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 
 const ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren: ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren =
   {
-    ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute:
-      ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute,
     ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute:
       ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute,
   }

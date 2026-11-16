@@ -93,15 +93,14 @@ function bodyFor(path: string, method: string): unknown {
   if (path === "/api/supply/venues/$venueId") return { name: "W12 probe venue", address: "1 Probe Way", neighborhood: "Inman Park", active: true };
   if (path === "/api/supply/drafts/$draftId") return { operationId: uuid(), expectedDraftRevision: 1 };
   if (path.endsWith("/drafts/$draftId/preview")) return { expectedDraftRevision: 1 };
-  if (path.endsWith("/weekly-clone/operations/$operationId/reconcile")) return {};
   if (path.endsWith("/checkout") ) return { operationId: uuid(), expectedProposalRevision: 1, expectedProfileRevision: 1, acceptedDisclosureVersion: "seat-checkout-v1" };
   if (path.endsWith("/checkout/return")) return { attemptId: uuid(), sessionId: "cs_test_w12none" };
   if (path.endsWith("/roster-proposal") ) return { operationId: uuid(), expectedProposalRevision: 1, supplyRevisionId: uuid(), selectedRequestIds: [] };
   if (path.endsWith("/roster-proposal/submit")) return { operationId: uuid(), expectedProposalRevision: 1 };
   if (path.includes("/supply/drafts/") && /(accept|preview|publish)$/.test(path)) return { operationId: uuid(), expectedDraftRevision: 1 };
   if (path.endsWith("/weekly-clone/preview")) return { sourceWeekStart: "2026-11-02", targetWeekStart: "2026-11-09" };
-  if (path.endsWith("/admin/supply/weekly-clone")) return { operationId: uuid(), sourceWeekStart: "2026-11-02", targetWeekStart: "2026-11-09", expectedPlanHash: "a".repeat(32) };
-  if (path.endsWith("/undo")) return { undoOperationId: uuid(), expectedManifestRevision: 1 };
+  if (path.endsWith("/admin/supply/weekly-clone")) return { operationId: uuid(), sourceWeekStart: "2026-11-02", targetWeekStart: "2026-11-09" };
+  if (path.endsWith("/undo")) return {};
   if (path.endsWith("/proceed")) return { operationId: uuid() };
   if (path.endsWith("/check-in")) return { seatId: A.seat };
   if (path.endsWith("/flag") || (path.endsWith("/delete") && path.includes("conduct-reports"))) return {};

@@ -167,7 +167,6 @@ function cleanupSql(fixture, baseline) {
   const prefix = sqlLiteral(`fixture:${fixture.suffix}:`);
   const actorId = sqlLiteral(fixture.adminId);
   return `begin;
-delete from public.app_supply_weekly_clone_fixture_records where run_id=${sqlLiteral(fixture.suffix)};
 delete from public.app_supply_weekly_clone_items where operation_id in (
   select operation_id from public.app_supply_weekly_clone_operations where actor_user_id=${sqlLiteral(fixture.adminId)}::uuid
 );
