@@ -50,6 +50,21 @@ function isAdmin(principal: ServerVerifiedPrincipal): boolean {
   return authorize(principal, { workspace: "admin", action: "roster:read" }).allowed;
 }
 
+const firstName = (name: string): string => name.split(" ")[0] ?? name;
+
+function redactProposal(proposal: RosterProposalDTO | null): RosterProposalDTO | null {
+  return proposal && { ...proposal, selectedGuests: proposal.selectedGuests.map((g) => ({ ...g, displayName: firstName(g.displayName) })) };
+}
+
+// Hosts see first names only; admins see full names.
+function redactContext(context: TableRosterContextDTO): TableRosterContextDTO {
+  return {
+    ...context,
+    applicants: { ...context.applicants, items: context.applicants.items.map((a) => ({ ...a, displayName: firstName(a.displayName) })) },
+    currentProposal: redactProposal(context.currentProposal),
+  };
+}
+
 function canCurate(principal: ServerVerifiedPrincipal, tableId: string): boolean {
   if (isAdmin(principal)) return true;
   return authorize(principal, { workspace: "host", action: "roster:read", tableId }).allowed;
@@ -131,7 +146,10 @@ export function createRosterService(dependencies: RosterServiceDependencies): Ro
       if (!resolution.ok) return resolutionFailure<TableRosterContextDTO>(resolution);
       const actor = resolution.actor;
       if (!canCurate(actor, input.tableId)) return fail("forbidden", "You are not assigned to this Table.");
-      try { return { ok: true, value: await dependencies.repository.readTableRoster(actor.userId, input.tableId, input) }; }
+      try {
+        const value = await dependencies.repository.readTableRoster(actor.userId, input.tableId, input);
+        return { ok: true, value: isAdmin(actor) ? value : redactContext(value) };
+      }
       catch (error) { return repositoryFailure(error); }
     },
 
@@ -141,7 +159,10 @@ export function createRosterService(dependencies: RosterServiceDependencies): Ro
       if (!resolution.ok) return resolutionFailure<RosterProposalDTO>(resolution);
       const actor = resolution.actor;
       if (!canPropose(actor, input.tableId)) return fail("forbidden", "You are not assigned to this Table.");
-      try { return { ok: true, value: await dependencies.repository.saveRosterProposal(actor.userId, input.tableId, input.request) }; }
+      try {
+        const value = await dependencies.repository.saveRosterProposal(actor.userId, input.tableId, input.request);
+        return { ok: true, value: isAdmin(actor) ? value : redactProposal(value)! };
+      }
       catch (error) { return repositoryFailure(error); }
     },
 
@@ -151,7 +172,10 @@ export function createRosterService(dependencies: RosterServiceDependencies): Ro
       if (!resolution.ok) return resolutionFailure<RosterProposalDTO>(resolution);
       const actor = resolution.actor;
       if (!canPropose(actor, input.tableId)) return fail("forbidden", "You are not assigned to this Table.");
-      try { return { ok: true, value: await dependencies.repository.submitRosterProposal(actor.userId, input.tableId, input.request) }; }
+      try {
+        const value = await dependencies.repository.submitRosterProposal(actor.userId, input.tableId, input.request);
+        return { ok: true, value: isAdmin(actor) ? value : redactProposal(value)! };
+      }
       catch (error) { return repositoryFailure(error); }
     },
 

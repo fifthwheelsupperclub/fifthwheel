@@ -122,3 +122,18 @@ test("database validation issues become safe UI reasons without database text", 
     assert.equal(result.error.safeMessage.includes("SQL"), false);
   }
 });
+
+test("hosts see first names only; admins see full names", async () => {
+  const host = principal({ staffRoles: new Set(["host"]), assignedTableIds: new Set([tableId]) });
+  const admin = principal({ staffRoles: new Set(["admin"]) });
+  const withProposal = { async readTableRoster() { return { table: { tableId, title: "T", localDate: "2027-06-12", startLocalTime: "18:30", neighborhood: "N", publishedRevisionId: supplyRevisionId, readOnlyReason: null }, applicants: { items: [{ requestId, guestId: proposal.selectedGuests[0]!.guestId, displayName: "Alex Guest", requestCreatedAt: now, eligible: true, reasonCodes: [], recommendationRank: null, selected: true }], nextCursor: null }, currentProposal: proposal, permissions: { canEditProposal: true, canSubmit: false, canApprove: false } }; } };
+  const h = await createFake(withProposal, host).service.readTableRoster({ accessToken, tableId, limit: 25 });
+  assert.ok(h.ok);
+  if (h.ok) { assert.equal(h.value.applicants.items[0]?.displayName, "Alex"); assert.equal(h.value.currentProposal?.selectedGuests[0]?.displayName, "Alex"); }
+  const a = await createFake(withProposal, admin).service.readTableRoster({ accessToken, tableId, limit: 25 });
+  assert.ok(a.ok);
+  if (a.ok) assert.equal(a.value.applicants.items[0]?.displayName, "Alex Guest");
+  const saved = await createFake({}, host).service.saveRosterProposal({ accessToken, tableId, request: { operationId, expectedProposalRevision: null, supplyRevisionId, selectedRequestIds: [requestId] } });
+  assert.ok(saved.ok);
+  if (saved.ok) assert.equal(saved.value.selectedGuests[0]?.displayName, "Alex");
+});
