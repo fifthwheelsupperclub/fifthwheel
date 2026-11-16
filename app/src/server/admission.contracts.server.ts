@@ -53,6 +53,9 @@ export type ValidatedWaitlistIntake = Readonly<{
   surpriseGame: SurpriseGame;
   referral: string;
   source: "landing-page";
+  /** Advisory ad/UTM attribution sent by the marketing form; sanitized, never required. */
+  attribution: Readonly<Record<string, string>> | null;
+  isTest: boolean;
 }>;
 
 export type SafeFieldErrors = Readonly<Record<string, string>>;

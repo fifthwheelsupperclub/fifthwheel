@@ -40,6 +40,8 @@ test("preserves marketing fields, normalizes email, maps optional nights and ign
     surpriseGame: "I'd rather keep it conversational",
     referral: "A friend",
     source: "landing-page",
+    attribution: null,
+    isTest: false,
   });
 });
 
@@ -110,3 +112,21 @@ test("accepts matching ages from 21 through 120 and rejects values outside that 
   assert.equal(validateWaitlistIntake({ ...fixture, match_age_min: "21.5", match_age_max: "45" }).kind, "invalid");
   assert.equal(validateWaitlistIntake({ ...fixture, match_age_min: Number.MAX_SAFE_INTEGER + 1, match_age_max: 45 }).kind, "invalid");
 });
+
+test("attribution and is_test are kept when clean and dropped, never rejected, when not", () => {
+  const base = { first_name: "A", last_name: "B", email: "a@b.co", birthdate: "1990-01-01", match_age_min: 25, match_age_max: 45, neighborhood: "Inman Park", identity: "Woman", open_to: "Men", nights: "Not specified", referral: "", source: "landing-page", looking_for: "Open", surprise_game: "Yes, surprise me" };
+  const ok = validateWaitlistIntake({ ...base, attribution: { utm_source: " meta ", campaign_id: "c1", sneaky: "x", ad_id: 5, utm_term: "a\u0000b", landing_path: "/".padEnd(500, "p") }, is_test: true }, new Date("2026-11-16T00:00:00Z"));
+  assert.equal(ok.kind, "valid");
+  if (ok.kind === "valid") {
+    assert.equal(ok.value.isTest, true);
+    assert.deepEqual(Object.keys(ok.value.attribution ?? {}).sort(), ["campaign_id", "landing_path", "utm_source"]);
+    assert.equal(ok.value.attribution?.utm_source, "meta");
+    assert.equal(ok.value.attribution?.landing_path?.length, 200);
+  }
+  for (const attribution of [undefined, null, "x", [1], {}, { nothing: "known" }]) {
+    const r = validateWaitlistIntake({ ...base, attribution, is_test: "yes" }, new Date("2026-11-16T00:00:00Z"));
+    assert.equal(r.kind, "valid");
+    if (r.kind === "valid") { assert.equal(r.value.attribution, null); assert.equal(r.value.isTest, false); }
+  }
+});
+

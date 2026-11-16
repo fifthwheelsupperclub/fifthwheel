@@ -28,6 +28,8 @@ const intake: ValidatedWaitlistIntake = {
   surpriseGame: "Yes, surprise me",
   referral: "Friend",
   source: "landing-page",
+  attribution: { utm_source: "meta", campaign_id: "c1" },
+  isTest: false,
 };
 
 const existingSignup: WaitlistSignupRow = {
@@ -90,6 +92,8 @@ test("inserts a validated intake and uses only server-role PostgREST headers", a
     surprise_game: intake.surpriseGame,
     referral: intake.referral,
     source: intake.source,
+    attribution: { utm_source: "meta", campaign_id: "c1" },
+    is_test: false,
   });
 });
 

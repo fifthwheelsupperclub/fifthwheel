@@ -107,6 +107,24 @@ function isOneOf<T extends string>(value: string | null, allowed: readonly T[]):
  * Parse the unchanged marketing JSON payload. The server's clock is authoritative
  * for Atlanta's local date; client submitted_at is intentionally ignored.
  */
+const attributionKeys = new Set([
+  "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+  "campaign_id", "adset_id", "ad_id", "campaign_name", "adset_name", "ad_name",
+  "placement", "site_source_name", "captured_at", "landing_path", "referrer_host",
+]);
+
+/** Attribution is advisory: keep only known keys with short printable string values; anything else is dropped, never a reason to reject a signup. */
+function cleanAttribution(value: unknown): Readonly<Record<string, string>> | null {
+  if (!isRecord(value)) return null;
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!attributionKeys.has(key) || typeof raw !== "string") continue;
+    const text = raw.trim().slice(0, 200);
+    if (text && !/[\u0000-\u001f\u007f]/.test(text)) out[key] = text;
+  }
+  return Object.keys(out).length > 0 ? Object.freeze(out) : null;
+}
+
 export function validateWaitlistIntake(
   payload: unknown,
   now: Date = new Date(),
@@ -188,6 +206,8 @@ export function validateWaitlistIntake(
       surpriseGame: surpriseGame as SurpriseGame,
       referral: referral!,
       source: "landing-page",
+      attribution: cleanAttribution(payload.attribution),
+      isTest: payload.is_test === true,
     }),
   };
 }
