@@ -5,7 +5,7 @@ services:
     runtime: node
     rootDir: app
     plan: starter # always-on so Stripe webhooks and magic links never hit a cold instance; "free" sleeps
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@10.17.1 && pnpm install --frozen-lockfile && pnpm build # not corepack: Node 22.12's bundled corepack fails signature checks
     startCommand: pnpm start
     healthCheckPath: /api/health
     envVars:
