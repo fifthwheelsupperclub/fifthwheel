@@ -46,40 +46,33 @@ Neighborhood and venues stay attributes of the itinerary, not separate objects i
 
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
-| Propose roster | Assigned host or admin | Individually eligible applicants and current Table revision | Versioned proposed roster | Invalid proposals remain reviewable with reasons but cannot be approved |
-| Approve roster | Admin | Current proposal passes all composition rules against current profile versions | Approved roster; one Table invitation is queued per selected guest | Invalid/stale approval commits no invitations; replay cannot queue duplicates |
-| Revalidate composition | App | Profile or roster revision changes, or a guest is added/removed/replaced | Proposal becomes current-valid or invalid/stale | Approval fails until refreshed and revalidated |
-| Publish | Staff | Valid accepted revision | Table becomes visible to eligible guests in the published-future browse list | Invalid/stale revisions cannot publish |
-| Browse / request a Seat | Verified Guest with approved profile | Published future Table | Creates one active Seat request, not an Invitation or Seat | Repeated request remains one active request; full Table does not promise availability |
+| Publish | Staff | Valid accepted revision | Table can receive placements | Invalid/stale revisions cannot publish |
+| Place a guest | Admin | Published future Table with fewer than five active invitations; guest 21+ on the Table date | One Table invitation queued; the roster gains a revision | Preference-rule warnings need confirmation; replay cannot queue duplicates |
+| Remove a guest | Admin | Active invitation | Invitation revoked (and Seat cancelled, refund owed if paid) | Staff fill the seat from the placement queue |
 
 ## States and transitions
 
 | State | Meaning | May enter from | May exit to | Visible to |
 | --- | --- | --- | --- | --- |
-| Draft / curated | App proposed, not approved | — | Approved | Staff |
-| Approved | Staff accepted composition | Draft | Inviting | Staff |
-| Inviting / filling | Invitations out; seats confirming | Approved | Viable / below min | Staff; invited guests |
+| Published | Open for placements | — | Inviting | Staff |
+| Inviting / filling | Invitations out; seats confirming | Published | Viable / below min | Staff; invited guests |
 | Night of | Event started | Filling | Voting / complete | Guests, host |
 | Complete | Night finished | Night of | — | Staff, guests (recap) |
 
 Cutoff handling is **not decided** (`decision-table-cutoffs`). Do not add a “cancelled for low fill” state as required.
 
-The current MVP browse/request contract is defined by [app/docs/PRD.md](../../app/docs/PRD.md), R02/A04/A05: verified guests with approved profiles can browse published future Tables and request a Seat. A request is not an Invitation or confirmed Seat. Staff-approved roster selection and a separate Table Invitation gate payment under R03/R04.
+Guests cannot browse Tables or request Seats. An admin places each guest from the waitlist queue and the invitation sends on placement (`decision-staff-place-guests-directly`).
 
 ## Permissions and rules
 
 - Target capacity five confirmed (paid) guests.
 - Three- or four-person tables can be valid; minimum viability is three with mutual-preference requirements.
-- Staff approval is required before automatic invitations.
-- Revalidate composition on seat change.
-- A roster contains 3–5 selected applicants. Individual eligibility requires an admitted member with verified email, a current complete approved profile, an active Seat request, and age 21 or older on the Table's Atlanta-local date; it does not establish compatibility with the other selected guests.
-- Calculate each age on the Table date. Each Guest's matching-age bounds are whole years from 21 through 120 inclusive with maximum ≥ minimum. Every selected pair must fall inside each other's inclusive range, and the group's oldest-minus-youngest age must be no more than 12 years.
-- Each selected guest must have at least one other selected guest with mutual openness: each guest's identity is included in the other's exact non-empty open-to set. Do not require mutual openness for every pair. Preserve any of the seven non-empty subsets of woman, man, and non_binary; do not broaden or infer preferences.
-- Recommendations order individually eligible applicants by active request time, then guest UUID. This is a deterministic queue order, not a compatibility score; compatibility is evaluated relative to the proposed roster.
-- Approval checks the proposal revision, Table revision, and each selected profile version atomically. Current profile approval is required; a change to DOB, identity, photo, or selfie requires renewed review, and a preference change revalidates future offers.
-- A Seat request is not an approved roster, Table invitation, payment authority, or Seat. App admission is separate from all of these states.
+- No approval step: an admin's placement queues the invitation.
+- Hard rules at placement: at most five active invitations; each guest 21 or older on the Table's Atlanta-local date.
+- Warnings at placement (the admin may override): every pair inside each other's inclusive age range (whole years 21–120), an oldest-minus-youngest span of no more than 12 years, and each guest having at least one other guest with mutual openness (each identity in the other's exact non-empty open-to set). Preserve any of the seven non-empty subsets of woman, man, and non_binary; do not broaden or infer preferences.
+- The placement queue is ordered by waitlist signup time, oldest first.
 
-These composition and approval rules follow [app/docs/PRD.md](../../app/docs/PRD.md), R01/R02/R03 and A06/A32. The run packet may specify implementation contracts for version tokens, idempotency keys, and validation reason codes, but must preserve these product rules.
+These rules follow `decision-staff-place-guests-directly` (2026-11-16), which replaced the roster-approval rules of PRD R02/R03.
 
 ## Mental-model notes
 

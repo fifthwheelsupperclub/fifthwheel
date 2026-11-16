@@ -39,8 +39,8 @@ function fill(path: string, ids: "A" | "random"): string {
     if (ids === "random") return uuid();
     switch (n) {
       case "tableId": return m.table; case "seatId": return m.seat; case "invitationId": return m.invitation; case "attemptId": return m.attempt;
-      case "obligationId": return m.obligation; case "guestId": return m.guest; case "fileId": return m.file;
-      case "requestId": return path.includes("/api/me/requests") ? m.request : m.cancel;
+      case "obligationId": return m.obligation; case "guestId": return m.guest;
+      case "requestId": return m.cancel;
       default: return uuid();
     }
   });
@@ -52,7 +52,6 @@ const hasParam = (p: string) => p.includes("$");
 function access(path: string, method: string, role: Role): Access {
   if (path === "/api/health") return "public";
   if (path.startsWith("/api/auth/") || path === "/api/waitlist" || path === "/api/webhooks/stripe" || path === "/api/internal/worker") return "special";
-  if (path === "/api/tables" || (path === "/api/tables/$tableId" && method === "GET")) return "public";
   if (role === "anon") return "deny";
   if (path === "/api/workspaces") return "allow";
   const isMember = role === "memberA" || role === "memberB";
@@ -60,14 +59,14 @@ function access(path: string, method: string, role: Role): Access {
   const isRest = role.startsWith("rest");
   if (path.startsWith("/api/admin/")) return role === "admin" ? "allow" : "deny";
   if (path.startsWith("/api/restaurant/")) return isRest ? "allow" : "deny";
+  if (path === "/api/host/tables") return role === "admin" || isHost ? "allow" : "deny"; // each host's own list (scope checked in 5)
   if (path.startsWith("/api/host/")) return role === "admin" || role === "hostA" ? "allow" : "deny";
   if (path === "/api/supply/venues/$venueId") return role === "admin" ? "allow" : "deny"; // venue curation is admin-only
-  if (path.startsWith("/api/supply/") || path.startsWith("/api/curation/")) {
+  if (path.startsWith("/api/supply/")) {
     if (role === "admin") return "allow";
     if (!isHost) return "deny";
     return !hasParam(path) ? "allow" : role === "hostA" ? "allow" : "deny"; // fixtures use table A
   }
-  if (path.startsWith("/api/tables/")) return isMember ? "allow" : "deny"; // any admitted member may request a published Table
   if (path.startsWith("/api/me/") || path.startsWith("/api/member/")) {
     if (!isMember) return "deny";
     return !hasParam(path) || role === "memberA" ? "allow" : "deny";
@@ -78,17 +77,13 @@ function access(path: string, method: string, role: Role): Access {
 // ---------- valid-shape bodies (ops routes validate input before auth, so denied probes need valid shapes) ----------
 function bodyFor(path: string, method: string): unknown {
   if (method === "GET") return undefined;
-  if (path.endsWith("/files/$fileId") && method === "DELETE") return { operationId: uuid(), expectedProfileRevision: 1 };
   if (method === "DELETE") return undefined;
-  if (path.endsWith("/files/$fileId/complete")) return { operationId: uuid(), expectedProfileRevision: 1, expectedCriticalIdentityVersion: 1 };
   if (path.endsWith("/admin/tables/$tableId/cancel")) return { operationId: uuid(), reason: "W12 probe reason" };
   if (path.endsWith("/decision") && path.includes("cancellations")) return { operationId: uuid(), expectedVersion: 1, decision: "deny", refundCents: 0, memberSafeReason: "w12 probe" };
   if (path.includes("/refund-operations/")) return { requestId: uuid() };
   if (path.includes("/table-invitations/") && path.endsWith("/retry")) return { operationId: uuid(), expectedAttemptCount: 1 };
   if (path.includes("/table-invitations/") && path.endsWith("/reconcile") && path.startsWith("/api/admin/table-invitations")) return { expectedAttemptCount: 1 };
-  if (path.startsWith("/api/admin/invitation-deliveries/")) return {};
-  if (path === "/api/admin/waitlist") return { signupId: uuid(), operationId: uuid() };
-  if (path.endsWith("/seat-requests/$tableId/approve")) return { operationId: uuid(), expectedProposalRevision: 1 };
+  if (path === "/api/admin/placements") return { signupId: uuid(), tableId: uuid(), operationId: uuid(), acknowledgeWarnings: false };
   if (path === "/api/supply/drafts") return { operationId: uuid(), source: { kind: "manual", content: {} } };
   if (path === "/api/supply/venues/$venueId") return { name: "W12 probe venue", address: "1 Probe Way", neighborhood: "Inman Park", active: true };
   if (path === "/api/supply/drafts/$draftId") return { operationId: uuid(), expectedDraftRevision: 1 };
@@ -96,8 +91,6 @@ function bodyFor(path: string, method: string): unknown {
   if (path.endsWith("/weekly-clone/operations/$operationId/reconcile")) return {};
   if (path.endsWith("/checkout") ) return { operationId: uuid(), expectedProposalRevision: 1, expectedProfileRevision: 1, acceptedDisclosureVersion: "seat-checkout-v1" };
   if (path.endsWith("/checkout/return")) return { attemptId: uuid(), sessionId: "cs_test_w12none" };
-  if (path.endsWith("/roster-proposal") ) return { operationId: uuid(), expectedProposalRevision: 1, supplyRevisionId: uuid(), selectedRequestIds: [] };
-  if (path.endsWith("/roster-proposal/submit")) return { operationId: uuid(), expectedProposalRevision: 1 };
   if (path.includes("/supply/drafts/") && /(accept|preview|publish)$/.test(path)) return { operationId: uuid(), expectedDraftRevision: 1 };
   if (path.endsWith("/weekly-clone/preview")) return { sourceWeekStart: "2026-11-02", targetWeekStart: "2026-11-09" };
   if (path.endsWith("/admin/supply/weekly-clone")) return { operationId: uuid(), sourceWeekStart: "2026-11-02", targetWeekStart: "2026-11-09", expectedPlanHash: "a".repeat(32) };
@@ -105,7 +98,7 @@ function bodyFor(path: string, method: string): unknown {
   if (path.endsWith("/proceed")) return { operationId: uuid() };
   if (path.endsWith("/check-in")) return { seatId: A.seat };
   if (path.endsWith("/flag") || (path.endsWith("/delete") && path.includes("conduct-reports"))) return {};
-  if (path.endsWith("/remove")) return { operationId: uuid(), expectedRevision: 1, refundCents: 0, replaceRequestId: null };
+  if (path.endsWith("/remove")) return { operationId: uuid(), expectedRevision: 1, refundCents: 0 };
   if (path.endsWith("/staff-assignments/host") || path.endsWith("/staff-assignments/venue")) return { [path.endsWith("host") ? "tableId" : "venueId"]: uuid(), userId: uuid(), assigned: false };
   if (path.endsWith("/staff-assignments/contact")) return { userId: uuid(), displayName: "W12", businessContact: "w12@example.test" };
   if (path.endsWith("/member-accounts/delete")) return { guestId: uuid(), confirm: "delete" };
@@ -114,9 +107,7 @@ function bodyFor(path: string, method: string): unknown {
   if (path.endsWith("/ballot")) return { choiceGuestId: null };
   if (path.endsWith("/rating")) return { overall: 3, venueScores: {}, note: null };
   if (path.endsWith("/conduct-report")) return { operationId: uuid(), subjectGuestId: null, body: "w12 probe" };
-  if (path.endsWith("/read-url")) return { expectedProfileRevision: 1, expectedCriticalIdentityVersion: 1 };
   if (path.endsWith("/cancellation-requests")) return { operationId: uuid(), memberReason: "w12 probe" };
-  if (path.endsWith("/withdraw")) return { operationId: uuid() };
   return { operationId: uuid() };
 }
 
@@ -143,7 +134,7 @@ const tokens = {} as Record<string, string>;
 // ---------- leak markers ----------
 type Owner = typeof A;
 type Marker = readonly [string, string];
-const piiOf = (n: string, o: Owner): Marker[] => [["email", o.email], ["lastName", o.last], ["dob", o.dob], ["fileId", o.file], ["fileKey", o.fileKey], ["paymentIntent", o.pi], ["checkoutSession", o.session], ["authUserId", o.userId], ["refundObligation", o.obligation], ["paymentId", o.payment]].map(([k, v]) => [`${n}.${k}`, v] as Marker);
+const piiOf = (n: string, o: Owner): Marker[] => [["email", o.email], ["lastName", o.last], ["dob", o.dob], ["paymentIntent", o.pi], ["checkoutSession", o.session], ["authUserId", o.userId], ["refundObligation", o.obligation], ["paymentId", o.payment]].map(([k, v]) => [`${n}.${k}`, v] as Marker);
 const idsOf = (n: string, o: Owner): Marker[] => [["guestId", o.guest], ["seatId", o.seat], ["invitationId", o.invitation], ["attemptId", o.attempt], ["requestId", o.request], ["cancelRequestId", o.cancel], ["proposalId", o.proposal]].map(([k, v]) => [`${n}.${k}`, v] as Marker);
 function forbidden(role: Role): Marker[] {
   if (role === "admin") return [];
@@ -165,12 +156,11 @@ function jsonKeys(v: unknown, out: string[] = []): string[] { if (Array.isArray(
 
 // ---------- probe ----------
 type Probe = { status: number; ctype: string; text: string };
-async function probe(role: Role, method: string, url: string, opts: { body?: unknown; origin?: string | null; headers?: Record<string, string>; raw?: Buffer } = {}): Promise<Probe> {
+async function probe(role: Role, method: string, url: string, opts: { body?: unknown; origin?: string | null; headers?: Record<string, string> } = {}): Promise<Probe> {
   const headers: Record<string, string> = { accept: "application/json", ...(opts.headers ?? {}) };
   if (opts.origin !== null) headers.origin = opts.origin ?? ORIGIN;
   if (opts.body !== undefined) headers["content-type"] = "application/json";
-  if (opts.raw) { headers["content-type"] = "image/png"; headers["x-fw-upload-token"] = "a".repeat(48); }
-  const r = await ctxs[role].request.fetch(`${ORIGIN}${url}`, { method, headers, ...(opts.raw ? { data: opts.raw } : opts.body !== undefined ? { data: JSON.stringify(opts.body) } : {}), maxRedirects: 0, failOnStatusCode: false, timeout: 30_000 });
+  const r = await ctxs[role].request.fetch(`${ORIGIN}${url}`, { method, headers, ...(opts.body !== undefined ? { data: JSON.stringify(opts.body) } : {}), maxRedirects: 0, failOnStatusCode: false, timeout: 30_000 });
   return { status: r.status(), ctype: r.headers()["content-type"] ?? "", text: await r.text().catch(() => "") };
 }
 const isHtml = (p: Probe) => p.ctype.includes("text/html");
@@ -212,8 +202,8 @@ test.describe.serial("W12 authz sweep", () => {
       const methods = methodsByPath.get(path)!;
       for (const method of methods) {
         for (const role of ROLES) {
-          // Legitimate member actions that would create requests, Stripe sessions or delete evidence use random ids for the allowed owner.
-          const sideEffect = (method !== "GET") && (path.startsWith("/api/tables/") || (role === "memberA" && (path.includes("/checkout") || path.endsWith("/files/$fileId") || path.endsWith("/complete") || path.endsWith("/content"))));
+          // Legitimate member actions that would create Stripe sessions use random ids for the allowed owner.
+          const sideEffect = method !== "GET" && role === "memberA" && path.includes("/checkout");
           const url = fill(path, sideEffect ? "random" : "A");
           const label = `${method} ${path}`;
           const acc = access(path, method, role);
@@ -221,14 +211,14 @@ test.describe.serial("W12 authz sweep", () => {
           if (role === "admin" && method !== "GET") { continue; } // admin is probed read-only; mutations are covered for denial only
           if (role === "admin" && path === "/api/admin/supply/sync") { add("skip", "api", role, label, "admin GET of sync status skipped (touches shared supply state)"); continue; }
           let p: Probe;
-          try { p = await probe(role, method, url, path.endsWith("/content") ? { raw: Buffer.from([0x89, 0x50, 0x4e, 0x47]) } : { body: bodyFor(path, method) }); } catch (e) { add("fail", "api", role, label, `request threw: ${(e as Error).message.slice(0, 100)}`); continue; }
+          try { p = await probe(role, method, url, { body: bodyFor(path, method) }); } catch (e) { add("fail", "api", role, label, `request threw: ${(e as Error).message.slice(0, 100)}`); continue; }
           const snippet = p.text.replace(/\s+/g, " ").slice(0, 110);
           if (p.status >= 500) { add("fail", "api", role, label, `5xx: ${p.status} ${snippet}`); continue; }
           if (p.status >= 200 && p.status < 400 && isHtml(p)) { add("fail", "api", role, label, `${p.status} text/html on an API path (expected JSON or 4xx): ${snippet}`); continue; }
           if (p.status >= 200 && p.status < 300) {
             if (acc === "deny") { add("fail", "api", role, label, `UNEXPECTED ${p.status} (expected ${role === "anon" ? "401" : "403/404"}): ${snippet}`); continue; }
             const leaks = hits(role, p.text);
-            if (/curation\/tables\/.+\/roster$|restaurant\/workspace|host\/tables\/.+\/attendance|assigned-tables/.test(path)) samples[`${role} ${label}`] = p.text.slice(0, 1800);
+            if (/restaurant\/workspace|host\/tables\/.+\/attendance|host\/tables$/.test(path)) samples[`${role} ${label}`] = p.text.slice(0, 1800);
             if (leaks.length) { add("fail", "api", role, label, `${p.status} body exposes: ${leaks.join(", ")}`); continue; }
             if (role.startsWith("rest") && path.startsWith("/api/restaurant/")) {
               let j: unknown = null; try { j = JSON.parse(p.text); } catch { /* ignore */ }
@@ -256,7 +246,7 @@ test.describe.serial("W12 authz sweep", () => {
       const label = `${method} ${path}`;
       // Random ids so an unprotected route can never touch fixture rows; credentialed so a missing Origin check would otherwise proceed.
       const url = fill(path, "random");
-      const who: Role[] = path.startsWith("/api/auth/") || path === "/api/waitlist" ? ["anon"] : path.startsWith("/api/admin/") || path.startsWith("/api/supply/") || path.startsWith("/api/curation/") ? ["admin"] : path.startsWith("/api/host/") ? ["hostA"] : ["memberA"];
+      const who: Role[] = path.startsWith("/api/auth/") || path === "/api/waitlist" ? ["anon"] : path.startsWith("/api/admin/") || path.startsWith("/api/supply/") ? ["admin"] : path.startsWith("/api/host/") ? ["hostA"] : ["memberA"];
       for (const role of who) for (const [name, origin] of [["wrong", "https://evil.example"], ["missing", null]] as const) {
         const p = await probe(role, method, url, { body: bodyFor(path, method), origin });
         const snippet = p.text.replace(/\s+/g, " ").slice(0, 100);
@@ -296,46 +286,13 @@ test.describe.serial("W12 authz sweep", () => {
     }
   });
 
-  test("4 private identity evidence: no read URL for another member's photos", async () => {
-    const url = `/api/member/profile/files/${A.file}/read-url`;
-    const body = { expectedProfileRevision: 1, expectedCriticalIdentityVersion: 1 };
-    for (const role of ROLES) {
-      const p = await probe(role, "POST", url, { body });
-      const leaked = /readUrl|token=|signed|\/storage\//i.test(p.text) && p.status < 300;
-      if (role === "memberA") {
-        let u = ""; try { u = JSON.parse(p.text)?.data?.readUrl ?? ""; } catch { /* ignore */ }
-        if (p.status === 200 && u) {
-          const img = await fetch(u.startsWith("http") ? u : `${SB}${u}`);
-          add(img.status === 200 && (img.headers.get("content-type") ?? "").startsWith("image/") ? "pass" : "fail", "evid", role, "owner read URL (positive control)", `owner got a URL; fetching it returned ${img.status} ${img.headers.get("content-type")}`);
-        } else add("skip", "evid", role, "owner read URL (positive control)", `could not obtain owner URL: ${p.status} ${p.text.slice(0, 120)}`);
-        continue;
-      }
-      if (p.status >= 200 && p.status < 300 || leaked) add("fail", "evid", role, `POST ${url}`, `UNEXPECTED ${p.status}, response carries a read URL/token: ${p.text.slice(0, 120)}`);
-      else add([401, 403, 404].includes(p.status) ? "pass" : "unverified", "evid", role, `POST ${url}`, `${p.status}`);
-    }
-    // Direct Storage + Data API with a member JWT (bypassing the app server entirely).
-    const key = A.fileKey as string;
-    const direct: [string, string, RequestInit, boolean][] = [
-      ["anon public object URL", `${SB}/storage/v1/object/public/identity-evidence/${key}`, {}, true],
-      ["memberB JWT authenticated object", `${SB}/storage/v1/object/authenticated/identity-evidence/${key}`, { headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY!, authorization: `Bearer ${tokens.memberB}` } }, true],
-      ["memberA JWT authenticated object (owner, direct)", `${SB}/storage/v1/object/authenticated/identity-evidence/${key}`, { headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY!, authorization: `Bearer ${tokens.memberA}` } }, true],
-      ["memberB JWT sign request", `${SB}/storage/v1/object/sign/identity-evidence/${key}`, { method: "POST", headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY!, authorization: `Bearer ${tokens.memberB}`, "content-type": "application/json" }, body: JSON.stringify({ expiresIn: 300 }) }, true],
-      ["hostA JWT authenticated object", `${SB}/storage/v1/object/authenticated/identity-evidence/${key}`, { headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY!, authorization: `Bearer ${tokens.hostA}` } }, true],
-      ["memberB JWT list bucket", `${SB}/storage/v1/object/list/identity-evidence`, { method: "POST", headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY!, authorization: `Bearer ${tokens.memberB}`, "content-type": "application/json" }, body: JSON.stringify({ prefix: A.guest, limit: 10 }) }, false],
-    ];
-    for (const [name, u, init, mustDeny] of direct) {
-      const r = await fetch(u, init); const text = await r.text();
-      if (name.includes("list bucket")) {
-        const exposed = r.status === 200 && text.includes(A.file);
-        add(exposed ? "fail" : "pass", "evid", "memberB", name, `${r.status}${exposed ? ` lists the victim object: ${text.slice(0, 100)}` : ""}`);
-      } else add(r.status === 200 ? "fail" : "pass", "evid", name.split(" ")[0], name, `${r.status}${r.status === 200 && mustDeny ? " object bytes served without an app-issued signed URL" : ""}`);
-    }
-    for (const [role, table] of [["memberB", "app_profile_files"], ["memberB", "app_member_profiles"], ["anon", "app_member_profiles"], ["hostA", "app_member_profiles"]] as const) {
+  test("4 Data API: member profiles are not readable with a non-admin JWT", async () => {
+    for (const role of ["memberB", "anon", "hostA"] as const) {
       const hdr: Record<string, string> = { apikey: process.env.SUPABASE_PUBLISHABLE_KEY! };
       if (role !== "anon") hdr.authorization = `Bearer ${tokens[role]}`;
-      const r = await fetch(`${SB}/rest/v1/${table}?select=*&limit=5`, { headers: hdr }); const text = await r.text();
-      const leak = r.status === 200 && hits(role as Role, text).length > 0;
-      add(leak ? "fail" : "pass", "evid", role, `Data API GET /rest/v1/${table}`, `${r.status} ${text.slice(0, 80)}`);
+      const r = await fetch(`${SB}/rest/v1/app_member_profiles?select=*&limit=5`, { headers: hdr }); const text = await r.text();
+      const leak = r.status === 200 && hits(role, text).length > 0;
+      add(leak ? "fail" : "pass", "data", role, "Data API GET /rest/v1/app_member_profiles", `${r.status} ${text.slice(0, 80)}`);
     }
   });
 
@@ -347,10 +304,10 @@ test.describe.serial("W12 authz sweep", () => {
       add(want.includes(p.status) ? "pass" : "fail", "scope", role, "GET host attendance for Table A", `expected ${want.join("/")}, got ${p.status}`);
     }
     for (const [role, want] of [["hostA", [200]], ["hostB", [200]], ["hostRev", [200, 403]]] as [Role, number[]][]) {
-      const list = await res(role, "/api/curation/assigned-tables");
+      const list = await res(role, "/api/host/tables");
       const other = role === "hostA" ? B.table : A.table;
       const sees = list.text.includes(other);
-      add(want.includes(list.status) && !sees ? "pass" : "fail", "scope", role, "GET assigned-tables lists only own", `${list.status}${sees ? " lists an unassigned Table" : ""}`);
+      add(want.includes(list.status) && !sees ? "pass" : "fail", "scope", role, "GET /api/host/tables lists only own", `${list.status}${sees ? " lists an unassigned Table" : ""}`);
     }
     const hostCancel = await probe("hostA", "POST", `/api/admin/cancellations/${A.cancel}/decision`, { body: { operationId: uuid(), expectedVersion: 1, decision: "deny", refundCents: 0, memberSafeReason: "w12 probe" } });
     add([401, 403].includes(hostCancel.status) ? "pass" : hostCancel.status < 300 ? "fail" : "unverified", "scope", "hostA", "POST cancellation decision (host may only flag)", `${hostCancel.status} ${hostCancel.text.slice(0, 100)}`);

@@ -3,7 +3,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 
 // One sidebar for every staff screen. Add or rename a nav item here, nowhere else.
 export type StaffNavKey =
-  | "overview" | "waitlist" | "identity-review" | "seat-requests"
+  | "overview" | "waitlist"
   | "tables" | "decisions" | "assignments"
   | "cancellations" | "refunds"
   | "emails" | "invitations" | "reports"
@@ -12,7 +12,7 @@ export type StaffNavKey =
 type Item = readonly [key: StaffNavKey, href: string, label: string];
 const ADMIN_GROUPS: ReadonlyArray<readonly [group: string | null, items: readonly Item[]]> = [
   [null, [["overview", "/admin", "Overview"]]],
-  ["GUESTS", [["waitlist", "/admin/waitlist", "Waitlist"], ["identity-review", "/admin/identity-review", "Profile review"], ["seat-requests", "/admin/seat-requests", "Seat requests"]]],
+  ["GUESTS", [["waitlist", "/admin/waitlist", "Waitlist"]]],
   ["TABLES", [["tables", "/admin/tables", "Tables"], ["decisions", "/admin/table-decisions", "Table decisions"], ["assignments", "/admin/staff-assignments", "Staff assignments"]]],
   ["MONEY", [["cancellations", "/admin/cancellations", "Cancellations"], ["refunds", "/admin/refunds", "Refunds"]]],
   ["MESSAGES AND SAFETY", [["emails", "/admin/notices", "Emails"], ["reports", "/admin/conduct-reports", "Conduct reports"]]],

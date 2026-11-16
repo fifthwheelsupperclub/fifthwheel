@@ -57,7 +57,7 @@ Email, refunds and payments can end in an *unknown* state when a provider did no
 - Each worker pass runs `purge_vote_data` (ballots at 30 days after the Table, results at 90 days) and `run_retention` (rating identifiers removed at 90 days, ratings deleted at 12 months, audit rows deleted after 90 days).
 - Conduct reports are reviewed, not auto-deleted: they show as review-due after 12 months; delete one from Reports & ratings unless it is on hold.
 - **Account deletion** (support request): an admin posts to `POST /api/admin/member-accounts/delete` with `{"guestId":"<uuid>","confirm":"delete"}` using an admin session. It refuses while the person has a live paid Seat (remove the Seat first, with its refund decision) and for staff accounts. It ends sign-in, pseudonymises the person, withdraws pending requests and invitations, and keeps money rows and held cases. There is no screen for this yet.
-- **Identity photos:** each worker pass deletes due files from the private bucket (7 or 30 days, as configured in the database) and marks the profile evidence-deleted; a stale claim leaves the file for the next pass. Not yet built: backup expiry (release-owner decision).
+- **Identity photos (removed 2026-11-16):** the app no longer collects photos or selfies. **[human, once per project]** after applying `20261117100000_remove_approval_steps.sql`, empty and delete the `identity-evidence` Storage bucket from the Supabase dashboard (Storage → identity-evidence → select all → delete, then delete the bucket). SQL cannot remove Storage objects.
 
 ## 7. Secrets and rotation **[human]**
 

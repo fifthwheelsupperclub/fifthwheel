@@ -11,11 +11,10 @@ import { eventWhen } from "../format/datetime";
 export const Route = createFileRoute("/member")({ component: MemberHomePage });
 
 type HomeState = "loading" | "ready" | "unauthenticated" | "forbidden" | "error";
-type ProfileStatus = "draft" | "submitted" | "approved" | "resubmission_required";
 type Invite = Readonly<{ invitationId: string; title: string; when: string; neighborhood: string }>;
 type Evening = Readonly<{ seatId: string; title: string; when: string; neighborhood: string; startsAt: string }>;
 // null = that source failed to load. Home then skips what depends on it and never guesses.
-type Extra = Readonly<{ profile: { status: ProfileStatus; firstName: string } | null; invite: Invite | null | undefined; evenings: Evening[] | null }>;
+type Extra = Readonly<{ profile: { firstName: string } | null; invite: Invite | null | undefined; evenings: Evening[] | null }>;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -30,9 +29,8 @@ const dataOf = (body: unknown) => (isRecord(body) && isRecord(body.data) ? body.
 
 async function loadExtra(signal: AbortSignal): Promise<Extra> {
   const [p, r, s] = await Promise.all([getJson("/api/member/profile", signal), getJson("/api/me/requests?limit=20", signal), getJson("/api/me/seats?limit=20", signal)]);
-  const pd = dataOf(p) ?? (isRecord(p) && typeof p.identityStatus === "string" ? p : null);
-  const status = pd ? str(pd.identityStatus) : "";
-  const profile = pd && ["draft", "submitted", "approved", "resubmission_required"].includes(status) ? { status: status as ProfileStatus, firstName: str(pd.firstName) } : null;
+  const pd = dataOf(p) ?? (isRecord(p) && typeof p.firstName === "string" ? p : null);
+  const profile = pd ? { firstName: str(pd.firstName) } : null;
 
   const rd = dataOf(r);
   let invite: Invite | null | undefined = undefined;
@@ -57,15 +55,11 @@ async function loadExtra(signal: AbortSignal): Promise<Extra> {
 }
 
 type Step = Readonly<{ title: string; text: string; action?: { href: string; label: string } }>;
-// Order: open invitation, profile changes, profile incomplete, profile in review, next evening, find a table.
+// Order: open invitation, next evening. Staff place guests at Tables, so there is nothing to browse or request.
 function nextStep(x: Extra): Step | null {
   if (x.invite) return { title: `You’re invited to ${x.invite.title}`, text: `${x.invite.when} · ${x.invite.neighborhood}. Pay to confirm your seat.`, action: { href: `/invitations/${encodeURIComponent(x.invite.invitationId)}`, label: "Review invitation" } };
-  if (x.profile?.status === "resubmission_required") return { title: "Update your profile", text: "We need a change before we can approve it.", action: { href: "/account/profile", label: "Open profile" } };
-  if (x.profile?.status === "draft") return { title: "Complete your profile", text: "Add a few details and two photos so we can seat you well.", action: { href: "/account/profile", label: "Open profile" } };
-  if (x.profile?.status === "submitted") return { title: "We’re reviewing your profile", text: "We’ll let you know when it’s approved." };
   const next = x.evenings?.[0];
   if (next) return { title: `Your next evening: ${next.title}`, text: `${next.when} · ${next.neighborhood}`, action: { href: `/my-seats/${encodeURIComponent(next.seatId)}`, label: "View seat" } };
-  if (x.profile?.status === "approved") return { title: "Find a table", text: "Browse upcoming evenings and request a seat.", action: { href: "/tables", label: "Browse tables" } };
   return null;
 }
 
@@ -124,10 +118,10 @@ function MemberHomePage() {
         {evenings !== null && extra.invite !== undefined && <section className="home-evenings" aria-labelledby="home-evenings-title">
           <h2 id="home-evenings-title">Your evenings</h2>
           {rows.length === 0
-            ? <PageState variant="empty" title="No evenings yet" message="Browse tables and request a seat at any that suit you." action={<a className={buttonClass("secondary")} href="/tables">Browse tables</a>} />
+            ? <PageState variant="empty" title="No evenings yet" message="We’ll email you when we have a seat for you at a table." />
             : <ul className="home-evening-list">{rows.map((r) => <li key={r.key}><a href={r.href}><span><strong>{r.title}</strong><small>{r.meta}</small></span><StatusBadge tone={r.badge === "Invited" ? "pending" : "success"}>{r.badge}</StatusBadge></a></li>)}</ul>}
         </section>}
-        {!step && evenings === null && extra.invite === undefined && <p className="home-links"><a href="/tables">Tables</a> · <a href="/requests">Requests</a> · <a href="/my-seats">My Seats</a></p>}
+        {!step && evenings === null && extra.invite === undefined && <p className="home-links"><a href="/my-seats">My Seats</a></p>}
       </>}
     </>}
   </AppShell>;

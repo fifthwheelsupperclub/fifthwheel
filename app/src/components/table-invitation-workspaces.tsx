@@ -148,11 +148,11 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
   useEffect(() => { void load(); }, [load]);
 
   const content = <>
-    <Link to="/requests" className="page-header-back"><ArrowLeft aria-hidden="true" />Requests</Link>
+    <Link to="/member" className="page-header-back"><ArrowLeft aria-hidden="true" />Home</Link>
     {state === "loading" && <PageState variant="loading" title="Loading…" />}
     {state === "unauthenticated" && <PageState variant="signed-out" title="Sign in to continue" message="Sign in with the email the invitation was sent to." action={<a className="button button-primary" href={`/sign-in?returnTo=${encodeURIComponent(`/invitations/${invitationId}`)}`}>Continue to sign in<ArrowRight aria-hidden="true" /></a>} />}
-    {state === "forbidden" && <PageState variant="no-access" title="This invitation is for a different account" message="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
-    {state === "not_found" && <PageState variant="empty" title="Invitation not found" message="This invitation is not available to the current account." action={<Link className="button button-outline" to="/requests">Back to Requests</Link>} />}
+    {state === "forbidden" && <PageState variant="no-access" title="This invitation is for a different account" message="Sign in with the email the invitation was sent to." action={<Link className="button button-outline" to="/member">Back to Home</Link>} />}
+    {state === "not_found" && <PageState variant="empty" title="Invitation not found" message="This invitation is not available to the current account." action={<Link className="button button-outline" to="/member">Back to Home</Link>} />}
     {state === "error" && <PageState variant="error" title="Invitation details are temporarily unavailable" message={message || "Try again shortly."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again</button>} />}
     {state === "ready" && detail && <>
       <PageHeader className="invitation-member-heading" title={`You’re invited to ${detail.table.title}`} description={`${eventWhen(detail.table.localDate, detail.table.startLocalTime)} · ${detail.table.neighborhood}`} />
@@ -168,7 +168,7 @@ export function MemberTableInvitationWorkspace({ invitationId }: { invitationId:
   </>;
   return state === "unauthenticated"
     ? <InvitationPublicShell invitationId={invitationId}>{content}</InvitationPublicShell>
-    : <MemberWorkspaceShell active="requests">{content}</MemberWorkspaceShell>;
+    : <MemberWorkspaceShell active="home">{content}</MemberWorkspaceShell>;
 }
 
 function InvitationPublicShell({ invitationId, children }: { invitationId: string; children: ReactNode }) {
@@ -267,7 +267,7 @@ export function AdminTableInvitationDeliveryWorkspace() {
       {state === "unauthenticated" && <InvitationState icon={<ShieldCheck />} title="Sign in to continue" detail="Sign in to see this page." action={<a className="button button-primary" href="/sign-in?returnTo=%2Fadmin%2Ftable-invitations">Sign in<ArrowRight aria-hidden="true" /></a>} />}
       {state === "forbidden" && <InvitationState icon={<ShieldCheck />} title="You don’t have access to this page" detail={message || "Only admins can do this."} />}
       {state === "error" && <InvitationState icon={<CircleAlert />} title="We couldn’t load invitation emails" detail={message || "Try again in a moment."} action={<button className="button button-outline" type="button" onClick={() => void load()}>Try again<RefreshCw aria-hidden="true" /></button>} />}
-      {state === "ready" && items.length === 0 && <InvitationState icon={<Mail />} title="No invitation emails yet" detail="They appear here once a roster is approved." />}
+      {state === "ready" && items.length === 0 && <InvitationState icon={<Mail />} title="No invitation emails yet" detail="They appear here once an admin adds a guest to a Table." />}
       {state === "ready" && items.length > 0 && <div className="admin-invitation-list">{items.map((item) => {
         const delivery = deliveryCopy(item.delivery.state);
         return <article className="admin-invitation-card" key={item.invitationId}>

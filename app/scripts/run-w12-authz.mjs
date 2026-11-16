@@ -2,9 +2,8 @@
 
 // W12 real-stack permission + direct-route sweep (P0-2 / P1-9). Only the isolated
 // fifthwheel-rewrite-test stack and app port 8087 are allowed. Creates run-scoped
-// Auth users, role/assignment rows, two members' full resource chains and a ready
-// identity photo, runs tests/browser/w12-authz.spec.ts, then removes exactly those
-// rows. Never resets or migrates a database; never calls Stripe or the worker with a valid secret.
+// Auth users, role/assignment rows and two members' full resource chains, runs
+// tests/browser/w12-authz.spec.ts, then removes exactly those rows. Never resets or migrates a database; never calls Stripe or the worker with a valid secret.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
@@ -74,8 +73,8 @@ function localStatus() {
   if (port.status === 0 && port.stdout.trim()) fail(`app port ${appPort} is already occupied; no fixture was created`);
 }
 function assertSchema() {
-  const out = run("psql", [dbUrl, "-X", "-At", "-c", "select (to_regclass('public.app_ops_operations') is not null)::text||'|'||(to_regclass('public.app_vote_periods') is not null)::text||'|'||(to_regclass('public.app_notice_outbox') is not null)::text"], { env: psqlEnv() }).trim();
-  if (out !== "true|true|true") fail("W08-W10 tables are not applied to fifthwheel-rewrite-test; no fixture was created");
+  const out = run("psql", [dbUrl, "-X", "-At", "-c", "select (to_regclass('public.app_ops_operations') is not null)::text||'|'||(to_regclass('public.app_vote_periods') is not null)::text||'|'||(to_regclass('public.app_notice_outbox') is not null)::text||'|'||(to_regprocedure('public.place_guest_at_table(uuid,uuid,uuid,uuid,uuid,boolean)') is not null)::text"], { env: psqlEnv() }).trim();
+  if (out !== "true|true|true|true") fail("W08-W10 tables or the placement migration are not applied to fifthwheel-rewrite-test; no fixture was created");
 }
 
 const svcHeaders = () => ({ apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` });
@@ -90,17 +89,6 @@ async function deleteAuthUser(id) {
   const r = await fetch(`${apiUrl}/auth/v1/admin/users/${encodeURIComponent(id)}`, { method: "DELETE", headers: svcHeaders(), cache: "no-store", redirect: "error" });
   if (!r.ok && r.status !== 404) fail("Auth fixture cleanup failed");
 }
-// 1x1 PNG
-const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-async function putEvidence(key) {
-  const r = await fetch(`${apiUrl}/storage/v1/object/identity-evidence/${key}`, { method: "POST", headers: { ...svcHeaders(), "content-type": "image/png" }, body: png, cache: "no-store", redirect: "error" });
-  if (!r.ok) fail(`evidence object upload failed (HTTP ${r.status})`);
-}
-async function removeEvidence(keys) {
-  if (!keys.length) return;
-  const r = await fetch(`${apiUrl}/storage/v1/object/identity-evidence`, { method: "DELETE", headers: { ...svcHeaders(), "content-type": "application/json" }, body: JSON.stringify({ prefixes: keys }), cache: "no-store", redirect: "error" });
-  if (!r.ok && r.status !== 404) fail("evidence object cleanup failed");
-}
 
 function buildFixture(prefix) {
   const p = prefix ?? randomBytes(4).toString("hex");
@@ -109,7 +97,7 @@ function buildFixture(prefix) {
   const side = (k, n, dob) => ({
     email: `w12-${k}-${sfx}@example.test`, first: `Wtwelve${k.toUpperCase()}${sfx}`, last: `Surname${k.toUpperCase()}${sfx}`, dob,
     signup: id(n + 1), admission: id(n + 2), guest: id(n + 3), table: id(n + 4), revision: id(n + 5), request: id(n + 6), proposal: id(n + 7),
-    invitation: id(n + 8), attempt: id(n + 9), payment: id(n + 10), seat: id(n + 11), cancel: id(n + 12), obligation: id(n + 13), file: id(n + 14),
+    invitation: id(n + 8), attempt: id(n + 9), payment: id(n + 10), seat: id(n + 11), cancel: id(n + 12), obligation: id(n + 13),
     venue: id(n + 15), venue2: id(n + 16), session: `cs_test_w12${k}${sfx}`, pi: `pi_w12${k}${sfx}`, userId: null,
   });
   return { prefix: p, a: side("a", 100, "1987-03-09"), b: side("b", 200, "1991-07-21"), unmappedVenue: id(999), users: {}, emails: {},
@@ -126,9 +114,9 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
   (${q(m.signup)},${q(m.email)},${q(m.first)},${q(m.last)},${q(m.dob)},'Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me');
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
   (${q(m.admission)},${q(m.signup)},${q(m.email)},'activated',${q(u.admin)},${q(m.userId)},now());
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
-  (${q(m.guest)},${q(m.userId)},${q(m.admission)},'approved',1,1,${q(m.first)},${q(m.last)},${q(m.dob)},'woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');
+  (${q(m.guest)},${q(m.userId)},${q(m.admission)},${q(m.first)},${q(m.last)},${q(m.dob)},'woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');
 insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values
   ('venue',${q(`w12-${f.prefix}-${k}-v1`)},${q(m.venue)}),('venue',${q(`w12-${f.prefix}-${k}-v2`)},${q(m.venue2)});
 insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values
@@ -145,8 +133,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   (${q(m.request)},${q(m.table)},${q(m.guest)},${q(m.userId)},'W12 Table ${k.toUpperCase()}',current_date+1,'19:00','Inman Park','pending');
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
   (${q(m.proposal)},${q(m.table)},1,'approved',${q(m.revision)},'{}'::jsonb,${q(u.admin)},${q(u.admin)},${q(u.admin)},${q(u.admin)},now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
-  (${q(m.proposal)},${q(m.request)},${q(m.guest)},1,1,1);
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+  (${q(m.proposal)},${q(m.request)},${q(m.guest)},1);
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
   (${q(m.invitation)},${q(m.table)},${q(m.guest)},${q(m.userId)},${q(m.request)},${q(m.proposal)},${q(u.admin)},'active');
 insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest_id,auth_user_id,proposal_revision,profile_revision,supply_revision_id,state,
@@ -157,12 +145,10 @@ insert into public.app_payments(payment_id,attempt_id,provider_mode,provider_pay
 insert into public.app_seats(seat_id,invitation_id,table_id,guest_id,payment_id,state,created_at) values
   (${q(m.seat)},${q(m.invitation)},${q(m.table)},${q(m.guest)},${q(m.payment)},'cancellation_requested',now()-interval '1 hour');
 insert into public.app_seat_cancellation_requests(cancellation_request_id,seat_id,state,version,member_reason) values (${q(m.cancel)},${q(m.seat)},'pending',1,'W12 probe');
-insert into public.app_refund_obligations(obligation_id,payment_id,source,amount_cents,state) values (${q(m.obligation)},${q(m.payment)},'late_checkout_ineligible',2500,'open');
-insert into public.app_profile_files(file_id,guest_id,auth_user_id,kind,state,content_type,declared_byte_size,actual_byte_size,normalized_byte_size,width,height,
-  profile_revision_at_intent,critical_identity_version,normalized_key,received_at,upload_consumed_at) values
-  (${q(m.file)},${q(m.guest)},${q(m.userId)},'photo','ready','image/png',${png.length},${png.length},${png.length},1,1,1,1,${q(`${m.guest}/${m.file}`)},now(),now());`;
+insert into public.app_refund_obligations(obligation_id,payment_id,source,amount_cents,state) values (${q(m.obligation)},${q(m.payment)},'late_checkout_ineligible',2500,'open');`;
   return `begin;
 set local request.jwt.claims='{"role":"service_role"}';
+select set_config('app.skip_waitlist_confirmation','on',true); -- fixture signups queue no confirmation email
 insert into public.app_user_roles(user_id,role) values ${staff.map(([k, id]) => `(${q(id)},'${role(k)}')`).join(",")};
 ${members.map(per).join("\n")}
 select public.set_host_assignment(${q(u.admin)},${q(f.a.table)},${q(u.hostA)},true);
@@ -215,7 +201,7 @@ delete from public.app_supply_table_revisions where table_id in (${ids("table")}
 delete from public.app_supply_table_heads where table_id in (${ids("table")});
 delete from public.app_supply_external_mappings where core_id in (${ids("venue")},${ids("venue2")});
 delete from public.app_supply_venues where venue_id in (${ids("venue")},${ids("venue2")}) or created_by in (${userIds});
-delete from public.app_profile_files where file_id in (${ids("file")});
+delete from public.app_notice_outbox where payload->>'signupId' in (${ids("signup")});
 delete from public.app_member_profiles where guest_id in (${ids("guest")});
 delete from public.app_admissions where id in (${ids("admission")});
 delete from public.waitlist_signups where id in (${ids("signup")});
@@ -249,8 +235,6 @@ async function cleanupOnly(prefix) {
   const out = run("psql", [dbUrl, "-X", "-At", "-c", `select id from auth.users where email like 'w12-%-${prefix}@example.test'`], { env: psqlEnv() }).trim();
   out.split(/\s+/).filter(Boolean).forEach((id, i) => { f.users[`u${i}`] = id; });
   if (!Object.keys(f.users).length) fail("no Auth users found for that prefix");
-  const evidence = [f.a, f.b].map((m) => `${m.guest}/${m.file}`);
-  await removeEvidence(evidence).catch(() => undefined);
   psql(cleanupSql(f), { quiet: true });
   for (const id of Object.values(f.users)) await deleteAuthUser(id);
   process.stdout.write(`Fixture ${prefix} cleaned.\n`);
@@ -263,7 +247,7 @@ async function main() {
   assertSchema();
   const f = buildFixture();
   const authIds = [];
-  let seeded = false, evidence = [], result = 1;
+  let seeded = false, result = 1;
   try {
     const mk = async (name, email) => { const id = await createAuthUser(email); authIds.push(id); return id; };
     const staffNames = ["admin", "hostA", "hostB", "hostRev", "restA", "restB", "restRev"];
@@ -273,7 +257,6 @@ async function main() {
     f.users.memberA = f.a.userId; f.users.memberB = f.b.userId;
     psql(seedSql(f), { quiet: true });
     seeded = true;
-    for (const m of [f.a, f.b]) { const key = `${m.guest}/${m.file}`; await putEvidence(key); evidence.push(key); m.fileKey = key; }
     mkdirSync(dirname(resultsPath), { recursive: true });
     rmSync(resultsPath, { force: true });
     process.env.W12_FIXTURE = JSON.stringify(f);
@@ -282,11 +265,10 @@ async function main() {
     result = await runPlaywright();
   } finally {
     let cleanupFailure = null;
-    try { await removeEvidence(evidence); } catch (e) { cleanupFailure = e; }
     if (seeded) { try { psql(cleanupSql(f), { quiet: true }); } catch (e) { cleanupFailure ??= e; } }
     for (const id of authIds.reverse()) { try { await deleteAuthUser(id); } catch (e) { cleanupFailure ??= e; } }
     if (cleanupFailure) process.stderr.write(`CLEANUP FAILED (fixture prefix ${f.prefix}): ${cleanupFailure.message}\n`);
-    else process.stdout.write(`Fixture ${f.prefix} cleaned (exact rows, evidence objects and Auth users removed; PII-free audit events remain by design).\n`);
+    else process.stdout.write(`Fixture ${f.prefix} cleaned (exact rows and Auth users removed; PII-free audit events remain by design).\n`);
     if (cleanupFailure) process.exitCode = 1;
   }
   let failures = 0;

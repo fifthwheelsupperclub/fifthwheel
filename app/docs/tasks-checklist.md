@@ -1,5 +1,7 @@
 # Fifth Wheel — Fresh Rewrite Task List
 
+> **2026-11-16:** admission approval, photo/selfie identity review, member browse/seat requests and roster proposal/approval were removed. Staff now place waitlisted guests from a queue, and the Table invitation sends on placement. See [PRD §0](PRD.md#0-version-4-change-2026-11-16-no-approval-steps). Sections below that describe those flows are historical.
+
 Version 3 · 2026-11-11 · Requirements and implementation plan. The user has explicitly authorized implementation of the coordinated rewrite plan. No task below is complete merely because related code existed in the archived app. [PRD](PRD.md) owns scope and policy; [Flow/UI](flow-ui-brief.md) owns experience and visual fidelity; [Architecture](architecture.md) owns technical contracts; [Review](review-disposition.md) records readiness and evidence debt.
 
 This is a rewrite of the full documented MVP, including the new app-admission flow. Keep the previous app’s visual style. UI layouts, information architecture and navigation may change to improve intuition and usability. The marketing presentation remains unchanged; its existing submission endpoint and data are part of the integration. A rewrite of code does not authorize resetting live data, changing providers, sending real invitations, charging, deploying or publishing.

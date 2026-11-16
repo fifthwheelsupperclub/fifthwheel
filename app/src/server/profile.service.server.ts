@@ -1,34 +1,21 @@
-/** Authorized W04 profile, upload and identity-review operations. */
+/** Authorized member profile read and save. */
 
-import { createHash, randomBytes } from "node:crypto";
 import {
   authorize,
   type AppPermission,
   type ServerVerifiedPrincipal,
 } from "./authorization.server.ts";
-import { assertExactOrigin } from "./origin.server.ts";
 import { ProfileRepositoryError } from "./profile.contract.server.ts";
-import { ProfileStorageError } from "./profile.storage.supabase.server.ts";
 import type {
   ProfileErrorCode,
   ProfileServiceDependencies,
   ProfileServicePort,
   ProfileServiceResult,
   StoredProfile,
-  StoredProfileFile,
 } from "./profile.contract.server.ts";
-import type {
-  IdentityReviewDecisionRequest,
-  IdentityReviewDetailDTO,
-  IdentityReviewProfileDTO,
-  MemberProfileDTO,
-  MemberProfileSaveRequest,
-  UploadIntentRequest,
-} from "../profile.contract.ts";
+import type { MemberProfileDTO } from "../profile.contract.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const maxUploadBytes = 8 * 1024 * 1024;
 const neighborhoods = new Set(["Inman Park", "Chamblee", "Virginia Highlands"]);
 const weekdays = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 
@@ -61,7 +48,6 @@ function mapError(error: unknown): ProfileErrorCode {
       default: return "temporarily_unavailable";
     }
   }
-  if (error instanceof ProfileStorageError) return "temporarily_unavailable";
   return "temporarily_unavailable";
 }
 
@@ -72,20 +58,9 @@ function authorized(
   return authorize(principal, permission).allowed;
 }
 
-function memberDTO(profile: StoredProfile, files: readonly StoredProfileFile[]): MemberProfileDTO {
-  const currentFiles = files.filter((file) => file.criticalIdentityVersion === profile.criticalIdentityVersion);
-  const missing: string[] = [];
-  const approvedCurrent = profile.identityStatus === "approved"
-    && profile.reviewedIdentityVersion === profile.criticalIdentityVersion
-    && profile.evidenceReceivedAt !== null;
-  if (!approvedCurrent && !currentFiles.some((file) => file.kind === "photo" && file.state === "ready")) missing.push("photos");
-  if (!approvedCurrent && !currentFiles.some((file) => file.kind === "selfie" && file.state === "ready")) missing.push("selfie");
+function memberDTO(profile: StoredProfile): MemberProfileDTO {
   return Object.freeze({
     profileRevision: profile.profileRevision,
-    criticalIdentityVersion: profile.criticalIdentityVersion,
-    reviewedIdentityVersion: profile.reviewedIdentityVersion,
-    identityStatus: profile.identityStatus,
-    latestCorrectionReason: profile.latestCorrectionReason,
     firstName: profile.firstName,
     lastName: profile.lastName,
     dateOfBirth: profile.dateOfBirth,
@@ -99,42 +74,6 @@ function memberDTO(profile: StoredProfile, files: readonly StoredProfileFile[]):
     surpriseGame: profile.surpriseGame,
     phone: profile.phone,
     oneLiner: profile.oneLiner,
-    files: files.map((file) => ({
-      fileId: file.fileId,
-      kind: file.kind,
-      state: file.state === "quarantined" || file.state === "normalizing" ? "pending_upload" : file.state,
-    })),
-    missingFields: missing,
-  });
-}
-
-type ReviewFileSummary = Readonly<{
-  fileId: string;
-  kind: "photo" | "selfie";
-  state: "pending_upload" | "ready" | "rejected" | "superseded" | "deleted";
-  criticalIdentityVersion: number;
-}>;
-
-function reviewProfileDTO(profile: StoredProfile, files: readonly ReviewFileSummary[]): IdentityReviewProfileDTO {
-  const currentFiles = files.filter((file) => file.criticalIdentityVersion === profile.criticalIdentityVersion && file.state !== "deleted");
-  const missingFields: string[] = [];
-  if (!currentFiles.some((file) => file.kind === "photo" && file.state === "ready")) missingFields.push("photos");
-  if (!currentFiles.some((file) => file.kind === "selfie" && file.state === "ready")) missingFields.push("selfie");
-  return Object.freeze({
-    profileRevision: profile.profileRevision,
-    criticalIdentityVersion: profile.criticalIdentityVersion,
-    reviewedIdentityVersion: profile.reviewedIdentityVersion,
-    identityStatus: profile.identityStatus,
-    firstName: profile.firstName,
-    lastName: profile.lastName,
-    dateOfBirth: profile.dateOfBirth,
-    identity: profile.identity,
-    files: currentFiles.map((file) => ({
-      fileId: file.fileId,
-      kind: file.kind,
-      state: file.state,
-    })),
-    missingFields,
   });
 }
 
@@ -194,61 +133,8 @@ function validateProfileSave(value: unknown, now: Date): Record<string, string> 
   return Object.keys(fields).length ? fields : null;
 }
 
-async function readBoundedBody(request: Request): Promise<Uint8Array> {
-  const lengthHeader = request.headers.get("content-length");
-  if (lengthHeader !== null) {
-    if (!/^\d{1,8}$/.test(lengthHeader) || Number(lengthHeader) > maxUploadBytes) throw new TypeError("upload_too_large");
-  }
-  if (!request.body) throw new TypeError("upload_empty");
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > maxUploadBytes) {
-        await reader.cancel("upload_too_large").catch(() => undefined);
-        throw new TypeError("upload_too_large");
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  if (length < 1) throw new TypeError("upload_empty");
-  if (lengthHeader !== null && Number(lengthHeader) !== length) throw new TypeError("upload_size_mismatch");
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-}
-
-function tokenHash(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
-function validateUploadIntent(value: unknown): Record<string, string> | null {
-  const errors: Record<string, string> = {};
-  if (!isRecord(value)) return { form: "Submit a valid upload request." };
-  const input = value;
-  if (typeof input.operationId !== "string" || !uuidPattern.test(input.operationId)) errors.operationId = "Refresh and try again.";
-  if (!validRevision(input.expectedProfileRevision)) errors.expectedProfileRevision = "Refresh and try again.";
-  if (!validRevision(input.expectedCriticalIdentityVersion)) errors.expectedCriticalIdentityVersion = "Refresh and try again.";
-  if (input.kind !== "photo" && input.kind !== "selfie") errors.kind = "Choose a photo or selfie.";
-  if (typeof input.contentType !== "string" || !imageTypes.has(input.contentType)) errors.contentType = "Use a JPEG, PNG, or WebP image.";
-  if (typeof input.byteSize !== "number" || !Number.isInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > maxUploadBytes) errors.byteSize = "Images must be 8 MB or smaller.";
-  return Object.keys(errors).length ? errors : null;
-}
-
-export function createProfileService(
-  dependencies: ProfileServiceDependencies & Readonly<{ appOrigin: string }>,
-): ProfileServicePort {
-  const { resolvePrincipal, repository, storage, normalizer, createId, now, appOrigin } = dependencies;
+export function createProfileService(dependencies: ProfileServiceDependencies): ProfileServicePort {
+  const { resolvePrincipal, repository, createId, now } = dependencies;
 
   async function getPrincipal(accessToken: string | null | undefined): Promise<ServerVerifiedPrincipal | null | undefined> {
     try {
@@ -268,8 +154,7 @@ export function createProfileService(
       if (!principal) return fail("unauthenticated", correlationId);
       if (!authorized(principal, { workspace: "member", action: "member:read-own" })) return fail("forbidden", correlationId);
       try {
-        const data = await repository.readProfile(principal.userId);
-        return { ok: true, data: memberDTO(data.profile, data.files), correlationId };
+        return { ok: true, data: memberDTO(await repository.ensureProfile(principal.userId)), correlationId };
       } catch (error) {
         return fail(mapError(error), correlationId);
       }
@@ -290,291 +175,7 @@ export function createProfileService(
           expectedProfileRevision: request.expectedProfileRevision,
           fields: request as unknown as Record<string, unknown>,
         });
-        const current = await repository.readProfile(principal.userId);
-        return { ok: true, data: memberDTO(profile, current.files), correlationId };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async createMemberUploadIntent(accessToken, request) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:edit-own" })) return fail("forbidden", correlationId);
-      const fields = validateUploadIntent(request);
-      if (fields) return fail("invalid_input", correlationId, fields);
-      try {
-        const profile = await repository.ensureProfile(principal.userId);
-        const fileId = createId();
-        const uploadToken = randomBytes(32).toString("base64url");
-        // Leave clock/network margin below the database's five-minute ceiling.
-        const expiresAt = new Date(now().getTime() + 4 * 60 * 1000 + 30 * 1000).toISOString();
-        const quarantineKey = `quarantine/${profile.guestId}/${fileId}`;
-        const created = await repository.createUploadIntent({
-          authUserId: principal.userId,
-          guestId: profile.guestId,
-          request,
-          fileId,
-          quarantineKey,
-          uploadTokenHash: tokenHash(uploadToken),
-          expiresAt,
-        });
-        return {
-          ok: true,
-          data: {
-            fileId: created.fileId,
-            criticalIdentityVersion: created.criticalIdentityVersion,
-            uploadUrl: `/api/member/profile/files/${created.fileId}/content`,
-            uploadToken,
-            expiresAt: created.expiresAt,
-          },
-          correlationId,
-        };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async receiveMemberUpload(accessToken, fileId, uploadToken, request) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:edit-own" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(fileId) || !/^[A-Za-z0-9_-]{40,64}$/.test(uploadToken)) return fail("invalid_input", correlationId);
-      const origin = assertExactOrigin(request, appOrigin);
-      if (!origin.allowed) return fail("forbidden", correlationId);
-      const requestType = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
-      if (!requestType || !imageTypes.has(requestType)) return fail("invalid_input", correlationId, { contentType: "Use a JPEG, PNG, or WebP image." });
-      let bytes: Uint8Array;
-      try {
-        bytes = await readBoundedBody(request);
-      } catch (error) {
-        const name = error instanceof Error ? error.message : "upload_invalid";
-        return fail("invalid_input", correlationId, { file: name === "upload_too_large" ? "Images must be 8 MB or smaller." : "Choose a valid image file." });
-      }
-      try {
-        const consumed = await repository.consumeUploadGrant({
-          authUserId: principal.userId,
-          fileId,
-          uploadTokenHash: tokenHash(uploadToken),
-          byteSize: bytes.byteLength,
-        });
-        if (requestType !== consumed.contentType || !consumed.quarantineKey) {
-          await repository.failUpload({ authUserId: principal.userId, fileId, safeReason: "content_type_mismatch" }).catch(() => undefined);
-          return fail("invalid_input", correlationId, { contentType: "The file type did not match the upload request." });
-        }
-        await storage.upload(consumed.quarantineKey, bytes, consumed.contentType);
-        return { ok: true, data: { fileId, received: true as const, byteSize: bytes.byteLength }, correlationId };
-      } catch (error) {
-        await repository.failUpload({ authUserId: principal.userId, fileId, safeReason: "upload_failed" }).catch(() => undefined);
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async completeMemberUpload(accessToken, fileId, input) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:edit-own" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(fileId) || !validRevision(input.expectedProfileRevision)
-        || !validRevision(input.expectedCriticalIdentityVersion)) return fail("invalid_input", correlationId);
-      let normalizedKey: string | null = null;
-      let quarantineKey: string | null = null;
-      try {
-        const file = await repository.beginNormalization({
-          authUserId: principal.userId,
-          fileId,
-          expectedProfileRevision: input.expectedProfileRevision,
-          expectedCriticalIdentityVersion: input.expectedCriticalIdentityVersion,
-        });
-        if (file.authUserId !== principal.userId || file.state !== "normalizing" || !file.quarantineKey) return fail("not_found", correlationId);
-        quarantineKey = file.quarantineKey;
-        const original = await storage.download(quarantineKey);
-        if (original.bytes.byteLength !== file.actualByteSize || original.bytes.byteLength > maxUploadBytes) {
-          throw new TypeError("source_size_mismatch");
-        }
-        const image = await normalizer.normalize({ bytes: original.bytes, claimedContentType: file.contentType });
-        normalizedKey = `normalized/${file.guestId}/${file.fileId}/${createId()}`;
-        await storage.upload(normalizedKey, image.bytes, image.contentType);
-        await storage.remove([quarantineKey]);
-        const result = await repository.finalizeUpload({
-          authUserId: principal.userId,
-          fileId,
-          expectedProfileRevision: input.expectedProfileRevision,
-          expectedCriticalIdentityVersion: input.expectedCriticalIdentityVersion,
-          normalizedKey,
-          image,
-        });
-        return {
-          ok: true,
-          data: {
-            fileId,
-            state: "ready" as const,
-            profileRevision: result.profile.profileRevision,
-            criticalIdentityVersion: result.profile.criticalIdentityVersion,
-          },
-          correlationId,
-        };
-      } catch (error) {
-        if (normalizedKey) await storage.remove([normalizedKey]).catch(() => undefined);
-        await repository.failUpload({ authUserId: principal.userId, fileId, safeReason: "normalization_or_finalize_failed" }).catch(() => undefined);
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async getOwnerFileReadUrl(accessToken, fileId, input) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:read-own" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(fileId) || !validRevision(input.expectedProfileRevision)
-        || !validRevision(input.expectedCriticalIdentityVersion)) return fail("invalid_input", correlationId);
-      try {
-        const file = await repository.getOwnerReadFile({
-          authUserId: principal.userId,
-          fileId,
-          expectedProfileRevision: input.expectedProfileRevision,
-          expectedCriticalIdentityVersion: input.expectedCriticalIdentityVersion,
-        });
-        const signed = await storage.createReadUrl(file.normalizedKey, 300);
-        return { ok: true, data: { readUrl: signed.url, expiresAt: signed.expiresAt }, correlationId };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async submitMemberProfile(accessToken, input) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:edit-own" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(input.operationId) || !validRevision(input.expectedProfileRevision)) return fail("invalid_input", correlationId);
-      try {
-        const result = await repository.submitProfile({ authUserId: principal.userId, ...input });
-        return { ok: true, data: {
-          profileRevision: result.profile.profileRevision,
-          criticalIdentityVersion: result.profile.criticalIdentityVersion,
-          identityStatus: "submitted" as const,
-          reviewId: String(result.review.review_id ?? ""),
-          attemptNumber: Number(result.review.attempt_number ?? 0),
-        }, correlationId };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async deleteMemberProfileFile(accessToken, fileId, input) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "member", action: "member:edit-own" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(fileId) || !uuidPattern.test(input.operationId) || !validRevision(input.expectedProfileRevision)) return fail("invalid_input", correlationId);
-      try {
-        const result = await repository.deleteFile({ authUserId: principal.userId, fileId, ...input });
-        const keys = [result.file.quarantineKey, result.file.normalizedKey].filter((key): key is string => Boolean(key));
-        if (keys.length) await storage.remove(keys);
-        return { ok: true, data: { fileId, state: "superseded" as const, profileRevision: result.profile.profileRevision, criticalIdentityVersion: result.profile.criticalIdentityVersion }, correlationId };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async listAdminIdentityReviews(accessToken, input) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "admin", action: "waitlist:read" })) return fail("forbidden", correlationId);
-      const limit = input.limit ?? 25;
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100) return fail("invalid_input", correlationId);
-      try {
-        const data = await repository.listIdentityReviews({ limit, status: input.status ?? "submitted", ...(input.cursor ? { cursor: input.cursor } : {}) });
-        return { ok: true, data, correlationId };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async readAdminIdentityReview(accessToken, guestId) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "admin", action: "waitlist:read" })) return fail("forbidden", correlationId);
-      if (!uuidPattern.test(guestId)) return fail("invalid_input", correlationId);
-      try {
-        const currentReview = await repository.findCurrentIdentityReview(guestId);
-        const requestId = createId();
-        const review = await repository.prepareIdentityReviewRead({
-          actorUserId: principal.userId,
-          guestId,
-          reviewId: currentReview.reviewId,
-          expectedCriticalIdentityVersion: currentReview.criticalIdentityVersion,
-          requestId,
-        });
-        const currentFiles = await repository.confirmIdentityReviewReadSet({
-          actorUserId: principal.userId,
-          guestId,
-          reviewId: currentReview.reviewId,
-          expectedCriticalIdentityVersion: currentReview.criticalIdentityVersion,
-          requestId,
-          fileIds: review.files.map((file) => file.fileId),
-        });
-        const evidence = await Promise.all(currentFiles.map(async (file) => {
-          const signed = await storage.createReadUrl(file.normalizedKey, 300);
-          return { fileId: file.fileId, kind: file.kind, readUrl: signed.url, expiresAt: signed.expiresAt };
-        }));
-        const submittedCriticalIdentityVersion = Number(review.review.critical_identity_version);
-        if (!Number.isSafeInteger(submittedCriticalIdentityVersion)) return fail("temporarily_unavailable", correlationId);
-        return {
-          ok: true,
-          data: {
-            profile: reviewProfileDTO(review.profile, currentFiles.map((file) => ({
-              fileId: file.fileId, kind: file.kind, state: "ready", criticalIdentityVersion: currentReview.criticalIdentityVersion,
-            }))),
-            reviewId: currentReview.reviewId,
-            submittedCriticalIdentityVersion,
-            submittedAt: String(review.review.submitted_at ?? ""),
-            attemptNumber: Number(review.review.attempt_number ?? 0),
-            correctionReason: typeof review.review.correction_reason === "string" ? review.review.correction_reason : null,
-            evidence,
-          },
-          correlationId,
-        };
-      } catch (error) {
-        return fail(mapError(error), correlationId);
-      }
-    },
-
-    async decideAdminIdentityReview(accessToken, guestId, request: IdentityReviewDecisionRequest) {
-      const correlationId = createId();
-      const principal = await getPrincipal(accessToken);
-      if (principal === undefined) return fail("temporarily_unavailable", correlationId);
-      if (!principal) return fail("unauthenticated", correlationId);
-      if (!authorized(principal, { workspace: "admin", action: "waitlist:read" })) return fail("forbidden", correlationId);
-      if (!isRecord(request) || !uuidPattern.test(guestId) || !uuidPattern.test(request.operationId) || !uuidPattern.test(request.reviewId)
-        || !validRevision(request.expectedProfileRevision)
-        || (request.decision !== "approved" && request.decision !== "resubmission_required")
-        || (request.decision === "resubmission_required" && (typeof request.correctionReason !== "string" || request.correctionReason.trim().length < 1 || request.correctionReason.length > 2000))) {
-        return fail("invalid_input", correlationId);
-      }
-      try {
-        const profile = await repository.decideIdentityReview({ actorUserId: principal.userId, guestId, request });
-        return { ok: true, data: {
-          guestId,
-          profileRevision: profile.profileRevision,
-          criticalIdentityVersion: profile.criticalIdentityVersion,
-          reviewedIdentityVersion: profile.reviewedIdentityVersion,
-          identityStatus: profile.identityStatus,
-          reviewedAt: now().toISOString(),
-        }, correlationId };
+        return { ok: true, data: memberDTO(profile), correlationId };
       } catch (error) {
         return fail(mapError(error), correlationId);
       }

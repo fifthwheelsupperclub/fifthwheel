@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// W12 real-stack end-to-end journey: roster -> Stripe TEST payment -> Seat email -> proceed/check-in -> vote/reveal -> feedback/report
-// -> partial refund + Table cancel -> removal/replacement -> T-48 reminder -> browser edge cases -> evidence cleanup.
+// W12 real-stack end-to-end journey: placement from the waitlist queue -> Stripe TEST payment -> Seat email -> proceed/check-in
+// -> vote/reveal -> feedback/report -> partial refund + Table cancel -> removal, then placement from the queue -> T-48 reminder -> browser edge cases.
 // Only the isolated fifthwheel-rewrite-test stack is allowed; Stripe must be sk_test_/pk_test_; mail goes to loopback Mailpit only.
 // Bootstrap (env guards, lock, fixtures, cleanup) follows scripts/run-w077-money-browser.mjs.
 import { randomUUID } from "node:crypto";
@@ -150,11 +150,11 @@ async function deleteAuthUser(userId, email) {
 }
 
 // ---- Fixture ---------------------------------------------------------------------------------------------------------
-// T1 journey: A-D request; the roster is curated in the browser. T2 cancel: E-G invited. T3 removal: I-L invited, M/N applicants.
-// T4 retention: Q-S invited; Q's approval is 31 days old and her photo's retention has elapsed (W04.4 + evidence cleanup).
-const ROSTER = { 0: ["A", "B", "C", "D"], 1: ["E", "F", "G"], 2: ["I", "J", "K", "L"], 3: ["Q", "R", "S"] };
-const APPLICANTS = { 0: ["A", "B", "C", "D"], 1: [], 2: ["M", "N"], 3: [] };
-const FIRST = { A: "Avery", B: "Blair", C: "Casey", D: "Drew", E: "Emery", F: "Finley", G: "Gray", I: "Indy", J: "Jules", K: "Kai", L: "Lane", M: "Morgan", N: "Noel", Q: "Quinn", R: "Rory", S: "Sky" };
+// T1 journey: A-D wait in the placement queue; the admin places them in the browser. T2 cancel: E-G invited.
+// T3 removal: I-L invited; M waits in the queue to fill the removed seat. T4 protected edit: Q-S invited.
+const ROSTER = { 0: [], 1: ["E", "F", "G"], 2: ["I", "J", "K", "L"], 3: ["Q", "R", "S"] };
+const QUEUED = { 0: ["A", "B", "C", "D"], 2: ["M"] };
+const FIRST = { A: "Avery", B: "Blair", C: "Casey", D: "Drew", E: "Emery", F: "Finley", G: "Gray", I: "Indy", J: "Jules", K: "Kai", L: "Lane", M: "Morgan", Q: "Quinn", R: "Rory", S: "Sky" };
 const localDate = (daysAhead) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + daysAhead * 86_400_000));
 
 function buildFixture(suffix) {
@@ -162,47 +162,42 @@ function buildFixture(suffix) {
   const person = (key, table) => ({ key, table, first: FIRST[key], last: `W12${tag}`, email: `w12-${key.toLowerCase()}-${suffix}@example.test`, id: null,
     signup: randomUUID(), admission: randomUUID(), guest: randomUUID(), request: randomUUID(), invitation: randomUUID(), outbox: randomUUID(), outboxOp: randomUUID() });
   const members = [];
-  for (const [k, keys] of Object.entries(ROSTER)) for (const key of keys) members.push(person(key, Number(k)));
-  members.push(person("M", 2), person("N", 2));
+  for (const group of [QUEUED, ROSTER]) for (const [k, keys] of Object.entries(group)) for (const key of keys) members.push(person(key, Number(k)));
   const tables = [0, 1, 2, 3].map((k) => ({ k, id: randomUUID(), revision: randomUUID(), proposal: randomUUID(),
-    title: `W12 ${["Journey", "Cancel", "Removal", "Retention"][k]} ${tag}`, date: localDate(7 + k), venues: [randomUUID(), randomUUID(), randomUUID()] }));
+    title: `W12 ${["Journey", "Cancel", "Removal", "Protected"][k]} ${tag}`, date: localDate(7 + k), venues: [randomUUID(), randomUUID(), randomUUID()] }));
   return { suffix, tag, admin: { email: `w12-admin-${suffix}@example.test`, id: null, signup: randomUUID(), admission: randomUUID() },
-    host: { email: `w12-host-${suffix}@example.test`, id: null }, members, tables,
-    evidence: { file: randomUUID(), key: `w12/${suffix}/quinn-photo.jpg` } };
+    host: { email: `w12-host-${suffix}@example.test`, id: null }, members, tables };
 }
 const list = (xs) => xs.map(sql).join(",");
 
 function fixtureSql(f) {
-  const out = ["begin;", `insert into public.app_user_roles(user_id,role) values (${sql(f.admin.id)},'admin'),(${sql(f.host.id)},'host');`];
+  // Fixture signups are not new waitlist joins: queue no confirmation email (as the legacy import does).
+  const out = ["begin;", "select set_config('app.skip_waitlist_confirmation','on',true);", `insert into public.app_user_roles(user_id,role) values (${sql(f.admin.id)},'admin'),(${sql(f.host.id)},'host');`];
   const people = [{ ...f.admin, first: "Admin", last: `W12${f.tag}` }, ...f.members];
   for (const p of people) {
     out.push(`insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game,source) values (${sql(p.signup)},${sql(p.email)},${sql(p.first)},${sql(p.last)},'1990-01-01','Woman',array['Women','Non-binary people'],21,120,'Inman Park',array['Wednesday'],'synthetic W12 fixture','Open','Yes, surprise me','landing-page');`);
     out.push(`insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values (${sql(p.admission)},${sql(p.signup)},${sql(p.email)},'activated',${sql(f.admin.id)},${sql(p.id)},now());`);
   }
   for (const m of f.members) {
-    out.push(`insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game,evidence_received_at) values (${sql(m.guest)},${sql(m.id)},${sql(m.admission)},'approved',1,1,${sql(m.first)},${sql(m.last)},'1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me',now()-interval '32 days');`);
+    out.push(`insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values (${sql(m.guest)},${sql(m.id)},${sql(m.admission)},${sql(m.first)},${sql(m.last)},'1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me');`);
   }
-  // Quinn: approved 31 days ago. Her photo's retention (30 days after review) is held in the future until stage 9c moves it due,
-  // so earlier worker passes cannot delete it before the stage observes the object.
-  const q = f.members.find((m) => m.key === "Q");
-  out.push(`insert into public.app_identity_reviews(guest_id,attempt_number,profile_revision,critical_identity_version,state,submitted_at,reviewed_at,reviewed_by,evidence_received_at) values (${sql(q.guest)},1,1,1,'approved',now()-interval '32 days',now()-interval '31 days',${sql(f.admin.id)},now()-interval '32 days');`);
-  out.push(`insert into public.app_profile_files(file_id,guest_id,auth_user_id,kind,state,content_type,declared_byte_size,actual_byte_size,normalized_byte_size,width,height,profile_revision_at_intent,critical_identity_version,normalized_key,received_at,upload_consumed_at,retention_due_at,created_at) values (${sql(f.evidence.file)},${sql(q.guest)},${sql(q.id)},'photo','ready','image/jpeg',4,4,4,1,1,1,1,${sql(f.evidence.key)},now()-interval '32 days',now()-interval '32 days',now()+interval '1 day',now()-interval '32 days');`);
   const validation = sql(JSON.stringify({ valid: true, issues: [] }));
   for (const t of f.tables) {
     const content = JSON.stringify({ title: t.title, localDate: t.date, startLocalTime: "19:00", neighborhood: "Inman Park", hostNotes: `PRIVATE W12 ${f.suffix}`, stops: ["drinks", "dinner", "dessert"].map((role, j) => ({ role, venueId: t.venues[j], venueName: `W12 ${role} ${f.tag}`, venueAddress: `${j + 1} Test Way`, minutesFromStart: j * 60, publicNotes: role })) });
     out.push(`insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${sql(t.id)},'draft','current');`);
     out.push(`insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values (${sql(t.revision)},${sql(t.id)},1,'draft',${sql(content)}::jsonb,${sql(f.admin.id)});`);
     out.push(`update public.app_supply_table_revisions set state='published' where revision_id=${sql(t.revision)};`);
-    // As the draft->accept->publish flow leaves it; seeded rosters also mark the Table protected, as roster approval does.
+    // As the draft->accept->publish flow leaves it; seeded rosters also mark the Table protected, as placement does.
     out.push(`update public.app_supply_table_heads set lifecycle='published',draft_revision_id=${sql(t.revision)},accepted_revision_id=${sql(t.revision)},published_revision_id=${sql(t.revision)},protected_by_activity=${t.k === 0 ? "false" : "true"} where table_id=${sql(t.id)};`);
     t.venues.forEach((v, j) => out.push(`insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values ('venue',${sql(`w12-${f.suffix}-${t.k}-${j}`)},${sql(v)});`));
     t.venues.forEach((v, j) => out.push(`insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values (${sql(v)},${sql(`W12 venue ${f.tag} ${t.k}-${j}`)},${sql(`${j + 1} Test Way`)},'Inman Park',${sql(f.admin.id)}) on conflict (venue_id) do nothing;`));
-    const requesters = f.members.filter((m) => m.table === t.k);
-    requesters.forEach((m, i) => out.push(`insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state,created_at) values (${sql(m.request)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(t.title)},${sql(t.date)},'19:00','Inman Park','pending',now()-interval '${10 - i} hours');`));
-    if (t.k === 0) continue; // T1's roster is curated in the browser
+    // Seeded rosters stand in for earlier placements: each invited guest has the pending request row placement writes.
+    const invited = f.members.filter((m) => m.table === t.k && ROSTER[t.k].includes(m.key));
+    if (!invited.length) continue; // T1 is filled by placement in the browser
+    invited.forEach((m, i) => out.push(`insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state,created_at) values (${sql(m.request)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(t.title)},${sql(t.date)},'19:00','Inman Park','pending',now()-interval '${10 - i} hours');`));
     out.push(`insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values (${sql(t.proposal)},${sql(t.id)},1,'approved',${sql(t.revision)},${validation}::jsonb,${sql(f.admin.id)},${sql(f.admin.id)},${sql(f.admin.id)},${sql(f.admin.id)},now(),now());`);
-    for (const m of requesters.filter((x) => ROSTER[t.k].includes(x.key))) {
-      out.push(`insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values (${sql(t.proposal)},${sql(m.request)},${sql(m.guest)},1,1,1);`);
+    for (const m of invited) {
+      out.push(`insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values (${sql(t.proposal)},${sql(m.request)},${sql(m.guest)},1);`);
       out.push(`insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values (${sql(m.invitation)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(m.request)},${sql(t.proposal)},${sql(f.admin.id)},'active');`);
       out.push(`insert into public.app_table_invitation_outbox(outbox_id,invitation_id,operation_id,state,attempt_count,queued_at,next_attempt_at,attempted_at,accepted_at,message_kind) values (${sql(m.outbox)},${sql(m.invitation)},${sql(m.outboxOp)},'accepted',1,now(),now(),now(),now(),'invitation');`);
     }
@@ -250,7 +245,7 @@ delete from public.app_payments where payment_id in (select payment_id from w_pa
 delete from public.app_checkout_operations where attempt_id in (select attempt_id from w_att);
 delete from public.app_checkout_attempts where attempt_id in (select attempt_id from w_att);
 delete from public.app_stripe_checkout_events where session_id in (select provider_session_id from w_att where provider_session_id is not null);
-delete from public.app_notice_outbox where recipient_user_id in (${users});
+delete from public.app_notice_outbox where recipient_user_id in (${users}) or payload->>'signupId' in (${sig});
 delete from public.app_ops_operations where actor_user_id in (${users});
 delete from public.app_table_cancel_operations where table_id in (${tabs});
 delete from public.app_table_invitation_attempts where outbox_id in (select outbox_id from w_out);
@@ -271,8 +266,6 @@ delete from public.app_table_runtime where table_id in (${tabs});
 delete from public.app_supply_table_heads where table_id in (${tabs});
 delete from public.app_supply_external_mappings where entity_kind='venue' and left(source_record_id,17)=${sql(`w12-${f.suffix}-`)};
 delete from public.app_supply_venues where venue_id in (${vens});
-delete from public.app_profile_files where guest_id in (${guests});
-delete from public.app_identity_reviews where guest_id in (${guests});
 delete from public.app_member_profiles where guest_id in (${guests});
 delete from public.app_member_link_cooldowns where admission_id in (${adm});
 delete from public.app_admissions where id in (${adm});
@@ -288,13 +281,6 @@ async function expireOpenStripeSessions(f) {
     if (!/^cs_test_[A-Za-z0-9]+$/.test(id)) continue;
     try { await fetch(`https://api.stripe.com/v1/checkout/sessions/${id}/expire`, { method: "POST", headers: { authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` }, signal: AbortSignal.timeout(10_000) }); } catch { /* best effort; already-complete sessions refuse */ }
   }
-}
-async function uploadEvidence(f) {
-  const r = await fetch(`${apiUrl}/storage/v1/object/identity-evidence/${f.evidence.key}`, { method: "POST", headers: { ...authHeaders(), "content-type": "image/jpeg", "x-upsert": "true" }, body: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]) });
-  if (!r.ok) fail(`could not upload the synthetic evidence object (${r.status})`);
-}
-async function removeEvidence(f) {
-  await fetch(`${apiUrl}/storage/v1/object/identity-evidence`, { method: "DELETE", headers: { ...authHeaders(), "content-type": "application/json" }, body: JSON.stringify({ prefixes: [f.evidence.key] }) }).catch(() => undefined);
 }
 async function deleteMailpitMessages(f) {
   const r = await fetch(`${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:"${f.suffix}"`)}&limit=500`).catch(() => null);
@@ -317,11 +303,10 @@ async function recover(suffix) {
   const admin = people.find((p) => p.email.startsWith("w12-admin-")), host = people.find((p) => p.email.startsWith("w12-host-"));
   const members = people.filter((p) => p !== admin && p !== host && p.guest);
   const tables = q(`select h.table_id from public.app_supply_table_heads h join public.app_supply_table_revisions r on r.table_id=h.table_id where r.content->>'hostNotes'=${sql(`PRIVATE W12 ${suffix}`)} group by h.table_id`).map((id) => ({ id }));
-  const f = { suffix, tables, members, admin: admin ?? { id: null, admission: randomUUID(), signup: randomUUID() }, host: host ?? { id: null },
-    evidence: { key: `w12/${suffix}/quinn-photo.jpg` } };
+  const f = { suffix, tables, members, admin: admin ?? { id: null, admission: randomUUID(), signup: randomUUID() }, host: host ?? { id: null } };
   if (!f.admin.admission) { f.admin.admission = randomUUID(); f.admin.signup = randomUUID(); }
   if (tables.length && members.length) { // seeded: remove rows first (Auth users are referenced by them)
-    await expireOpenStripeSessions(f); await removeEvidence(f);
+    await expireOpenStripeSessions(f);
     const c = command("psql", [dbUrl, "-X", "-v", "ON_ERROR_STOP=1"], { input: cleanupSql(f) });
     if (c.status !== 0) fail(`recover cleanup failed: ${c.stderr.split(/\r?\n/).filter((l) => /^ERROR:|DETAIL:/.test(l)).join(" ")}`);
   }
@@ -352,9 +337,8 @@ async function main() {
     const seed = command("psql", [dbUrl, "-X", "-v", "ON_ERROR_STOP=1"], { input: fixtureSql(f) });
     if (seed.status !== 0) fail(`W12 fixture seed failed: ${seed.stderr.split(/\r?\n/).filter((l) => /^ERROR:|DETAIL:/.test(l)).join(" ")}`);
     seeded = true;
-    await uploadEvidence(f);
     process.env.W12_FIXTURE = JSON.stringify({ db: dbUrl, mailpit: mailpitUrl, suffix: f.suffix, tag: f.tag, adminEmail: f.admin.email, hostEmail: f.host.email, hostId: f.host.id,
-      evidence: f.evidence, members: f.members.map((m) => ({ key: m.key, first: m.first, last: m.last, email: m.email, guest: m.guest, request: m.request, invitation: m.invitation, table: m.table })),
+      members: f.members.map((m) => ({ key: m.key, first: m.first, last: m.last, email: m.email, guest: m.guest, invitation: m.invitation, table: m.table })),
       tables: f.tables.map((t) => ({ id: t.id, title: t.title, date: t.date, revision: t.revision, venues: t.venues })) });
     if (listener) await new Promise((r) => setTimeout(r, 4_000)); // let the listener connect before the first checkout
     testExit = await runPlaywright();
@@ -363,7 +347,6 @@ async function main() {
     let ok = true;
     if (seeded) {
       await expireOpenStripeSessions(f);
-      await removeEvidence(f);
       const c = command("psql", [dbUrl, "-X", "-v", "ON_ERROR_STOP=1"], { input: cleanupSql(f) });
       if (c.status !== 0) { ok = false; process.stderr.write(`W12 cleanup failed (Auth users retained): ${c.stderr.split(/\r?\n/).filter((l) => /^ERROR:|DETAIL:/.test(l)).join(" ")}\n`); }
       await deleteMailpitMessages(f);

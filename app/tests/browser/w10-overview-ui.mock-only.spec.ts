@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 const origin = "http://127.0.0.1:8086";
 const shots = resolve("docs/implementation/screenshots");
 const counts = { decisionsSuspended: 1, decisionsNeeded: 0, paymentsUnaccounted: 0, refundsNeedingAttention: 2, votesNotFinalized: 0, refundsOpen: 3, cancellationsPending: 1, cancellationsFlagged: 1,
-  tableInvitationDeliveryProblems: 0, admissionDeliveryProblems: 0, identityReviews: 4, seatRequests: 0, rostersAwaitingApproval: 0, waitlistAwaitingInvite: 7, conductReportsNew: 0, conductReportsReviewDue: 0,
+  tableInvitationDeliveryProblems: 0, waitlistAwaitingPlacement: 7, conductReportsNew: 0, conductReportsReviewDue: 0,
   supplyNeedsAttention: 0, unstaffedWithinSevenDays: 0, oldestPendingDeliveryMinutes: 22 };
 
 for (const healthy of [true, false]) {
@@ -28,7 +28,7 @@ for (const healthy of [true, false]) {
     await expect(page.getByText("The oldest invitation email has been waiting 22 minutes.")).toBeVisible();
     await expect(page.getByText(healthy ? /Emails and refunds are sending normally/ : /Emails and refunds aren’t sending/)).toBeVisible();
     await expect(page.getByText(/queues are clear/)).toBeVisible();
-    await expect(page.getByRole("link", { name: /Profiles waiting for review/ })).toHaveAttribute("href", "/admin/identity-review");
+    await expect(page.getByRole("link", { name: /Waitlist people not placed at a Table/ })).toHaveAttribute("href", "/admin/waitlist");
     await expect(page.getByRole("link", { name: "Open", exact: true })).toHaveCount(0);
     await expect(page.getByText("Need help? Email")).toHaveCount(0);
     await expect(page.getByText(/ballot|vote choice/i)).toHaveCount(0);

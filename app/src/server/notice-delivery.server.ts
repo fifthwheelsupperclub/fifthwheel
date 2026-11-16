@@ -14,7 +14,7 @@ export type NoticeDeliveryDeps = Readonly<{
   limit?: number;
 }>;
 
-const kinds = new Set<string>(["seat_confirmed", "cancellation_decision", "table_cancelled", "member_removed", "t48_reminder"]);
+const kinds = new Set<string>(["seat_confirmed", "cancellation_decision", "table_cancelled", "member_removed", "t48_reminder", "waitlist_confirmed"]);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function parseClaims(value: unknown): ClaimedNotice[] {

@@ -1,9 +1,10 @@
-/** W08 operations boundary: one table of role-gated RPC calls (decision queue, proceed, attendance, assignments, restaurant view).
+/** W08 operations boundary: one table of role-gated RPC calls (decision queue, proceed, attendance, assignments, restaurant view, placement).
  *  The server only checks the staff role; the database re-checks assignment and is the authority. */
 
 import { randomUUID } from "node:crypto";
 import { env } from "node:process";
 import type { ServerVerifiedPrincipal } from "./authorization.server.ts";
+import { createSupabaseAuthLinkProvider, SupabaseAuthLinkError } from "./auth.link.supabase.server.ts";
 import { assertExactOrigin } from "./origin.server.ts";
 import { createVerifiedPrincipalResolver } from "./principal.server.ts";
 import { getAccessTokenForPrincipal } from "./session.cookies.server.ts";
@@ -18,12 +19,15 @@ type Spec = Readonly<{
   method: "GET" | "POST"; roles: readonly ("admin" | "host" | "restaurant" | "member")[]; rpc: string;
   /** Returns the RPC arguments (without p_actor) or null when the input is invalid. */
   args: (params: Readonly<Record<string, string>>, body: Body, url: URL) => Record<string, unknown> | null;
+  /** Placement only: create (or find) the guest's Auth user after the role check, before the RPC. */
+  ensureGuestAuthUser?: true;
 }>;
 
 export const opsSpecs = {
   decisionQueue: { method: "GET", roles: ["admin"], rpc: "read_table_decision_queue", args: () => ({}) },
   proceed: { method: "POST", roles: ["admin"], rpc: "record_table_proceed",
     args: (p, b) => isUuid(p.tableId) && isUuid(b.operationId) && Object.keys(b).length === 1 ? { p_table_id: p.tableId, p_operation_id: b.operationId } : null },
+  hostTables: { method: "GET", roles: ["admin", "host"], rpc: "list_host_tables", args: () => ({}) },
   attendance: { method: "GET", roles: ["admin", "host"], rpc: "read_table_attendance", args: (p) => isUuid(p.tableId) ? { p_table_id: p.tableId } : null },
   checkIn: { method: "POST", roles: ["admin", "host"], rpc: "check_in_guest",
     args: (p, b) => isUuid(p.tableId) && isUuid(b.seatId) && Object.keys(b).length === 1 ? { p_table_id: p.tableId, p_seat_id: b.seatId } : null },
@@ -31,9 +35,12 @@ export const opsSpecs = {
     args: (p, b) => isUuid(p.requestId) && Object.keys(b).length === 0 ? { p_request_id: p.requestId } : null },
   replacementSuggestion: { method: "GET", roles: ["admin"], rpc: "suggest_replacement", args: (p) => isUuid(p.invitationId) ? { p_invitation_id: p.invitationId } : null },
   removeAndReplace: { method: "POST", roles: ["admin"], rpc: "remove_and_replace",
-    args: (p, b) => isUuid(p.invitationId) && isUuid(b.operationId) && Number.isSafeInteger(b.expectedRevision) && Number.isSafeInteger(b.refundCents)
-      && (b.replaceRequestId === null || isUuid(b.replaceRequestId)) && Object.keys(b).length === 4
-      ? { p_invitation_id: p.invitationId, p_operation_id: b.operationId, p_expected_revision: b.expectedRevision, p_refund_cents: b.refundCents, p_replace_request_id: b.replaceRequestId } : null },
+    args: (p, b) => isUuid(p.invitationId) && isUuid(b.operationId) && Number.isSafeInteger(b.expectedRevision) && Number.isSafeInteger(b.refundCents) && Object.keys(b).length === 3
+      ? { p_invitation_id: p.invitationId, p_operation_id: b.operationId, p_expected_revision: b.expectedRevision, p_refund_cents: b.refundCents, p_replace_request_id: null } : null },
+  placementQueue: { method: "GET", roles: ["admin"], rpc: "list_placement_queue", args: () => ({}) },
+  place: { method: "POST", roles: ["admin"], rpc: "place_guest_at_table", ensureGuestAuthUser: true,
+    args: (_p, b) => isUuid(b.signupId) && isUuid(b.tableId) && isUuid(b.operationId) && typeof b.acknowledgeWarnings === "boolean" && Object.keys(b).length === 4
+      ? { p_signup_id: b.signupId, p_table_id: b.tableId, p_operation_id: b.operationId, p_acknowledge_warnings: b.acknowledgeWarnings } : null },
   tonight: { method: "GET", roles: ["member"], rpc: "read_tonight", args: (p) => isUuid(p.tableId) ? { p_table_id: p.tableId } : null },
   ballot: { method: "POST", roles: ["member"], rpc: "submit_ballot",
     args: (p, b) => isUuid(p.tableId) && Object.keys(b).length === 1 && (b.choiceGuestId === null || isUuid(b.choiceGuestId)) ? { p_table_id: p.tableId, p_choice_guest_id: b.choiceGuestId } : null },
@@ -75,19 +82,29 @@ export type OpsName = keyof typeof opsSpecs;
 export type OpsDeps = Readonly<{
   resolvePrincipal: (token: string) => Promise<ServerVerifiedPrincipal | null>;
   rpc: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  /** Returns the Auth user id for a waitlist signup's email, creating an unconfirmed user when there is none. */
+  ensureGuestAuthUser?: (signupId: string) => Promise<string>;
 }>;
-export class OpsRpcError extends Error {}
+export class OpsRpcError extends Error {
+  readonly details: string;
+  constructor(message: string, details = "") { super(message); this.details = details; }
+}
 
 const headers = { "cache-control": "private, no-store", "referrer-policy": "no-referrer", vary: "Cookie, Origin" };
 const conflicts = new Set(["table_not_proceeding", "table_not_proceedable", "decision_not_open", "group_invalid", "seat_not_checkin_eligible",
   "decision_finalized", "not_a_host", "not_a_restaurant_user", "operation_conflict", "revision_conflict", "invitation_not_removable", "table_not_active",
-  "refund_amount_exceeds_balance", "voting_not_open", "voting_closed", "voting_unavailable", "ballot_conflict", "feedback_not_open", "profile_incomplete", "case_held", "review_not_due", "active_seat_exists", "staff_account", "notice_not_actionable"]);
+  "refund_amount_exceeds_balance", "voting_not_open", "voting_closed", "voting_unavailable", "ballot_conflict", "feedback_not_open", "profile_incomplete", "case_held", "review_not_due", "active_seat_exists", "staff_account", "notice_not_actionable",
+  "already_invited", "age_under_21", "table_full", "auth_user_mismatch", "stale_table", "table_not_future", "placement_warnings"]);
 const codes = { unauthenticated: 401, forbidden: 403, not_found: 404, invalid_input: 400, conflict: 409, temporarily_unavailable: 503 } as const;
 const messages: Record<keyof typeof codes, string> = { unauthenticated: "Sign in to continue.", forbidden: "You do not have access to this.",
   not_found: "That could not be found.", invalid_input: "Check the details and try again.", conflict: "That action is not available right now.",
   temporarily_unavailable: "This is temporarily unavailable. Try again shortly." };
-const fail = (code: keyof typeof codes, reason?: string) => Response.json({ ok: false, error: { code, reason: reason ?? null, safeMessage: messages[code], retryable: code === "temporarily_unavailable" } },
-  { status: codes[code], headers });
+const fail = (code: keyof typeof codes, reason?: string, issues?: readonly string[]) => Response.json({ ok: false, error: { code, reason: reason ?? null, ...(issues ? { issues } : {}),
+  safeMessage: messages[code], retryable: code === "temporarily_unavailable" } }, { status: codes[code], headers });
+const warningIssues = (details: string): string[] => {
+  try { const v = JSON.parse(details) as { issues?: unknown }; return Array.isArray(v.issues) ? v.issues.filter((x): x is string => typeof x === "string" && /^[a-z_]{1,60}$/.test(x)) : []; }
+  catch { return []; }
+};
 
 export function createOpsHandler(deps: OpsDeps, expectedOrigin: string | undefined) {
   return async function handle(name: OpsName, request: Request, params: Readonly<Record<string, string>> = {}): Promise<Response> {
@@ -112,6 +129,10 @@ export function createOpsHandler(deps: OpsDeps, expectedOrigin: string | undefin
       const principal = await deps.resolvePrincipal(token);
       if (!principal) return fail("unauthenticated");
       if (!spec.roles.some((role) => role === "member" ? principal.admission.state === "activated" : principal.staffRoles.has(role))) return fail("forbidden");
+      if (spec.ensureGuestAuthUser) {
+        if (!deps.ensureGuestAuthUser) return fail("temporarily_unavailable");
+        args.p_auth_user_id = await deps.ensureGuestAuthUser(String(args.p_signup_id));
+      }
       const data = await deps.rpc(spec.rpc, { p_actor: principal.userId, ...args });
       return Response.json({ ok: true, data, correlationId: randomUUID() }, { headers });
     } catch (error) {
@@ -119,6 +140,7 @@ export function createOpsHandler(deps: OpsDeps, expectedOrigin: string | undefin
       if (reason === "forbidden" || reason === "member_not_admitted" || reason === "not_eligible" || reason.endsWith("_required")) return fail("forbidden");
       if (reason === "not_found") return fail("not_found");
       if (reason === "invalid_input" || reason === "invalid_choice") return fail("invalid_input");
+      if (reason === "placement_warnings" && error instanceof OpsRpcError) return fail("conflict", reason, warningIssues(error.details));
       if (conflicts.has(reason)) return fail("conflict", reason);
       return fail("temporarily_unavailable");
     }
@@ -139,9 +161,29 @@ export function createOpsHttpRuntime(environment: Environment = env) {
     const body: unknown = await response.json().catch(() => null);
     if (response.ok) return body;
     const message = typeof body === "object" && body !== null && typeof (body as { message?: unknown }).message === "string" ? (body as { message: string }).message : "";
-    throw new OpsRpcError(message);
+    const details = typeof body === "object" && body !== null && typeof (body as { details?: unknown }).details === "string" ? (body as { details: string }).details : "";
+    throw new OpsRpcError(message, details);
   };
-  return createOpsHandler({ resolvePrincipal, rpc }, required("APP_ORIGIN", environment.APP_ORIGIN));
+  const appOrigin = required("APP_ORIGIN", environment.APP_ORIGIN);
+  const callback = new URL("/auth/callback", appOrigin).href;
+  const authLinks = createSupabaseAuthLinkProvider({ ...config, siteUrl: appOrigin, allowedCallbackUrls: [callback] });
+  const ensureGuestAuthUser = async (signupId: string): Promise<string> => {
+    const url = new URL("/rest/v1/waitlist_signups", config.url);
+    url.searchParams.set("select", "email_normalized"); url.searchParams.set("id", `eq.${signupId}`); url.searchParams.set("is_test", "eq.false");
+    const response = await fetch(url, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
+      headers: { apikey: config.secretKey, authorization: `Bearer ${config.secretKey}`, accept: "application/json" } });
+    const rows: unknown = await response.json().catch(() => null);
+    const email = Array.isArray(rows) && rows.length === 1 ? (rows[0] as { email_normalized?: unknown }).email_normalized : null;
+    if (!response.ok || typeof email !== "string") throw new OpsRpcError("not_found");
+    // Generating a link creates the Auth user without sending anything; the link itself is discarded. A confirmed user cannot take
+    // an invite link, so a definitive rejection falls back to a magic link for the existing user.
+    try { return (await authLinks.createMagicLink({ emailNormalized: email, redirectTo: callback, kind: "invite" })).authUserId; }
+    catch (error) {
+      if (!(error instanceof SupabaseAuthLinkError) || error.code !== "provider_rejected") throw error;
+      return (await authLinks.createMagicLink({ emailNormalized: email, redirectTo: callback, kind: "magiclink" })).authUserId;
+    }
+  };
+  return createOpsHandler({ resolvePrincipal, rpc, ensureGuestAuthUser }, appOrigin);
 }
 
 /** Shared by every ops route file: any setup failure is a safe 503. */

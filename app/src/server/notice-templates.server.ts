@@ -1,6 +1,6 @@
 /** Branded guest notice templates. Pure functions of server-supplied facts: no tokens, ballots, report text or full names. */
 
-export type NoticeKind = "seat_confirmed" | "cancellation_decision" | "table_cancelled" | "member_removed" | "t48_reminder";
+export type NoticeKind = "seat_confirmed" | "cancellation_decision" | "table_cancelled" | "member_removed" | "t48_reminder" | "waitlist_confirmed";
 export type NoticeContext = Readonly<{
   firstName: string; tableTitle: string; localDate: string | null; startLocalTime: string | null; neighborhood: string | null;
   decision?: string; reason?: string | null; refundCents?: number; invitationId?: string | null;
@@ -46,11 +46,15 @@ export function renderNotice(kind: NoticeKind, c: NoticeContext, origin: string)
     }
     case "table_cancelled":
       subject = `${title} has been cancelled`;
-      built = frame(origin, "This Table has been cancelled", [`Hi ${c.firstName}, we’re sorry: ${title}${when(c) ? ` on ${when(c)}` : ""} has been cancelled.`, "If you had paid, the full amount is being refunded to your original payment method; it can take several business days to appear.", "You don’t need to do anything. We’d love to see you at another Table."], { label: "Browse Tables", href: `${origin}/tables` });
+      built = frame(origin, "This Table has been cancelled", [`Hi ${c.firstName}, we’re sorry: ${title}${when(c) ? ` on ${when(c)}` : ""} has been cancelled.`, "If you had paid, the full amount is being refunded to your original payment method; it can take several business days to appear.", "You don’t need to do anything. We’ll email you when we have a seat for you at another Table."], { label: "View My Seats", href: seats });
       break;
     case "member_removed":
       subject = `Your place at ${title}`;
       built = frame(origin, "Your place at this Table was removed", [`Hi ${c.firstName}, our team removed you from ${title}.`, refund(c.refundCents) || "No payment is owed from you.", "If you have questions, reply to this email."], { label: "View My Seats", href: seats });
+      break;
+    case "waitlist_confirmed":
+      subject = "You’re on the Fifth Wheel waitlist";
+      built = frame(origin, "You’re on the list", [`Hi ${c.firstName}, thanks for joining the Fifth Wheel waitlist.`, "Our team places guests at Tables by hand. When we have a seat for you, we’ll email your invitation. There’s nothing else you need to do."], { label: "Visit Fifth Wheel", href: origin.replace("app.", "") });
       break;
     case "t48_reminder":
       subject = `Reminder: your Table invitation for ${title}`;

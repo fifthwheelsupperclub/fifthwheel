@@ -1,3 +1,6 @@
+// W03 real-stack journey. Run only through `node scripts/run-w03-browser.mjs` (guards, run-scoped fixtures, cleanup).
+// Marketing waitlist signup -> confirmation email -> admin sees them in the placement queue -> "Add to Table…" ->
+// invitation email -> the guest signs in from the invitation link and lands on the invitation. No staff approval step.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -7,9 +10,12 @@ const appOrigin = "http://127.0.0.1:8086";
 const marketingOrigin = "http://127.0.0.1:4322";
 const mailpitOrigin = "http://127.0.0.1:57424";
 const supabaseOrigin = "http://127.0.0.1:57421";
-const mailpitProxyOrigin = "http://127.0.0.1:57428";
 const testDatabaseUrl = "postgresql://postgres:postgres@127.0.0.1:57422/postgres";
 const screenshotDirectory = "docs/implementation/screenshots";
+const confirmationSubject = "You’re on the Fifth Wheel waitlist";
+const signInSubject = "Your Fifth Wheel sign-in link";
+// Valid-shaped placement body: the handler validates input before the role check, so denials must use this shape.
+const probePlacement = { signupId: "a1d72117-e0b1-4423-a108-24e24582dc5a", tableId: "a1d72117-e0b1-4423-a108-24e24582dc5c", operationId: "a1d72117-e0b1-4423-a108-24e24582dc5b", acknowledgeWarnings: false };
 
 async function guardPageRequests(context: BrowserContext) {
   await context.route("**/*", async (route) => {
@@ -52,8 +58,12 @@ function queryTestDatabase(sql: string): unknown {
   catch { throw new Error("local W03 database query returned invalid JSON"); }
 }
 
-function readWaitlistSignup(email: string): Record<string, unknown> | null {
+function requireRunEmail(email: string) {
   if (!/^[a-z0-9._+-]+@example\.test$/.test(email)) throw new Error("W03 DB helper requires a run-scoped synthetic email");
+}
+
+function readWaitlistSignup(email: string): Record<string, unknown> | null {
+  requireRunEmail(email);
   const result = queryTestDatabase(`select coalesce((
     select to_jsonb(signup) from public.waitlist_signups as signup
     where signup.email_normalized = ${sqlLiteral(email)}
@@ -63,79 +73,63 @@ function readWaitlistSignup(email: string): Record<string, unknown> | null {
   return result;
 }
 
-function readAdmissionSnapshot(email: string): Record<string, unknown> {
-  if (!/^[a-z0-9._+-]+@example\.test$/.test(email)) throw new Error("W03 DB helper requires a run-scoped synthetic email");
+// Admission, confirmation email, placement and activation state for one run-scoped email.
+function readPlacementSnapshot(email: string): Record<string, unknown> {
+  requireRunEmail(email);
   const result = queryTestDatabase(`with target as (
-    select admission.id, admission.state
+    select admission.id, admission.state, admission.auth_user_id
     from public.app_admissions as admission
     where admission.email_normalized = ${sqlLiteral(email)}
+  ), invitation as (
+    select i.invitation_id, i.state, i.table_id from public.app_table_invitations i
+    join public.app_member_profiles p on p.guest_id = i.guest_id
+    join target on target.id = p.admission_id
   )
   select jsonb_build_object(
     'admission_count', (select count(*) from target),
-    'admissions', coalesce((
-      select jsonb_agg(jsonb_build_object('id', target.id, 'state', target.state) order by target.id)
-      from target
-    ), '[]'::jsonb),
-    'deliveries', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', delivery.id,
-        'operation_id', delivery.operation_id,
-        'state', delivery.state,
-        'attempt_count', delivery.attempt_count
-      ) order by delivery.created_at)
-      from public.app_invitation_deliveries as delivery
-      join target on target.id = delivery.admission_id
-    ), '[]'::jsonb),
-    'attempt_count', (
-      select count(*) from public.app_invitation_delivery_attempts as attempt
-      join public.app_invitation_deliveries as delivery on delivery.id = attempt.delivery_id
-      join target on target.id = delivery.admission_id
-    ),
-    'attempts', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'attempt_number', attempt.attempt_number,
-        'state', attempt.state,
-        'error_code', attempt.error_code,
-        'provider_message_id', attempt.provider_message_id
-      ) order by attempt.attempt_number)
-      from public.app_invitation_delivery_attempts as attempt
-      join public.app_invitation_deliveries as delivery on delivery.id = attempt.delivery_id
-      join target on target.id = delivery.admission_id
-    ), '[]'::jsonb),
+    'admissions', coalesce((select jsonb_agg(jsonb_build_object('id', target.id, 'state', target.state) order by target.id) from target), '[]'::jsonb),
+    'confirmation_count', (select count(*) from public.app_notice_outbox n where n.kind = 'waitlist_confirmed' and n.recipient_email = ${sqlLiteral(email)}),
+    'profile_count', (select count(*) from public.app_member_profiles p join target on target.id = p.admission_id),
+    'invitations', coalesce((select jsonb_agg(jsonb_build_object('id', invitation.invitation_id, 'state', invitation.state, 'table_id', invitation.table_id)) from invitation), '[]'::jsonb),
+    'invitation_outbox_count', (select count(*) from public.app_table_invitation_outbox o join invitation on invitation.invitation_id = o.invitation_id),
     'activation_audit_count', (
       select count(*) from public.app_audit_events as audit
       join target on target.id = audit.subject_id
       where audit.action = 'app.admission.activated'
     )
   )::text`);
-  if (!isRecord(result)) throw new Error("local W03 database returned an invalid admission snapshot");
+  if (!isRecord(result)) throw new Error("local W03 database returned an invalid placement snapshot");
   return result;
 }
 
-function readW03DomainTableAvailability(): Record<string, unknown> {
-  // These W04–W07 domain objects are intentionally absent from the current W03
-  // schema, so activation/replay cannot create profile, Table, Seat or payment
-  // side effects. Once those migrations land, this query must become row-aware.
-  const result = queryTestDatabase(`select jsonb_build_object(
-    'profiles', to_regclass('public.app_member_profiles') is not null or to_regclass('public.member_profiles') is not null,
-    'profile_reviews', to_regclass('public.app_profile_reviews') is not null or to_regclass('public.profile_reviews') is not null,
-    'tables', to_regclass('public.app_tables') is not null or to_regclass('public.tables') is not null,
-    'requests', to_regclass('public.app_table_requests') is not null or to_regclass('public.table_requests') is not null or to_regclass('public.seat_requests') is not null,
-    'seats', to_regclass('public.app_seats') is not null or to_regclass('public.seats') is not null,
-    'payments', to_regclass('public.app_payments') is not null or to_regclass('public.seat_payments') is not null or to_regclass('public.payments') is not null
-  )::text`);
-  if (!isRecord(result)) throw new Error("local W03 database returned an invalid domain table inventory");
-  return result;
+// Test setup standing in for the 5-minute per-recipient link cooldown elapsing between two sign-ins in one run.
+function expireLinkCooldown(email: string) {
+  requireRunEmail(email);
+  queryTestDatabase(`with removed as (
+    delete from public.app_member_link_cooldowns c using public.app_admissions a
+    where a.id = c.admission_id and a.email_normalized = ${sqlLiteral(email)} returning 1
+  ) select jsonb_build_object('removed', (select count(*) from removed))::text`);
 }
 
-async function waitForMailpitMessage(email: string, subjectPart: string) {
-  const deadline = Date.now() + 30_000;
+// One authenticated pass of the app's scheduler endpoint: sends queued confirmation and invitation emails.
+async function runWorkerPass() {
+  const response = await fetch(`${appOrigin}/api/internal/worker`, { method: "POST", headers: { authorization: `Bearer ${fixtureValue("JOB_SECRET")}` }, cache: "no-store" });
+  if (response.status === 401) throw new Error("the app worker refused the run-scoped JOB_SECRET");
+}
+
+async function listMailpitMessages(): Promise<unknown[]> {
+  const response = await fetch(`${mailpitOrigin}/api/v1/messages?limit=100`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Mailpit message list failed (${response.status})`);
+  const body: unknown = await response.json();
+  if (!isRecord(body) || !Array.isArray(body.messages)) throw new Error("Mailpit returned an invalid message list");
+  return body.messages;
+}
+
+async function waitForMailpitMessage(email: string, subjectPart: string, options: Readonly<{ runWorker?: boolean }> = {}) {
+  const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const listResponse = await fetch(`${mailpitOrigin}/api/v1/messages?limit=100`, { cache: "no-store" });
-    if (!listResponse.ok) throw new Error(`Mailpit message list failed (${listResponse.status})`);
-    const list: unknown = await listResponse.json();
-    if (!isRecord(list) || !Array.isArray(list.messages)) throw new Error("Mailpit returned an invalid message list");
-    const match = list.messages.find((item) =>
+    // Mailpit lists newest first, so this is the latest matching message.
+    const match = (await listMailpitMessages()).find((item) =>
       isRecord(item)
       && typeof item.ID === "string"
       && typeof item.Subject === "string"
@@ -148,17 +142,14 @@ async function waitForMailpitMessage(email: string, subjectPart: string) {
       const message: unknown = await messageResponse.json();
       if (isRecord(message) && hasRecipient(message.To, email) && typeof message.HTML === "string") return message;
     }
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (options.runWorker) await runWorkerPass();
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`No intercepted ${subjectPart} message arrived for the run-scoped recipient`);
 }
 
 async function countMailpitRecipientMessages(email: string, subjectPart?: string) {
-  const response = await fetch(`${mailpitOrigin}/api/v1/messages?limit=100`, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Mailpit message list failed (${response.status})`);
-  const body: unknown = await response.json();
-  if (!isRecord(body) || !Array.isArray(body.messages)) throw new Error("Mailpit returned an invalid message list");
-  return body.messages.filter((item) => isRecord(item)
+  return (await listMailpitMessages()).filter((item) => isRecord(item)
     && hasRecipient(item.To, email)
     && (subjectPart === undefined || (typeof item.Subject === "string" && item.Subject.includes(subjectPart)))).length;
 }
@@ -178,28 +169,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-type ActualLinkOptions = Readonly<{ extraVerifyFields?: Readonly<Record<string, unknown>> }>;
-
-async function clickActualEmailLink(
-  browser: Browser,
-  email: string,
-  subjectPart: string,
-  label: string,
-  options: ActualLinkOptions = {},
-): Promise<{ page: Page; context: Awaited<ReturnType<Browser["newContext"]>>; linkHref: string }> {
-  const message = await waitForMailpitMessage(email, subjectPart);
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(context);
+// Renders the exact intercepted Mailpit HTML in `context` and clicks its real anchor; no session or token is injected.
+async function openEmailLink(context: BrowserContext, message: Record<string, unknown>, label: string): Promise<{ page: Page; href: string }> {
   const page = await context.newPage();
-  // Render the exact intercepted Mailpit HTML and click its real anchor. This
-  // follows the one-time recipient link in a clean browser context; no session
-  // or access token is injected into Playwright.
   await page.setContent(message.HTML as string);
   const link = page.getByRole("link", { name: label, exact: true });
   await expect(link).toHaveCount(1);
-  const originalHref = await link.getAttribute("href");
-  let href = originalHref;
-  expect(href).toMatch(/^http:\/\/127\.0\.0\.1:8086\/auth\/callback\?token_hash=[A-Za-z0-9_-]{16,512}&type=(invite|magiclink)/);
+  const href = await link.getAttribute("href");
+  if (!href) throw new Error(`the ${label} link has no href`);
+  await link.click();
+  return { page, href };
+}
+
+type CallbackOptions = Readonly<{ extraVerifyFields?: Readonly<Record<string, unknown>> }>;
+
+// Opens a one-time sign-in link and presses Continue on the callback page. Returns the verify-link response status.
+async function redeemSignInLink(context: BrowserContext, message: Record<string, unknown>, options: CallbackOptions = {}) {
   if (options.extraVerifyFields) {
     await context.route(`${appOrigin}/api/auth/verify-link`, (route) => {
       if (route.request().method() !== "POST") return route.continue();
@@ -207,27 +192,26 @@ async function clickActualEmailLink(
       try { body = route.request().postDataJSON(); }
       catch { return route.continue(); }
       if (!isRecord(body)) return route.continue();
-      return route.continue({
-        postData: JSON.stringify({ ...body, ...options.extraVerifyFields }),
-      });
+      return route.continue({ postData: JSON.stringify({ ...body, ...options.extraVerifyFields }) });
     });
   }
-  await link.click();
+  const { page, href } = await openEmailLink(context, message, "Continue to Fifth Wheel");
+  expect(href).toMatch(/^http:\/\/127\.0\.0\.1:8086\/auth\/callback\?token_hash=[A-Za-z0-9_-]{16,512}&type=(invite|magiclink)/);
   await page.waitForURL(`${appOrigin}/auth/callback**`);
   await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
   await expect.poll(() => new URL(page.url()).search).toBe("");
-  const verifyResponsePromise = page.waitForResponse((response) =>
-    response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST",
-  );
+  const verify = page.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  const verifyResponse = await verifyResponsePromise;
-  if (!verifyResponse.ok()) {
-    throw new Error(`local callback verification rejected with HTTP ${verifyResponse.status()}`);
-  }
-  return { page, context, linkHref: href! };
+  return { page, href, status: (await verify).status() };
 }
 
-async function addLocalAuthFixtureSession(context: BrowserContext, emailEnv: string, _passwordEnv: string) {
+async function newGuardedContext(browser: Browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await guardPageRequests(context);
+  return context;
+}
+
+async function addLocalAuthFixtureSession(context: BrowserContext, emailEnv: string) {
   const email = fixtureValue(emailEnv);
   const publishableKey = fixtureValue("SUPABASE_PUBLISHABLE_KEY");
   const secretKey = fixtureValue("SUPABASE_SECRET_KEY");
@@ -247,18 +231,15 @@ async function addLocalAuthFixtureSession(context: BrowserContext, emailEnv: str
     throw new Error("local Auth fixture link generation returned an invalid response");
   }
 
-  // This is test-only session setup for authorization probes. The member A28
-  // flow continues to redeem the actual Mailpit link through the app callback.
+  // Test-only session setup for authorization probes. The guest flow below redeems actual Mailpit links through the app callback.
   const verified = await context.request.post(`${supabaseOrigin}/auth/v1/verify`, {
     headers: { apikey: publishableKey, "content-type": "application/json" },
     data: { token_hash: generatedBody.hashed_token, type: "magiclink" },
   });
   if (!verified.ok()) throw new Error(`local Auth fixture verification failed (HTTP ${verified.status()})`);
   const session: unknown = await verified.json();
-  expect(isRecord(session) && isRecord(session.user) ? session.user.email : null).toBe(email);
-  expect(isRecord(session) && typeof session.access_token === "string").toBe(true);
-  expect(isRecord(session) && typeof session.refresh_token === "string").toBe(true);
-  if (!isRecord(session) || typeof session.access_token !== "string" || typeof session.refresh_token !== "string") {
+  if (!isRecord(session) || !isRecord(session.user) || session.user.email !== email
+    || typeof session.access_token !== "string" || typeof session.refresh_token !== "string") {
     throw new Error("local Auth fixture session response is invalid");
   }
   await context.addCookies([
@@ -267,18 +248,20 @@ async function addLocalAuthFixtureSession(context: BrowserContext, emailEnv: str
   ]);
 }
 
-async function expectRoleDeniedFromAdminApi(browser: Browser, emailEnv: string, passwordEnv: string) {
-  const roleContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(roleContext);
+async function expectPlacementApiStatus(context: BrowserContext, status: number) {
+  expect((await context.request.get(`${appOrigin}/api/admin/placements`)).status()).toBe(status);
+  const place = await context.request.post(`${appOrigin}/api/admin/placements`, {
+    headers: { origin: appOrigin, "content-type": "application/json" },
+    data: probePlacement,
+  });
+  expect(place.status()).toBe(status);
+}
+
+async function expectRoleDeniedFromAdminApi(browser: Browser, emailEnv: string) {
+  const roleContext = await newGuardedContext(browser);
   try {
-    await addLocalAuthFixtureSession(roleContext, emailEnv, passwordEnv);
-    const list = await roleContext.request.get(`${appOrigin}/api/admin/waitlist?limit=10`);
-    expect(list.status()).toBe(403);
-    const invite = await roleContext.request.post(`${appOrigin}/api/admin/waitlist`, {
-      headers: { origin: appOrigin, "content-type": "application/json" },
-      data: { signupId: "a1d72117-e0b1-4423-a108-24e24582dc5a", operationId: "a1d72117-e0b1-4423-a108-24e24582dc5b" },
-    });
-    expect(invite.status()).toBe(403);
+    await addLocalAuthFixtureSession(roleContext, emailEnv);
+    await expectPlacementApiStatus(roleContext, 403);
   } finally {
     await roleContext.close();
   }
@@ -308,6 +291,18 @@ async function waitForSignInReady(page: Page) {
   const form = page.locator('form[data-client-ready="true"]');
   await expect(form).toBeVisible();
   await expect(form.getByRole("button", { name: "Send sign-in link" })).toBeEnabled();
+}
+
+async function requestSignInLink(page: Page, email: string) {
+  await waitForSignInReady(page);
+  await page.getByLabel("Email address").fill(email);
+  const request = page.waitForResponse((response) => response.url().endsWith("/api/auth/request-link") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Send sign-in link" }).click();
+  const response = await request;
+  expect(response.status()).toBe(200);
+  expectEmailAbsentFromUrl(page, email);
+  await expect(page.getByText("Check your email.")).toBeVisible();
+  return await response.json();
 }
 
 function expectEmailAbsentFromUrl(page: Page, email: string) {
@@ -385,19 +380,15 @@ function validMarketingPayload(email: string): Record<string, unknown> {
   };
 }
 
-test("W03: marketing signup → admin admission → actual Mailpit link → member home and returning link", async ({ browser, page, context }) => {
+test("W03: marketing signup → confirmation email → admin places them at a Table → invitation email → sign-in lands on the invitation", async ({ browser, page, context }) => {
   const adminEmail = fixtureValue("W03_ADMIN_EMAIL");
   const memberEmail = fixtureValue("W03_MEMBER_EMAIL");
+  const tableId = fixtureValue("W03_TABLE_ID");
+  const tableTitle = fixtureValue("W03_TABLE_TITLE");
   await guardPageRequests(context);
 
-  // Anonymous direct API calls are denied before they can search or admit.
-  const anonymousList = await context.request.get(`${appOrigin}/api/admin/waitlist?limit=10`);
-  expect(anonymousList.status()).toBe(401);
-  const anonymousInvite = await context.request.post(`${appOrigin}/api/admin/waitlist`, {
-    headers: { origin: appOrigin, "content-type": "application/json" },
-    data: { signupId: "a1d72117-e0b1-4423-a108-24e24582dc5a", operationId: "a1d72117-e0b1-4423-a108-24e24582dc5b" },
-  });
-  expect(anonymousInvite.status()).toBe(401);
+  // Anonymous direct API calls are denied before they can read the queue or place anyone.
+  await expectPlacementApiStatus(context, 401);
 
   // Exercise the existing marketing form and public POST, including the neutral
   // duplicate and honeypot success responses. Only the first insert may persist.
@@ -442,6 +433,8 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   expect(receivedAt).toBeGreaterThanOrEqual(receivedAtWindowStart - 5_000);
   expect(receivedAt).toBeLessThanOrEqual(receivedAtWindowEnd + 5_000);
   expect(persistedSignup?.received_at).not.toBe(staleClientSubmissionTime);
+  // Joining queues exactly one confirmation email and creates no admission or account.
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ admission_count: 0, confirmation_count: 1, profile_count: 0, invitations: [] });
 
   await page.reload();
   await expect(page.locator("#waitlistForm")).toBeVisible();
@@ -449,6 +442,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const duplicateResult = await submitMarketingSignup(page);
   expect(duplicateResult).toEqual(freshResult);
   expect(readWaitlistSignup(memberEmail)).toEqual(persistedSignup);
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ confirmation_count: 1 });
 
   const honeypotEmail = fixtureValue("W03_HONEYPOT_EMAIL");
   await page.reload();
@@ -458,7 +452,7 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const honeypotResult = await submitMarketingSignup(page);
   expect(honeypotResult).toEqual(freshResult);
   expect(readWaitlistSignup(honeypotEmail)).toBeNull();
-  expect(readAdmissionSnapshot(honeypotEmail)).toMatchObject({ admission_count: 0, deliveries: [], attempt_count: 0 });
+  expect(readPlacementSnapshot(honeypotEmail)).toMatchObject({ admission_count: 0, confirmation_count: 0 });
 
   // Exercise server-side rejection through the actual marketing-origin browser
   // context, bypassing only the marketing script's client-side validation.
@@ -466,16 +460,20 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   const invalidAgeEmail = fixtureValue("W03_INVALID_AGE_EMAIL");
   await page.reload();
   await expect(page.locator("#waitlistForm")).toBeVisible();
-  const underagePayload = { ...validMarketingPayload(underageEmail), birthdate: "2006-05-14" };
-  await submitInvalidWaitlistApiFromMarketingPage(page, underagePayload);
-  const invalidAgePayload = { ...validMarketingPayload(invalidAgeEmail), match_age_max: 121 };
-  await submitInvalidWaitlistApiFromMarketingPage(page, invalidAgePayload);
+  await submitInvalidWaitlistApiFromMarketingPage(page, { ...validMarketingPayload(underageEmail), birthdate: "2006-05-14" });
+  await submitInvalidWaitlistApiFromMarketingPage(page, { ...validMarketingPayload(invalidAgeEmail), match_age_max: 121 });
   for (const rejectedEmail of [underageEmail, invalidAgeEmail]) {
     expect(readWaitlistSignup(rejectedEmail)).toBeNull();
-    expect(readAdmissionSnapshot(rejectedEmail)).toMatchObject({ admission_count: 0, deliveries: [], attempt_count: 0 });
+    expect(readPlacementSnapshot(rejectedEmail)).toMatchObject({ admission_count: 0, confirmation_count: 0 });
   }
 
-  // A waiting-list member and an unknown address get the same neutral public
+  // The worker sends the confirmation email to the new signup only.
+  const confirmation = await waitForMailpitMessage(memberEmail, confirmationSubject, { runWorker: true });
+  expect(confirmation.HTML as string).toContain("Jordan");
+  expect(await countMailpitRecipientMessages(memberEmail, confirmationSubject)).toBe(1);
+  for (const silentEmail of [honeypotEmail, underageEmail, invalidAgeEmail]) expect(await mailpitHasRecipientMessage(silentEmail)).toBe(false);
+
+  // A waitlisted person and an unknown address get the same neutral public
   // response; neither receives a sign-in email or gains app access.
   const waitingLinkResponse = await context.request.post(`${appOrigin}/api/auth/request-link`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
@@ -489,16 +487,11 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   });
   expect(preAdmissionUnknown.status()).toBe(200);
   expect(await preAdmissionUnknown.json()).toEqual(waitingLinkBody);
-  expect(await mailpitHasRecipientMessage(memberEmail, "Your Fifth Wheel sign-in link")).toBe(false);
+  expect(await mailpitHasRecipientMessage(memberEmail, signInSubject)).toBe(false);
   expect(await mailpitHasRecipientMessage(fixtureValue("W03_UNINVITED_EMAIL"))).toBe(false);
 
   const deletedEmail = fixtureValue("W03_DELETED_EMAIL");
-  expect(readAdmissionSnapshot(deletedEmail)).toMatchObject({
-    admission_count: 1,
-    admissions: [expect.objectContaining({ state: "deleted" })],
-    deliveries: [],
-    attempt_count: 0,
-  });
+  expect(readPlacementSnapshot(deletedEmail)).toMatchObject({ admission_count: 1, admissions: [expect.objectContaining({ state: "deleted" })], invitations: [] });
   const deletedLinkResponse = await context.request.post(`${appOrigin}/api/auth/request-link`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
     data: { email: deletedEmail },
@@ -515,278 +508,194 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
   await page.setViewportSize({ width: 390, height: 844 });
   await saveMilestoneScreenshot(page, "w03-sign-in-390px.png");
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByLabel("Email address").fill(adminEmail);
-  const adminRequest = page.waitForResponse((response) => response.url().endsWith("/api/auth/request-link") && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Send sign-in link" }).click();
-  expect((await adminRequest).status()).toBe(200);
-  expectEmailAbsentFromUrl(page, adminEmail);
-  await expect(page.getByText("Check your email.")).toBeVisible();
+  expect(await requestSignInLink(page, adminEmail)).toEqual(waitingLinkBody);
+  const adminContext = await newGuardedContext(browser);
+  const adminSignIn = await redeemSignInLink(adminContext, await waitForMailpitMessage(adminEmail, signInSubject));
+  expect(adminSignIn.status).toBe(200);
+  const adminPage = adminSignIn.page;
+  await expect(adminPage).toHaveURL(`${appOrigin}/member`);
 
-  const adminJourney = await clickActualEmailLink(browser, adminEmail, "Your Fifth Wheel sign-in link", "Continue to Fifth Wheel");
-  await expect(adminJourney.page).toHaveURL(`${appOrigin}/member`);
-  await adminJourney.page.goto(`${appOrigin}/admin/waitlist`);
-  await expect(adminJourney.page.getByRole("heading", { name: "Waitlist", exact: true })).toBeVisible();
-  const adminContext = adminJourney.context;
+  // The new signup waits in the placement queue with the original fields; the deleted and rejected people do not.
+  await adminPage.goto(`${appOrigin}/admin/waitlist`);
+  await expect(adminPage.getByRole("heading", { name: "Waitlist", level: 1 })).toBeVisible();
+  const queueCard = adminPage.locator("li.ops-card", { hasText: memberEmail });
+  await expect(queueCard).toContainText("Jordan W03");
+  await expect(queueCard).not.toContainText("Changed W03");
+  await expect(queueCard).toContainText("Open to Women, Men, Non-binary people");
+  await saveMilestoneScreenshot(adminPage, "w03-admin-waitlist-desktop.png");
+  const queueResponse = await adminContext.request.get(`${appOrigin}/api/admin/placements`);
+  expect(queueResponse.status()).toBe(200);
+  const queueBody: unknown = await queueResponse.json();
+  const queueData = isRecord(queueBody) && isRecord(queueBody.data) ? queueBody.data : null;
+  const people = queueData && Array.isArray(queueData.people) ? queueData.people.filter(isRecord) : [];
+  const queued = people.find((p) => p.email === memberEmail);
+  expect(queued).toMatchObject({ firstName: "Jordan", lastName: "W03", openTo: ["Women", "Men", "Non-binary people"] });
+  for (const absentEmail of [deletedEmail, honeypotEmail, underageEmail, invalidAgeEmail]) expect(people.some((p) => p.email === absentEmail)).toBe(false);
+  expect(queueData && Array.isArray(queueData.tables) ? queueData.tables.some((t) => isRecord(t) && t.tableId === tableId && t.invitedCount === 0) : false).toBe(true);
+  const signupId = queued?.signupId;
+  if (typeof signupId !== "string") throw new Error("the placement queue did not return the run-scoped signup id");
 
-  // The new marketing record is visible without changing the original fields.
-  const search = adminJourney.page.getByRole("searchbox", { name: "Search waitlist" });
-  await search.fill(memberEmail);
-  await search.press("Enter");
-  const signupRow = adminJourney.page.getByRole("row").filter({ hasText: memberEmail });
-  await expect(signupRow).toContainText("Jordan W03");
-  await expect(signupRow).not.toContainText("Changed W03");
-  await adminJourney.page.setViewportSize({ width: 1440, height: 900 });
-  await saveMilestoneScreenshot(adminJourney.page, "w03-admin-waitlist-desktop.png");
-  const listResponse = await adminContext.request.get(`${appOrigin}/api/admin/waitlist?query=${encodeURIComponent(memberEmail)}`);
-  expect(listResponse.status()).toBe(200);
-  const listBody: unknown = await listResponse.json();
-  expect(isRecord(listBody) && Array.isArray(listBody.items) ? listBody.items[0]?.openTo : null)
-    .toEqual(["Women", "Men", "Non-binary people"]);
-  for (const rejectedEmail of [underageEmail, invalidAgeEmail]) {
-    const rejectedSignup = await adminContext.request.get(`${appOrigin}/api/admin/waitlist?query=${encodeURIComponent(rejectedEmail)}`);
-    expect(rejectedSignup.status()).toBe(200);
-    const rejectedBody: unknown = await rejectedSignup.json();
-    expect(isRecord(rejectedBody) && Array.isArray(rejectedBody.items) ? rejectedBody.items : null).toEqual([]);
-    expect(await mailpitHasRecipientMessage(rejectedEmail)).toBe(false);
-  }
-
-  const signupId = isRecord(listBody) && Array.isArray(listBody.items) && isRecord(listBody.items[0])
-    ? listBody.items[0].id
-    : null;
-  expect(typeof signupId).toBe("string");
-  const tamperedAdmission = await adminContext.request.post(`${appOrigin}/api/admin/waitlist`, {
+  // A body with extra authority fields is rejected before anything is created.
+  const tampered = await adminContext.request.post(`${appOrigin}/api/admin/placements`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
-    data: {
-      signupId,
-      operationId: randomUUID(),
-      recipientEmail: adminEmail,
-      authUserId: adminEmail,
-      approvedBy: adminEmail,
-      role: "admin",
-    },
+    data: { signupId, tableId, operationId: randomUUID(), acknowledgeWarnings: false, authUserId: adminEmail, approvedBy: adminEmail, role: "admin" },
   });
-  expect(tamperedAdmission.status()).toBe(400);
-  expect(readAdmissionSnapshot(memberEmail)).toMatchObject({ admission_count: 0, deliveries: [], attempt_count: 0 });
+  expect(tampered.status()).toBe(400);
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ admission_count: 0, profile_count: 0, invitations: [] });
 
-  // Member identity is authenticated but lacks admin role; direct API access
-  // must remain denied after the invited link activates the admission.
-  await signupRow.getByRole("button", { name: "Approve…" }).click();
-  const dialog = adminJourney.page.getByRole("dialog", { name: /^Approve / });
-  await expect(dialog).toContainText("Table invitation and Seat are separate");
-  await saveMilestoneScreenshot(adminJourney.page, "w03-invitation-confirmation-desktop.png");
-  const initialAdmissionRequestPromise = adminJourney.page.waitForRequest((request) =>
-    request.url() === `${appOrigin}/api/admin/waitlist` && request.method() === "POST",
-  );
-  const initialAdmissionResponsePromise = adminJourney.page.waitForResponse((response) =>
-    response.url() === `${appOrigin}/api/admin/waitlist` && response.request().method() === "POST",
-  );
-  await dialog.getByRole("button", { name: "Approve and send link" }).click();
-  const [initialAdmissionRequest, initialAdmissionResponse] = await Promise.all([
-    initialAdmissionRequestPromise,
-    initialAdmissionResponsePromise,
-  ]);
-  expect(initialAdmissionResponse.status()).toBe(202);
-  const initialAdmissionInput: unknown = initialAdmissionRequest.postDataJSON();
-  const initialAdmissionBody: unknown = await initialAdmissionResponse.json();
-  expect(isRecord(initialAdmissionInput) && initialAdmissionInput.signupId).toBe(signupId);
-  expect(isRecord(initialAdmissionInput) && typeof initialAdmissionInput.operationId === "string").toBe(true);
-  expect(isRecord(initialAdmissionBody) && isRecord(initialAdmissionBody.value)
-    ? initialAdmissionBody.value.operationId
-    : null).toBe(isRecord(initialAdmissionInput) ? initialAdmissionInput.operationId : null);
-  await expect(dialog.getByRole("alert")).toContainText("Email delivery failed");
-  expect(await mailpitHasRecipientMessage(memberEmail, "You’re in: welcome to Fifth Wheel")).toBe(false);
+  // The admin adds them to the run's Table from the queue.
+  await queueCard.getByRole("button", { name: "Add to Table…" }).click();
+  const dialog = adminPage.getByRole("dialog", { name: "Add Jordan W03 to a Table" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Table", { exact: true }).selectOption(tableId);
+  await saveMilestoneScreenshot(adminPage, "w03-placement-dialog-desktop.png");
+  const placementRequestPromise = adminPage.waitForRequest((request) => request.url() === `${appOrigin}/api/admin/placements` && request.method() === "POST");
+  const placementResponsePromise = adminPage.waitForResponse((response) => response.url() === `${appOrigin}/api/admin/placements` && response.request().method() === "POST");
+  await dialog.getByRole("button", { name: "Add and send invitation" }).click();
+  const [placementRequest, placementResponse] = await Promise.all([placementRequestPromise, placementResponsePromise]);
+  expect(placementResponse.status()).toBe(200);
+  const placementInput: unknown = placementRequest.postDataJSON();
+  expect(placementInput).toEqual({ signupId, tableId, operationId: expect.any(String), acknowledgeWarnings: false });
+  const placementBody: unknown = await placementResponse.json();
+  const placed = isRecord(placementBody) && isRecord(placementBody.data) ? placementBody.data : null;
+  const invitationId = placed?.invitationId;
+  if (typeof invitationId !== "string") throw new Error("placement did not return an invitation id");
+  expect(placed).toMatchObject({ tableId, rosterRevision: 1, warnings: [] });
+  await expect(adminPage.getByRole("status").filter({ hasText: "Jordan was added and their invitation email is on its way." })).toBeVisible();
+  await expect(adminPage.locator("li.ops-card", { hasText: memberEmail })).toHaveCount(0);
 
-  // Replay the exact browser-submitted operation concurrently through the
-  // protected route. It must reuse one admission and logical delivery and must
-  // not call the mail provider again.
-  if (!isRecord(initialAdmissionInput)
-    || typeof initialAdmissionInput.signupId !== "string"
-    || typeof initialAdmissionInput.operationId !== "string") {
-    throw new Error("admin UI submitted an invalid admission operation fixture");
-  }
-  const repeatedAdmissions = await Promise.all(Array.from({ length: 3 }, () => adminContext.request.post(`${appOrigin}/api/admin/waitlist`, {
+  // Replaying the exact browser-submitted operation concurrently returns the same placement and creates nothing more.
+  const replays = await Promise.all(Array.from({ length: 3 }, () => adminContext.request.post(`${appOrigin}/api/admin/placements`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
-    data: initialAdmissionInput,
+    data: placementInput,
   })));
-  const repeatedBodies: unknown[] = [];
-  for (const response of repeatedAdmissions) {
-    expect(response.status()).toBe(202);
-    repeatedBodies.push(await response.json());
+  for (const replay of replays) {
+    expect(replay.status()).toBe(200);
+    const replayBody: unknown = await replay.json();
+    expect(isRecord(replayBody) && isRecord(replayBody.data) ? replayBody.data.invitationId : null).toBe(invitationId);
   }
-  const initialValue = isRecord(initialAdmissionBody) && isRecord(initialAdmissionBody.value) ? initialAdmissionBody.value : null;
-  expect(initialValue).not.toBeNull();
-  for (const body of repeatedBodies) {
-    const value = isRecord(body) && isRecord(body.value) ? body.value : null;
-    expect(value).toMatchObject({
-      signupId,
-      operationId: initialAdmissionInput.operationId,
-      admissionId: initialValue?.admissionId,
-      deliveryId: initialValue?.deliveryId,
-    });
-  }
-  const afterDuplicateOperations = readAdmissionSnapshot(memberEmail);
-  expect(afterDuplicateOperations.admission_count).toBe(1);
-  expect(afterDuplicateOperations.deliveries).toEqual([expect.objectContaining({
-    operation_id: initialAdmissionInput.operationId,
-    attempt_count: 1,
-  })]);
-  expect(afterDuplicateOperations.attempt_count).toBe(1);
-  expect(afterDuplicateOperations.attempts).toEqual([expect.objectContaining({ attempt_number: 1, state: "failed" })]);
-  const proxyBeforeRetryResponse = await fetch(`${mailpitProxyOrigin}/__health`, { cache: "no-store" });
-  expect(proxyBeforeRetryResponse.ok).toBe(true);
-  const proxyBeforeRetry: unknown = await proxyBeforeRetryResponse.json();
-  expect(proxyBeforeRetry).toMatchObject({ targetedInvitationAttempts: 1, syntheticFailedAttempts: 1, forwardedInvitationCount: 0 });
-  expect(await mailpitHasRecipientMessage(memberEmail, "You’re in: welcome to Fifth Wheel")).toBe(false);
+  // A new operation for the same person and Table is refused.
+  const duplicate = await adminContext.request.post(`${appOrigin}/api/admin/placements`, {
+    headers: { origin: appOrigin, "content-type": "application/json" },
+    data: { signupId, tableId, operationId: randomUUID(), acknowledgeWarnings: false },
+  });
+  expect(duplicate.status()).toBe(409);
+  const duplicateBody: unknown = await duplicate.json();
+  expect(isRecord(duplicateBody) && isRecord(duplicateBody.error) ? duplicateBody.error.reason : null).toBe("already_invited");
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({
+    admission_count: 1,
+    admissions: [expect.objectContaining({ state: "invited" })],
+    profile_count: 1,
+    invitations: [{ id: invitationId, state: "active", table_id: tableId }],
+    invitation_outbox_count: 1,
+    activation_audit_count: 0,
+  });
 
-  await dialog.getByRole("button", { name: "Send again" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Email status unclear");
-  await expect(dialog.getByRole("alert")).toContainText("Do not resend until delivery status is reconciled");
-  await dialog.getByRole("button", { name: "Check status" }).click();
-  await expect(dialog.getByRole("status")).toContainText("Email service accepted the message");
-  const proxyHealthResponse = await fetch(`${mailpitProxyOrigin}/__health`, { cache: "no-store" });
-  expect(proxyHealthResponse.ok).toBe(true);
-  const proxyHealth: unknown = await proxyHealthResponse.json();
-  expect(isRecord(proxyHealth) ? proxyHealth.forwardedInvitationCount : null).toBe(1);
-  expect(isRecord(proxyHealth) ? proxyHealth.droppedInvitationResponses : null).toBe(1);
-  expect(isRecord(proxyHealth) ? proxyHealth.forwardedSearchCount : null).toBe(1);
-  expect(isRecord(proxyHealth) ? proxyHealth.targetedInvitationAttempts : null).toBe(2);
-  expect(isRecord(proxyHealth) ? proxyHealth.syntheticFailedAttempts : null).toBe(1);
+  // The worker sends the invitation email; its link opens sign-in with the invitation as the return path.
+  const invitationMessage = await waitForMailpitMessage(memberEmail, `You’re invited: ${tableTitle}`, { runWorker: true });
+  const invitePath = `/invitations/${invitationId}`;
+  const memberContext = await newGuardedContext(browser);
+  const invitationLink = await openEmailLink(memberContext, invitationMessage, "View invitation");
+  expect(invitationLink.href).toBe(`${appOrigin}/sign-in?returnTo=${encodeURIComponent(invitePath)}`);
+  const memberPage = invitationLink.page;
+  await memberPage.waitForURL(`${appOrigin}/sign-in**`);
+  await expect(memberPage.getByText("We’ll bring you back to this page after you sign in.")).toBeVisible();
+  expect(await requestSignInLink(memberPage, memberEmail)).toEqual(waitingLinkBody);
+  const memberSignInMessage = await waitForMailpitMessage(memberEmail, signInSubject);
+  expect(await countMailpitRecipientMessages(memberEmail, signInSubject)).toBe(1);
 
-  // A real recipient link opened while another verified account is signed in
-  // must not replace that account or activate the wrong owner. The recipient
-  // can then use the same one-time link from their own signed-out context.
-  const memberInvitationMessage = await waitForMailpitMessage(memberEmail, "You’re in: welcome to Fifth Wheel");
-  const wrongRecipientContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(wrongRecipientContext);
+  // The real sign-in link opened while another verified account is signed in must not replace that account
+  // or activate the wrong owner. The recipient can then use the same one-time link from their own context.
+  const wrongRecipientContext = await newGuardedContext(browser);
   const adminCookies = await adminContext.cookies(appOrigin);
   const adminAccessCookie = adminCookies.find((cookie) => cookie.name === "fw_access_token");
   expect(adminAccessCookie, "admin fixture must already have an authenticated session").toBeDefined();
   await wrongRecipientContext.addCookies(adminCookies);
-  const wrongRecipientPage = await wrongRecipientContext.newPage();
-  await wrongRecipientPage.setContent(memberInvitationMessage.HTML as string);
-  const forwardedLink = wrongRecipientPage.getByRole("link", { name: "Sign in to Fifth Wheel", exact: true });
-  await expect(forwardedLink).toHaveCount(1);
-  const originalInvitationHref = await forwardedLink.getAttribute("href");
-  expect(originalInvitationHref).toMatch(/^http:\/\/127\.0\.0\.1:8086\/auth\/callback\?/);
-  await forwardedLink.click();
-  await wrongRecipientPage.waitForURL(`${appOrigin}/auth/callback**`);
-  await expect(wrongRecipientPage.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
-  await expect.poll(() => new URL(wrongRecipientPage.url()).search).toBe("");
-  const wrongOwnerVerify = wrongRecipientPage.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
-  await wrongRecipientPage.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
-  const wrongOwnerResponse = await wrongOwnerVerify;
-  expect(wrongOwnerResponse.status(), "a forwarded invite opened under another account should be rejected before replacing its session").toBe(409);
-  await expect(wrongRecipientPage.getByRole("alert")).toContainText("You are already signed in.");
-  await expect(wrongRecipientPage.getByRole("alert")).toContainText("Sign out before using this link. Your current sign-in is still active, and you can continue with this same link.");
+  const wrongOwner = await redeemSignInLink(wrongRecipientContext, memberSignInMessage);
+  expect(wrongOwner.status, "a forwarded link opened under another account should be rejected before replacing its session").toBe(409);
+  await expect(wrongOwner.page.getByRole("heading", { name: "You’re already signed in." })).toBeVisible();
+  await expect(wrongOwner.page.getByRole("alert")).toContainText("To use this link with a different account, sign out first.");
   const preservedCookies = await wrongRecipientContext.cookies(appOrigin);
-  expect(preservedCookies.find((cookie) => cookie.name === "fw_access_token")?.value)
-    .toBe(adminAccessCookie!.value);
+  expect(preservedCookies.find((cookie) => cookie.name === "fw_access_token")?.value).toBe(adminAccessCookie!.value);
   const wrongOwnerMemberRead = await wrongRecipientContext.request.get(`${appOrigin}/api/member/home`);
   expect(wrongOwnerMemberRead.status()).toBe(200);
   const existingMemberBody: unknown = await wrongOwnerMemberRead.json();
-  expect(isRecord(existingMemberBody) && isRecord(existingMemberBody.member) ? existingMemberBody.member.email : null)
-    .toBe(adminEmail);
-  await wrongRecipientPage.getByRole("button", { name: "Sign out and continue" }).click();
-  await expect(wrongRecipientPage.getByRole("heading", { name: "Continue with your link." })).toBeVisible();
+  expect(isRecord(existingMemberBody) && isRecord(existingMemberBody.member) ? existingMemberBody.member.email : null).toBe(adminEmail);
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ admissions: [expect.objectContaining({ state: "invited" })], activation_audit_count: 0 });
+  await wrongOwner.page.getByRole("button", { name: "Sign out and continue" }).click();
+  await expect(wrongOwner.page.getByRole("heading", { name: "Continue with your link." })).toBeVisible();
   expect((await wrongRecipientContext.cookies(appOrigin)).some((cookie) => cookie.name.startsWith("fw_"))).toBe(false);
   await wrongRecipientContext.close();
 
-  const memberJourney = await clickActualEmailLink(browser, memberEmail, "You’re in: welcome to Fifth Wheel", "Sign in");
-  expect(memberJourney.linkHref).toBe(originalInvitationHref);
-  await expect(memberJourney.page).toHaveURL(`${appOrigin}/member`);
-  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
-  await expect(memberJourney.page.getByRole("heading", { name: "Complete your profile" })).toBeVisible();
-  await expect(memberJourney.page.getByText(/Table invitations and Seats are separate/)).toBeVisible();
-  await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
-  await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-desktop.png");
-  await memberJourney.page.setViewportSize({ width: 390, height: 844 });
-  await saveMilestoneScreenshot(memberJourney.page, "w03-member-home-390px.png");
-  await memberJourney.page.setViewportSize({ width: 1440, height: 900 });
-  await memberJourney.page.reload();
-  await expect(memberJourney.page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
+  // The guest redeems the link and lands on their invitation; the admission activates exactly once.
+  const memberSignIn = await redeemSignInLink(memberContext, memberSignInMessage);
+  expect(memberSignIn.href).toBe(wrongOwner.href);
+  expect(new URL(memberSignIn.href).searchParams.get("safeReturnTo")).toBe(invitePath);
+  expect(memberSignIn.status).toBe(200);
+  const invitationPage = memberSignIn.page;
+  await expect(invitationPage).toHaveURL(`${appOrigin}${invitePath}`);
+  await expect(invitationPage.getByRole("heading", { name: `You’re invited to ${tableTitle}`, level: 1 })).toBeVisible();
+  await invitationPage.setViewportSize({ width: 1440, height: 900 });
+  await saveMilestoneScreenshot(invitationPage, "w03-invitation-desktop.png");
+  await invitationPage.setViewportSize({ width: 390, height: 844 });
+  await saveMilestoneScreenshot(invitationPage, "w03-invitation-390px.png");
+  await invitationPage.setViewportSize({ width: 1440, height: 900 });
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ admissions: [expect.objectContaining({ state: "activated" })], activation_audit_count: 1 });
+  await invitationPage.goto(`${appOrigin}/member`);
+  await expect(invitationPage.getByRole("heading", { name: `You’re invited to ${tableTitle}` })).toBeVisible();
+  await expect(invitationPage.getByRole("link", { name: /Review invitation/ })).toHaveAttribute("href", invitePath);
+  await invitationPage.reload();
+  await expect(invitationPage.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
 
-  const deniedAdminPage = await memberJourney.context.newPage();
+  // The guest has no staff role.
+  const deniedAdminPage = await memberContext.newPage();
   await deniedAdminPage.goto(`${appOrigin}/admin/waitlist`);
-  await expect(deniedAdminPage.getByRole("heading", { name: "Admin access required" })).toBeVisible();
-  const deniedApi = await memberJourney.context.request.get(`${appOrigin}/api/admin/waitlist?limit=10`);
-  expect(deniedApi.status()).toBe(403);
-  const memberInviteDenied = await memberJourney.context.request.post(`${appOrigin}/api/admin/waitlist`, {
-    headers: { origin: appOrigin, "content-type": "application/json" },
-    data: { signupId: "a1d72117-e0b1-4423-a108-24e24582dc5a", operationId: "a1d72117-e0b1-4423-a108-24e24582dc5b" },
-  });
-  expect(memberInviteDenied.status()).toBe(403);
+  await expect(deniedAdminPage.getByRole("heading", { name: "You don’t have access to this" })).toBeVisible();
+  await deniedAdminPage.close();
+  await expectPlacementApiStatus(memberContext, 403);
 
-  // Uninvited but verified Auth identity has a real local Auth session and must
-  // still fail both member and admin direct APIs. The test-only password session
-  // is fixture setup, not evidence for the actual magic-link journey above.
-  const uninvitedContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(uninvitedContext);
-  await addLocalAuthFixtureSession(uninvitedContext, "W03_UNINVITED_EMAIL", "W03_UNINVITED_PASSWORD");
-  const uninvitedMember = await uninvitedContext.request.get(`${appOrigin}/api/member/home`);
-  expect(uninvitedMember.status()).toBe(403);
-  const uninvitedAdmin = await uninvitedContext.request.get(`${appOrigin}/api/admin/waitlist?limit=10`);
-  expect(uninvitedAdmin.status()).toBe(403);
-  const uninvitedInvite = await uninvitedContext.request.post(`${appOrigin}/api/admin/waitlist`, {
-    headers: { origin: appOrigin, "content-type": "application/json" },
-    data: { signupId: "a1d72117-e0b1-4423-a108-24e24582dc5a", operationId: "a1d72117-e0b1-4423-a108-24e24582dc5b" },
-  });
-  expect(uninvitedInvite.status()).toBe(403);
+  // An uninvited but verified Auth identity has a real local Auth session and must
+  // still fail both member and admin direct APIs. The test-only session is fixture
+  // setup, not evidence for the actual email-link journey above.
+  const uninvitedContext = await newGuardedContext(browser);
+  await addLocalAuthFixtureSession(uninvitedContext, "W03_UNINVITED_EMAIL");
+  expect((await uninvitedContext.request.get(`${appOrigin}/api/member/home`)).status()).toBe(403);
+  await expectPlacementApiStatus(uninvitedContext, 403);
   await uninvitedContext.close();
 
-  await expectRoleDeniedFromAdminApi(browser, "W03_HOST_EMAIL", "W03_HOST_PASSWORD");
-  await expectRoleDeniedFromAdminApi(browser, "W03_RESTAURANT_EMAIL", "W03_RESTAURANT_PASSWORD");
+  await expectRoleDeniedFromAdminApi(browser, "W03_HOST_EMAIL");
+  await expectRoleDeniedFromAdminApi(browser, "W03_RESTAURANT_EMAIL");
 
-  // Sign-out and returning-member recovery use a second actual intercepted link.
-  await memberJourney.page.getByRole("button", { name: "Sign out" }).click();
-  await expect(memberJourney.page).toHaveURL(`${appOrigin}/sign-in`);
-  await waitForSignInReady(memberJourney.page);
-  const sharedTableContinuation = "/tables/2c8f7a9d-295f-4e5d-9fb0-a9cc5c8a19f0?source=shared";
-  const injectSharedContinuation = async (route: Route) => {
-    if (route.request().method() !== "POST") return route.continue();
-    let requestBody: unknown;
-    try { requestBody = route.request().postDataJSON(); }
-    catch { return route.continue(); }
-    if (!isRecord(requestBody) || requestBody.email !== memberEmail) return route.continue();
-    return route.continue({ postData: JSON.stringify({ ...requestBody, safeReturnTo: sharedTableContinuation }) });
-  };
-  // Test hook supplies the internal continuation that W06's shared-Table sign-in
-  // entry will provide. The Table page itself is not part of W03.
-  await memberJourney.context.route(`${appOrigin}/api/auth/request-link`, injectSharedContinuation);
-  await memberJourney.page.getByLabel("Email address").fill(memberEmail);
-  const returningRequest = memberJourney.page.waitForResponse((response) => response.url().endsWith("/api/auth/request-link") && response.request().method() === "POST");
-  await memberJourney.page.getByRole("button", { name: "Send sign-in link" }).click();
-  const returningResponse = await returningRequest;
-  expect(returningResponse.status()).toBe(200);
-  const returningBody = await returningResponse.json();
+  // Sign-out and returning-member recovery use another actual intercepted link with a member continuation.
+  await invitationPage.getByRole("button", { name: "Sign out" }).click();
+  await expect(invitationPage).toHaveURL(`${appOrigin}/sign-in`);
+  expireLinkCooldown(memberEmail);
+  const returningPath = "/my-seats";
+  await invitationPage.goto(`${appOrigin}/sign-in?returnTo=${encodeURIComponent(returningPath)}`);
+  const returningBody = await requestSignInLink(invitationPage, memberEmail);
   expect(returningBody).toEqual(waitingLinkBody);
-  expectEmailAbsentFromUrl(memberJourney.page, memberEmail);
-  await expect(memberJourney.page.getByText("Check your email.")).toBeVisible();
-  await memberJourney.context.unroute(`${appOrigin}/api/auth/request-link`, injectSharedContinuation);
-  const immediateReturningRetry = await memberJourney.context.request.post(`${appOrigin}/api/auth/request-link`, {
+  await expect.poll(() => countMailpitRecipientMessages(memberEmail, signInSubject)).toBe(2);
+  const immediateReturningRetry = await memberContext.request.post(`${appOrigin}/api/auth/request-link`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
     data: { email: memberEmail },
   });
   expect(immediateReturningRetry.status()).toBe(200);
   expect(await immediateReturningRetry.json()).toEqual(returningBody);
-  expect(await countMailpitRecipientMessages(memberEmail, "Your Fifth Wheel sign-in link")).toBe(1);
+  expect(await countMailpitRecipientMessages(memberEmail, signInSubject)).toBe(2);
 
-  // An uninvited address gets the same public response, without an email or
-  // admission side effect. This checks the app request path, not an Auth login.
-  const unknownLink = await memberJourney.context.request.post(`${appOrigin}/api/auth/request-link`, {
+  // An uninvited address gets the same public response, without an email or admission side effect.
+  const unknownLink = await memberContext.request.post(`${appOrigin}/api/auth/request-link`, {
     headers: { origin: appOrigin, "content-type": "application/json" },
     data: { email: fixtureValue("W03_UNINVITED_EMAIL") },
   });
   expect(unknownLink.status()).toBe(200);
   expect(await unknownLink.json()).toEqual(returningBody);
-  const mailpitListResponse = await fetch(`${mailpitOrigin}/api/v1/messages?limit=100`, { cache: "no-store" });
-  expect(mailpitListResponse.ok).toBe(true);
-  const mailpitList: unknown = await mailpitListResponse.json();
-  expect(isRecord(mailpitList) && Array.isArray(mailpitList.messages)
-    ? mailpitList.messages.some((item) => isRecord(item) && hasRecipient(item.To, fixtureValue("W03_UNINVITED_EMAIL")))
-    : true).toBe(false);
-  await memberJourney.context.close();
+  expect(await mailpitHasRecipientMessage(fixtureValue("W03_UNINVITED_EMAIL"))).toBe(false);
+  await memberContext.close();
 
-  const returningJourney = await clickActualEmailLink(browser, memberEmail, "Your Fifth Wheel sign-in link", "Continue to Fifth Wheel", {
+  // Client-supplied identity fields on verify are ignored: the link's own recipient is signed in.
+  const returningContext = await newGuardedContext(browser);
+  const returning = await redeemSignInLink(returningContext, await waitForMailpitMessage(memberEmail, signInSubject), {
     extraVerifyFields: {
       email: adminEmail,
       recipientEmail: adminEmail,
@@ -795,72 +704,36 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
       identity: "Man",
     },
   });
-  const returningHref = new URL(returningJourney.linkHref);
-  expect(returningHref.searchParams.get("safeReturnTo")).toBe(sharedTableContinuation);
-  await expect(returningJourney.page).toHaveURL(`${appOrigin}${sharedTableContinuation}`);
-  const returningMemberRead = await returningJourney.context.request.get(`${appOrigin}/api/member/home`);
+  expect(returning.href).not.toBe(memberSignIn.href);
+  expect(new URL(returning.href).searchParams.get("safeReturnTo")).toBe(returningPath);
+  expect(returning.status).toBe(200);
+  await expect(returning.page).toHaveURL(`${appOrigin}${returningPath}`);
+  const returningMemberRead = await returningContext.request.get(`${appOrigin}/api/member/home`);
   expect(returningMemberRead.status()).toBe(200);
   const returningMemberBody: unknown = await returningMemberRead.json();
-  expect(isRecord(returningMemberBody) && isRecord(returningMemberBody.member) ? returningMemberBody.member.email : null)
-    .toBe(memberEmail);
+  expect(isRecord(returningMemberBody) && isRecord(returningMemberBody.member) ? returningMemberBody.member.email : null).toBe(memberEmail);
+  await returningContext.close();
 
-  // Replay the exact one-time link from the intercepted member invitation in a
-  // fresh context. It must not create a second session and should offer recovery.
-  const replayContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(replayContext);
-  const replayPage = await replayContext.newPage();
-  await replayPage.goto(memberJourney.linkHref);
-  await expect(replayPage.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
-  await expect.poll(() => new URL(replayPage.url()).search).toBe("");
-  const replayVerify = replayPage.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
-  await replayPage.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
-  expect((await replayVerify).status()).toBe(400);
-  await expect(replayPage.getByRole("alert")).toContainText("already been used");
-  expect(new URL(replayPage.url()).origin).toBe(appOrigin);
+  // Replaying the consumed invitation sign-in link in a fresh context creates no session and offers recovery.
+  const replayContext = await newGuardedContext(browser);
+  const replay = await redeemSignInLink(replayContext, memberSignInMessage);
+  expect(replay.status).toBe(400);
+  await expect(replay.page.getByRole("alert")).toContainText("This link has expired or was already used.");
+  expect(new URL(replay.page.url()).origin).toBe(appOrigin);
   expect(await replayContext.cookies(appOrigin)).toEqual([]);
   await replayContext.close();
-
-  const afterReplaySnapshot = readAdmissionSnapshot(memberEmail);
-  expect(afterReplaySnapshot.admission_count).toBe(1);
-  expect(afterReplaySnapshot.deliveries).toEqual([expect.objectContaining({
-    operation_id: isRecord(initialAdmissionInput) ? initialAdmissionInput.operationId : null,
-    state: "accepted",
-    attempt_count: 2,
-  })]);
-  expect(afterReplaySnapshot.attempt_count).toBe(2);
-  expect(afterReplaySnapshot.attempts).toEqual([
-    expect.objectContaining({ attempt_number: 1, state: "failed" }),
-    expect.objectContaining({ attempt_number: 2, state: "accepted" }),
-  ]);
-  expect(afterReplaySnapshot.activation_audit_count).toBe(1);
-  // W03 originally asserted that no downstream tables existed yet. Later slices created them, so this now records the current schema:
-  expect(readW03DomainTableAvailability()).toEqual({
-    profiles: true,
-    profile_reviews: false,
-    tables: false,
-    requests: true,
-    payments: true,
-    seats: true,
-  });
+  expect(readPlacementSnapshot(memberEmail)).toMatchObject({ admission_count: 1, activation_audit_count: 1, invitations: [{ id: invitationId, state: "active", table_id: tableId }] });
 
   // Malformed links show the recovery action. A syntactically valid fake token
   // with an external return URL is scrubbed and cannot navigate off-origin.
-  const recoveryContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await guardPageRequests(recoveryContext);
+  const recoveryContext = await newGuardedContext(browser);
   const recoveryPage = await recoveryContext.newPage();
   await recoveryPage.goto(`${appOrigin}/auth/callback?token_hash=short&type=magiclink&safeReturnTo=${encodeURIComponent("https://evil.example/landing")}`);
-  await expect(recoveryPage.getByRole("heading", { name: "This link can’t be used." })).toBeVisible();
+  await expect(recoveryPage.getByRole("heading", { name: "This link doesn’t work." })).toBeVisible();
   await expect(recoveryPage.getByRole("link", { name: "Send a new link" })).toHaveAttribute("href", "/sign-in");
-  await recoveryPage.goto(`${appOrigin}/auth/callback?token_hash=aaaaaaaaaaaaaaaa&type=magiclink&safeReturnTo=${encodeURIComponent("https://evil.example/landing")}`);
-  await expect(recoveryPage.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
-  const unsafeVerify = recoveryPage.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
-  await recoveryPage.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
-  expect((await unsafeVerify).status()).toBe(400);
-  await expect(recoveryPage.getByRole("alert")).toBeVisible();
-  expect(new URL(recoveryPage.url()).origin).toBe(appOrigin);
   const redirectVariants = [
-    "//evil.example/landing",
     "https://evil.example/landing",
+    "//evil.example/landing",
     "\\\\evil.example\\landing",
     "/%2f%2fevil.example/landing",
     "/%5c%5cevil.example/landing",
@@ -870,19 +743,13 @@ test("W03: marketing signup → admin admission → actual Mailpit link → memb
     await recoveryPage.goto(`${appOrigin}/auth/callback?token_hash=${"b".repeat(16 + index)}&type=magiclink&safeReturnTo=${encodeURIComponent(redirectTarget)}`);
     await expect(recoveryPage.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
     const rejectedTarget = recoveryPage.waitForResponse((response) => response.url().endsWith("/api/auth/verify-link") && response.request().method() === "POST");
-    await recoveryPage.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
+    await recoveryPage.getByRole("button", { name: "Continue", exact: true }).click();
     expect((await rejectedTarget).status()).toBe(400);
     await expect(recoveryPage.getByRole("alert")).toBeVisible();
     expect(new URL(recoveryPage.url()).origin).toBe(appOrigin);
   }
   await recoveryContext.close();
 
-  // The app admission confers no staff role; the actual admin session continues
-  // to work after member activation and refresh.
-  await adminJourney.page.reload();
-  await adminJourney.page.goto(`${appOrigin}/admin/waitlist`);
-  await expect(adminJourney.page.getByRole("heading", { name: "Waitlist", exact: true })).toBeVisible();
-
-  await returningJourney.context.close();
+  // (The admin session was ended above by "Sign out and continue" in the forwarded-link context, so it is not reused here.)
   await adminContext.close();
 });

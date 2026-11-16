@@ -18,14 +18,14 @@ test("rejects insecure origin, bad key and bad sender", () => {
   }
 });
 
-test("sends the invitation with bearer auth and an idempotency key", async () => {
+test("sends with bearer auth and an idempotency key", async () => {
   const { calls, email } = fake(() => json(200, { id: "abc123" }));
-  const input = { recipientEmail: "guest@example.com", actionLink: link, deliveryId: "d1", attemptId: "a1", idempotencyKey: "k1" };
-  assert.deepEqual(await email.admission.sendAppInvitation(input), { state: "accepted", providerMessageId: "abc123" });
+  const input = { noticeId: "n1", attempt: 1, to: "guest@example.com", subject: "Hi", text: "t", html: "<p>t</p>" };
+  assert.deepEqual(await email.notice.send(input), { state: "accepted", providerMessageId: "abc123" });
   const headers = calls[0].init.headers as Record<string, string>;
   assert.equal(calls[0].url, "https://api.resend.com/emails");
   assert.equal(headers.authorization, "Bearer re_test_1234567890");
-  assert.equal(headers["idempotency-key"], "admission-k1");
+  assert.equal(headers["idempotency-key"], "notice-n1-1");
   assert.deepEqual(JSON.parse(String(calls[0].init.body)).to, ["guest@example.com"]);
 });
 
@@ -39,20 +39,20 @@ test("refuses links off the app origin or off the callback path without calling 
 });
 
 test("maps 5xx and network errors to unknown, 429 to retryable, other 4xx to failed", async () => {
-  const input = { recipientEmail: "guest@example.com", actionLink: link, deliveryId: "d1", attemptId: "a1", idempotencyKey: "k1" };
-  assert.equal((await fake(() => json(503, {})).email.admission.sendAppInvitation(input)).state, "unknown");
-  assert.equal((await fake(() => { throw new Error("net"); }).email.admission.sendAppInvitation(input)).state, "unknown");
-  assert.deepEqual(await fake(() => json(429, {})).email.admission.sendAppInvitation(input), { state: "failed", safeErrorCode: "resend_rate_limited", retryable: true });
-  assert.deepEqual(await fake(() => json(422, {})).email.admission.sendAppInvitation(input), { state: "failed", safeErrorCode: "resend_rejected", retryable: false });
+  const input = { recipientEmail: "guest@example.com", actionLink: link, kind: "invite" as const };
+  assert.equal((await fake(() => json(503, {})).email.magicLink.sendSignInLink(input)).state, "unknown");
+  assert.equal((await fake(() => { throw new Error("net"); }).email.magicLink.sendSignInLink(input)).state, "unknown");
+  assert.deepEqual(await fake(() => json(429, {})).email.magicLink.sendSignInLink(input), { state: "failed", safeErrorCode: "resend_rate_limited", retryable: true });
+  assert.deepEqual(await fake(() => json(422, {})).email.magicLink.sendSignInLink(input), { state: "failed", safeErrorCode: "resend_rejected", retryable: false });
 });
 
 test("reconcile needs a provider id and an exact recipient match", async () => {
-  const input = { deliveryId: "d1", attemptId: "a1", recipientEmail: "guest@example.com", providerMessageId: "abc123" };
-  assert.deepEqual(await fake(() => json(200, { id: "abc123", to: ["Guest@Example.com"], last_event: "delivered" })).email.admission.reconcile(input), { state: "delivered", providerMessageId: "abc123" });
-  assert.equal((await fake(() => json(200, { id: "abc123", to: ["other@example.com"], last_event: "delivered" })).email.admission.reconcile(input)).state, "unknown");
-  assert.equal((await fake(() => json(200, { id: "abc123", to: ["guest@example.com"], last_event: "bounced" })).email.admission.reconcile(input)).state, "failed");
-  assert.equal((await fake(() => json(404, {})).email.admission.reconcile(input)).state, "unknown");
-  assert.equal((await fake(() => json(200, {})).email.admission.reconcile({ ...input, providerMessageId: undefined })).state, "unknown");
+  const input = { invitationId: "i1", attemptId: "a1", recipientEmail: "guest@example.com", providerMessageId: "abc123" };
+  assert.deepEqual(await fake(() => json(200, { id: "abc123", to: ["Guest@Example.com"], last_event: "delivered" })).email.tableInvitation.reconcile(input), { state: "accepted", providerMessageId: "abc123" });
+  assert.equal((await fake(() => json(200, { id: "abc123", to: ["other@example.com"], last_event: "delivered" })).email.tableInvitation.reconcile(input)).state, "unknown");
+  assert.equal((await fake(() => json(200, { id: "abc123", to: ["guest@example.com"], last_event: "bounced" })).email.tableInvitation.reconcile(input)).state, "unknown");
+  assert.equal((await fake(() => json(404, {})).email.tableInvitation.reconcile(input)).state, "unknown");
+  assert.equal((await fake(() => json(200, {})).email.tableInvitation.reconcile({ ...input, providerMessageId: undefined })).state, "unknown");
 });
 
 test("table invitation links to sign-in with the invitation return path", async () => {

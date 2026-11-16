@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cleanupEvidenceFiles, handleWorkerRequest } from "./worker.server.ts";
+import { handleWorkerRequest } from "./worker.server.ts";
 
 const secret = "s".repeat(40);
 const req = (auth?: string) => new Request("https://x.test/api/internal/worker", { method: "POST", headers: auth ? { authorization: auth } : {} });
@@ -49,23 +49,4 @@ test("reconciliation is reported but never fails the pass or the heartbeat", asy
   assert.equal(res.status, 200);
   assert.equal((await res.json()).reconciliation, "error");
   assert.deepEqual(beats[0], [true, { invitations: "ran", refunds: "disabled", reconciliation: "error" }]);
-});
-
-test("evidence cleanup: claim, remove, finish in order; storage error skips finish and fails the pass; stale finish is skipped", async () => {
-  const row = (id: string) => ({ file_id: id, quarantine_key: `q/${id}`, normalized_key: null, cleanup_claimed_at: "t" });
-  const log: string[] = [];
-  const mk = (rows: unknown[], finish: (id: string) => void) => async (name: string, args: Record<string, unknown>) => {
-    if (name === "claim_due_profile_evidence_cleanup") { log.push("claim"); return rows; }
-    log.push(`finish:${args.p_file_id}`); finish(String(args.p_file_id)); return {};
-  };
-  const storage = { remove: async (keys: readonly string[]) => { log.push(`remove:${keys.join(",")}`); } };
-  assert.deepEqual(await cleanupEvidenceFiles(mk([row("a")], () => {}), storage), { claimed: 1, deleted: 1, stale: 0 });
-  assert.deepEqual(log, ["claim", "remove:q/a", "finish:a"]);
-
-  log.length = 0;
-  await assert.rejects(cleanupEvidenceFiles(mk([row("b")], () => {}), { remove: async () => { throw new Error("storage_unavailable"); } }));
-  assert.deepEqual(log, ["claim"]);
-
-  const stale = Object.assign(new Error("rpc_failed"), { stale: true });
-  assert.deepEqual(await cleanupEvidenceFiles(mk([row("c"), row("d")], (id) => { if (id === "c") throw stale; }), storage), { claimed: 2, deleted: 1, stale: 1 });
 });

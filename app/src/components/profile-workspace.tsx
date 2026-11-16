@@ -2,43 +2,14 @@ import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, use
 import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
 import { PageHeader } from "./ui/page-header";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Camera,
-  CircleAlert,
-  Clock3,
-  House,
-  ImagePlus,
-  ClipboardList,
-  LoaderCircle,
-  ShieldCheck,
-  Table2,
-  Trash2,
-  UserRound,
-} from "lucide-react";
-import type {
-  CompleteUploadResultDTO,
-  IdentityStatus,
-  MemberProfileDTO,
-  ProfileFileKind,
-  ProfileFileSummary,
-  ReadProfileFileResultDTO,
-  SubmitProfileResultDTO,
-  UploadContentResultDTO,
-  UploadIntentDTO,
-  UploadIntentRequest,
-  W04Error,
-  W04Response,
-} from "../profile.contract.ts";
+import { ArrowRight, BadgeCheck, CircleAlert, LoaderCircle } from "lucide-react";
+import type { MemberProfileDTO, W04Error } from "../profile.contract.ts";
 
 type LoadState = "loading" | "ready" | "unauthenticated" | "forbidden" | "error";
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
-type SubmitState = "idle" | "submitting" | "submitted" | "error" | "conflict";
 type Identity = MemberProfileDTO["identity"];
 type LookingFor = MemberProfileDTO["lookingFor"];
 type SurpriseGame = MemberProfileDTO["surpriseGame"];
-type ImageContentType = UploadIntentRequest["contentType"];
 
 type Draft = {
   firstName: string;
@@ -73,9 +44,6 @@ const neighborhoods = ["Inman Park", "Chamblee", "Virginia Highlands"] as const;
 const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 const lookingForOptions: LookingFor[] = ["Casual", "Open", "Relationship"];
 const surpriseOptions: SurpriseGame[] = ["Yes, surprise me", "I'd rather keep it conversational"];
-const acceptedTypes = new Set<ImageContentType>(["image/jpeg", "image/png", "image/webp"]);
-const tableReturnToPattern = /^\/tables(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i;
-const maximumUploadBytes = 8 * 1024 * 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -92,10 +60,6 @@ function isW04Error(value: unknown): value is W04Error {
 function isProfile(value: unknown): value is MemberProfileDTO {
   return isRecord(value)
     && Number.isSafeInteger(value.profileRevision)
-    && Number.isSafeInteger(value.criticalIdentityVersion)
-    && (value.reviewedIdentityVersion === null || Number.isSafeInteger(value.reviewedIdentityVersion))
-    && ["draft", "submitted", "approved", "resubmission_required"].includes(String(value.identityStatus))
-    && (typeof value.latestCorrectionReason === "string" || value.latestCorrectionReason === null)
     && typeof value.firstName === "string"
     && typeof value.lastName === "string"
     && typeof value.dateOfBirth === "string"
@@ -109,14 +73,7 @@ function isProfile(value: unknown): value is MemberProfileDTO {
     && typeof value.lookingFor === "string"
     && typeof value.surpriseGame === "string"
     && (typeof value.phone === "string" || value.phone === null)
-    && (typeof value.oneLiner === "string" || value.oneLiner === null)
-    && Array.isArray(value.files)
-    && value.files.every((file) => isRecord(file)
-      && typeof file.fileId === "string"
-      && (file.kind === "photo" || file.kind === "selfie")
-      && ["pending_upload", "ready", "rejected", "superseded", "deleted"].includes(String(file.state)))
-    && Array.isArray(value.missingFields)
-    && value.missingFields.every((field) => typeof field === "string");
+    && (typeof value.oneLiner === "string" || value.oneLiner === null);
 }
 
 function responseData<T>(body: unknown, isExpected: (value: unknown) => value is T): ApiOutcome<T> {
@@ -150,24 +107,6 @@ function draftFromProfile(profile: MemberProfileDTO): Draft {
     phone: profile.phone ?? "",
     oneLiner: profile.oneLiner ?? "",
   };
-}
-
-function statusLabel(status: IdentityStatus): string {
-  return {
-    draft: "NOT SUBMITTED",
-    submitted: "IN REVIEW",
-    approved: "APPROVED",
-    resubmission_required: "CHANGES NEEDED",
-  }[status];
-}
-
-function statusCopy(status: IdentityStatus): string {
-  return {
-    draft: "Finish the required details and add a separate photo and selfie before submitting for review.",
-    submitted: "We’re checking your profile. You can keep editing.",
-    approved: "You’re approved. You can browse and request tables.",
-    resubmission_required: "Make the change below, then submit again.",
-  }[status];
 }
 
 function fieldMessage(fields: Record<string, string>, key: string): string | undefined {
@@ -218,71 +157,16 @@ function profilePayload(draft: Draft) {
   };
 }
 
-function isUploadIntent(value: unknown): value is UploadIntentDTO {
-  return isRecord(value)
-    && typeof value.fileId === "string"
-    && Number.isSafeInteger(value.criticalIdentityVersion)
-    && typeof value.uploadUrl === "string"
-    && typeof value.uploadToken === "string"
-    && typeof value.expiresAt === "string";
-}
-
-function isUploaded(value: unknown): value is UploadContentResultDTO {
-  return isRecord(value) && typeof value.fileId === "string" && value.received === true && Number.isSafeInteger(value.byteSize);
-}
-
-function isCompleted(value: unknown): value is CompleteUploadResultDTO {
-  return isRecord(value)
-    && typeof value.fileId === "string"
-    && value.state === "ready"
-    && Number.isSafeInteger(value.profileRevision)
-    && Number.isSafeInteger(value.criticalIdentityVersion);
-}
-
-function isReadUrl(value: unknown): value is ReadProfileFileResultDTO {
-  return isRecord(value) && typeof value.readUrl === "string" && typeof value.expiresAt === "string";
-}
-
-function isDeletedFile(value: unknown): value is Readonly<{
-  fileId: string;
-  state: "superseded";
-  profileRevision: number;
-  criticalIdentityVersion: number;
-}> {
-  return isRecord(value) && typeof value.fileId === "string" && value.state === "superseded"
-    && Number.isSafeInteger(value.profileRevision) && Number.isSafeInteger(value.criticalIdentityVersion);
-}
-
-function isSubmitted(value: unknown): value is SubmitProfileResultDTO {
-  return isRecord(value)
-    && Number.isSafeInteger(value.profileRevision)
-    && Number.isSafeInteger(value.criticalIdentityVersion)
-    && value.identityStatus === "submitted"
-    && typeof value.reviewId === "string"
-    && Number.isSafeInteger(value.attemptNumber);
-}
-
 export function ProfileWorkspace() {
-  const [returnTo, setReturnTo] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [profile, setProfile] = useState<MemberProfileDTO | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [formMessage, setFormMessage] = useState("");
-  const [uploadState, setUploadState] = useState<Readonly<Record<ProfileFileKind, string>>>({ photo: "", selfie: "" });
-  const [fileError, setFileError] = useState("");
-  const [fileBusy, setFileBusy] = useState<string | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const saveOperation = useRef<PendingOperation | null>(null);
-  const submitOperation = useRef<PendingOperation | null>(null);
   const dirty = useMemo(() => profile && draft ? JSON.stringify(profilePayload(draft)) !== JSON.stringify(profilePayload(draftFromProfile(profile))) : false, [profile, draft]);
 
-  useEffect(() => {
-    const candidate = new URL(window.location.href).searchParams.get("returnTo");
-    if (candidate && tableReturnToPattern.test(candidate)) setReturnTo(candidate);
-  }, []);
 
   async function loadProfile(signal?: AbortSignal) {
     setLoadState("loading");
@@ -303,7 +187,6 @@ export function ProfileWorkspace() {
       setServerErrors({});
       setFormMessage("");
       setSaveState("idle");
-      setSubmitState("idle");
       setLoadState("ready");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -322,7 +205,6 @@ export function ProfileWorkspace() {
   function updateDraft<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => current ? { ...current, [key]: value } : current);
     setSaveState("idle");
-    setSubmitState("idle");
     setFormMessage("");
     setServerErrors((current) => {
       const next = { ...current };
@@ -377,238 +259,13 @@ export function ProfileWorkspace() {
     }
   }
 
-  async function submitForReview() {
-    if (!profile || !draft || dirty) {
-      setFormMessage("Save your current changes before submitting for review.");
-      return;
-    }
-    const errors = profileValidation(draft);
-    setServerErrors(errors);
-    if (Object.keys(errors).length) {
-      setSubmitState("error");
-      setFormMessage("Review the highlighted fields before submitting.");
-      document.getElementById(Object.keys(errors)[0])?.focus();
-      return;
-    }
-    if (profile.missingFields.length > 0) {
-      setSubmitState("error");
-      setFormMessage("Complete the required fields and add one profile photo and a separate selfie before submitting.");
-      return;
-    }
-    const payload = { expectedProfileRevision: profile.profileRevision };
-    const operationId = operationIdFor(submitOperation, payload);
-    setSubmitState("submitting");
-    setFormMessage("");
-    try {
-      const response = await fetch("/api/member/profile/submit", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ ...payload, operationId }),
-      });
-      const result = await readApi(response, isSubmitted);
-      if (response.status === 409 || result.error?.code === "conflict") {
-        setSubmitState("conflict");
-        setFormMessage("This profile changed before it could be submitted. Reload the latest version and review it first.");
-        return;
-      }
-      if (!response.ok || !result.data) {
-        if (result.error?.fields) setServerErrors(result.error.fields);
-        setSubmitState("error");
-        setFormMessage(result.error?.message ?? "Your profile could not be submitted. Review the requirements and try again.");
-        return;
-      }
-      submitOperation.current = null;
-      setSubmitState("submitted");
-      setFormMessage("Your profile has been sent for review.");
-      await loadProfile();
-      setSubmitState("submitted");
-      setFormMessage("Your profile has been sent for review.");
-    } catch {
-      setSubmitState("error");
-      setFormMessage("Your profile could not be submitted. Try again when service is available.");
-    }
-  }
-
-  async function uploadFile(kind: ProfileFileKind, file: File) {
-    if (!profile) return;
-    const limitCount = kind === "photo"
-      ? profile.files.filter((item) => item.kind === "photo" && !["superseded", "deleted"].includes(item.state)).length
-      : profile.files.filter((item) => item.kind === "selfie" && !["superseded", "deleted"].includes(item.state)).length;
-    if (file.size <= 0 || file.size > maximumUploadBytes) {
-      setFileError("Choose an image no larger than 8 MB.");
-      return;
-    }
-    if (!acceptedTypes.has(file.type as ImageContentType)) {
-      setFileError("Use a JPEG, PNG or WebP image. HEIC is not supported.");
-      return;
-    }
-    if ((kind === "photo" && limitCount >= 6) || (kind === "selfie" && limitCount >= 1)) {
-      setFileError(kind === "photo" ? "You can add up to six profile photos." : "Remove the current selfie before adding a new one.");
-      return;
-    }
-    if (dirty) {
-      setFileError("Save your profile changes before adding evidence.");
-      return;
-    }
-
-    setFileError("");
-    setUploadState((current) => ({ ...current, [kind]: "Uploading…" }));
-    const revisions = {
-      expectedProfileRevision: profile.profileRevision,
-      expectedCriticalIdentityVersion: profile.criticalIdentityVersion,
-    };
-    const intentBody = {
-      ...revisions,
-      operationId: crypto.randomUUID(),
-      kind,
-      contentType: file.type as ImageContentType,
-      byteSize: file.size,
-    };
-    try {
-      const intentResponse = await fetch("/api/member/profile/files", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(intentBody),
-      });
-      const intentResult = await readApi(intentResponse, isUploadIntent);
-      if (!intentResponse.ok || !intentResult.data) {
-        setUploadState((current) => ({ ...current, [kind]: "" }));
-        setFileError(intentResult.error?.message ?? "A secure upload could not be started. Try again.");
-        return;
-      }
-      const intent = intentResult.data;
-      const uploadUrl = new URL(intent.uploadUrl, window.location.origin);
-      const expectedPath = "/api/member/profile/files/" + encodeURIComponent(intent.fileId) + "/content";
-      const expiresAt = Date.parse(intent.expiresAt);
-      if (
-        uploadUrl.origin !== window.location.origin
-        || uploadUrl.pathname !== expectedPath
-        || uploadUrl.search
-        || uploadUrl.hash
-        || !Number.isFinite(expiresAt)
-        || expiresAt <= Date.now()
-        || intent.uploadToken.length < 16
-        || intent.uploadToken.length > 4096
-      ) {
-        setUploadState((current) => ({ ...current, [kind]: "" }));
-        setFileError("The secure upload could not be verified. Request a fresh upload.");
-        return;
-      }
-      setUploadState((current) => ({ ...current, [kind]: "Uploading…" }));
-      const contentResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        credentials: "same-origin",
-        headers: { "content-type": file.type, "X-FW-Upload-Token": intent.uploadToken },
-        body: file,
-      });
-      const contentResult = await readApi(contentResponse, isUploaded);
-      if (!contentResponse.ok || !contentResult.data || contentResult.data.fileId !== intent.fileId) {
-        setUploadState((current) => ({ ...current, [kind]: "" }));
-        setFileError(contentResult.error?.message ?? "The upload did not finish. Start a fresh upload to retry.");
-        return;
-      }
-      setUploadState((current) => ({ ...current, [kind]: "Processing photo…" }));
-      const completeResponse = await fetch("/api/member/profile/files/" + encodeURIComponent(intent.fileId) + "/complete", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ ...revisions, operationId: crypto.randomUUID() }),
-      });
-      const completeResult = await readApi(completeResponse, isCompleted);
-      if (!completeResponse.ok || !completeResult.data || completeResult.data.fileId !== intent.fileId) {
-        setUploadState((current) => ({ ...current, [kind]: "" }));
-        setFileError(completeResult.error?.message ?? "The image is still private and has not been approved. Refresh the profile to check its status.");
-        return;
-      }
-      setUploadState((current) => ({ ...current, [kind]: "" }));
-      await loadProfile();
-    } catch {
-      setUploadState((current) => ({ ...current, [kind]: "" }));
-      setFileError("The secure upload was interrupted. Start a fresh upload to retry.");
-    }
-  }
-
-  async function removeFile(file: ProfileFileSummary) {
-    if (!profile) return;
-    setFileBusy(file.fileId);
-    setFileError("");
-    try {
-      const response = await fetch(`/api/member/profile/files/${encodeURIComponent(file.fileId)}`, {
-        method: "DELETE",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ operationId: crypto.randomUUID(), expectedProfileRevision: profile.profileRevision }),
-      });
-      const result = await readApi(response, isDeletedFile);
-      if (!response.ok || !result.data || result.data.fileId !== file.fileId) {
-        setFileError(result.error?.message ?? "This image could not be removed. Refresh the profile and try again.");
-        return;
-      }
-      setPreviewUrls((current) => { const next = { ...current }; delete next[file.fileId]; return next; });
-      await loadProfile();
-    } catch {
-      setFileError("This image could not be removed. Refresh the profile and try again.");
-    } finally {
-      setFileBusy(null);
-    }
-  }
-
-  async function showPrivatePreview(file: ProfileFileSummary) {
-    if (!profile) return;
-    setFileBusy(file.fileId);
-    setFileError("");
-    try {
-      const response = await fetch(`/api/member/profile/files/${encodeURIComponent(file.fileId)}/read-url`, {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({
-          operationId: crypto.randomUUID(),
-          expectedProfileRevision: profile.profileRevision,
-          expectedCriticalIdentityVersion: profile.criticalIdentityVersion,
-        }),
-      });
-      const result = await readApi(response, isReadUrl);
-      if (!response.ok || !result.data) {
-        setFileError(result.error?.message ?? "A private preview could not be opened. Try again.");
-        return;
-      }
-      const url = new URL(result.data.readUrl, window.location.origin);
-      if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) {
-        setFileError("The private image link could not be verified.");
-        return;
-      }
-      setPreviewUrls((current) => ({ ...current, [file.fileId]: url.href }));
-    } catch {
-      setFileError("A private preview could not be opened. Try again.");
-    } finally {
-      setFileBusy(null);
-    }
-  }
-
-  const photoFiles = profile?.files.filter((file) => file.kind === "photo" && !["superseded", "deleted"].includes(file.state)) ?? [];
-  const selfieFiles = profile?.files.filter((file) => file.kind === "selfie" && !["superseded", "deleted"].includes(file.state)) ?? [];
-  const currentApproved = profile?.identityStatus === "approved" && profile.reviewedIdentityVersion === profile.criticalIdentityVersion;
-  const hasBlockingFields = profile ? profile.missingFields.length > 0 : true;
-  const submitDisabled = !profile || !draft || dirty || hasBlockingFields || profile.identityStatus === "submitted" || submitState === "submitting" || Object.values(uploadState).some(Boolean);
-
   return <AppShell role="guest" accountActive contentClassName="profile-content" labelledBy="profile-heading">
-        {loadState === "loading" && <PageState variant="loading" title="Loading your profile" message="Your saved details and review status are being checked." />}
-        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your profile" message="Sign in with the email you used to join." action={<a className="button button-primary" href={returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in"}>Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
+        {loadState === "loading" && <PageState variant="loading" title="Loading your profile" message="Your saved details are loading." />}
+        {loadState === "unauthenticated" && <PageState variant="signed-out" title="Sign in to view your profile" message="Sign in with the email you used to join." action={<a className="button button-primary" href="/sign-in">Go to sign in<ArrowRight aria-hidden="true" /></a>} />}
         {loadState === "forbidden" && <PageState variant="no-access" title="You don’t have access yet" message="If you’re on the waitlist, we’ll email you when you’re in." action={<a className="button button-outline" href="/member">Back to home<ArrowRight aria-hidden="true" /></a>} />}
         {loadState === "error" && <PageState variant="error" title="Your profile could not load" message="Your saved information has not been changed. Try again when service is available." action={<button className="button button-outline" type="button" onClick={() => void loadProfile()}>Try again<ArrowRight aria-hidden="true" /></button>} />}
         {loadState === "ready" && profile && draft && <>
           <PageHeader titleId="profile-heading" title="Your profile" description="Only you and the Fifth Wheel team can see this." />
-          <section className="profile-review-status" aria-label="Identity review status" data-status={profile.identityStatus}>
-            <div><h2>{profile.identityStatus === "approved" ? "Approved" : profile.identityStatus === "submitted" ? "In review" : profile.identityStatus === "resubmission_required" ? "Changes needed" : "Not submitted"}</h2><p>{statusCopy(profile.identityStatus)}</p>{profile.latestCorrectionReason && profile.identityStatus === "resubmission_required" && <p className="correction-reason"><strong>Requested correction:</strong> {profile.latestCorrectionReason}</p>}</div>
-          </section>
-          {currentApproved && returnTo && <p className="profile-version-guidance"><Table2 aria-hidden="true" /><span>{returnTo === "/tables" ? "Your profile is approved. Continue browsing Tables." : "Your profile is approved. Continue to the Table you selected."}</span><a className="text-action" href={returnTo}>{returnTo === "/tables" ? "Continue to Tables" : "Continue to Table"}<ArrowRight aria-hidden="true" /></a></p>}
-          {profile.identityStatus === "approved" && <p className="profile-version-guidance"><ShieldCheck aria-hidden="true" /><span>Changing your date of birth, gender, photos or selfie means we’ll review your profile again. Other changes don’t.</span></p>}
-          {profile.missingFields.length > 0 && <section className="profile-missing-summary" id="profile-missing" tabIndex={-1} aria-label="Profile completion requirements"><p className="eyebrow">STILL NEEDED</p><ul>{profile.missingFields.map((field) => <li key={field}>{friendlyMissingField(field)}</li>)}</ul></section>}
-          {currentApproved && profile.files.some((file) => file.state === "deleted") && <p className="evidence-retention-note"><ShieldCheck aria-hidden="true" />We remove review images on a set schedule. Your approved profile stays approved after they are removed. Changes to your identity details need another review.</p>}
           <form className="profile-form" onSubmit={(event) => { event.preventDefault(); void saveProfile(); }} noValidate>
             <section className="profile-section" aria-labelledby="profile-basics-heading">
               <h2 className="profile-section-title" id="profile-basics-heading">About you</h2>
@@ -649,22 +306,10 @@ export function ProfileWorkspace() {
               </div>
             </section>
 
-            <section className="profile-section evidence-section" aria-labelledby="profile-evidence-heading">
-              <h2 className="profile-section-title" id="profile-evidence-heading">Photos for review</h2><p className="profile-section-note">Only Fifth Wheel staff see these. We compare your photos and selfie by hand. We don’t check ID or run background checks.</p>
-              <EvidenceUpload kind="photo" title="Profile photos" description="Add at least one clear photo. Up to six." files={photoFiles} busyFile={fileBusy} uploadMessage={uploadState.photo} previewUrls={previewUrls} onUpload={(file) => void uploadFile("photo", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
-              <EvidenceUpload kind="selfie" title="Private selfie" description="A separate selfie is required for the review team." files={selfieFiles} busyFile={fileBusy} uploadMessage={uploadState.selfie} previewUrls={previewUrls} onUpload={(file) => void uploadFile("selfie", file)} onPreview={(file) => void showPrivatePreview(file)} onRemove={(file) => void removeFile(file)} />
-              {fileError && <p className="form-error file-error" role="alert"><CircleAlert aria-hidden="true" />{fileError}</p>}
-              <p className="profile-privacy-note"><ShieldCheck aria-hidden="true" />We remove hidden image details before review and delete the images on a set schedule. Your approved profile stays complete after the images are removed unless your identity details change.</p>
-            </section>
-
-            {formMessage && <div className={`profile-feedback ${saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? "profile-feedback-error" : ""}`} role={saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? "alert" : "status"} aria-live="polite">{saveState === "error" || saveState === "conflict" || submitState === "error" || submitState === "conflict" ? <CircleAlert aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}{formMessage}{(saveState === "conflict" || submitState === "conflict") && <button className="text-action" type="button" onClick={() => void loadProfile()}>Reload current profile</button>}</div>}
+            {formMessage && <div className={`profile-feedback ${saveState === "error" || saveState === "conflict" ? "profile-feedback-error" : ""}`} role={saveState === "error" || saveState === "conflict" ? "alert" : "status"} aria-live="polite">{saveState === "error" || saveState === "conflict" ? <CircleAlert aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}{formMessage}{saveState === "conflict" && <button className="text-action" type="button" onClick={() => void loadProfile()}>Reload current profile</button>}</div>}
             <div className="profile-form-actions profile-action-bar">
-              {submitDisabled && profile.missingFields.length > 0 && <a className="profile-missing-link" href="#profile-missing" onClick={() => document.getElementById("profile-missing")?.focus()}>{profile.missingFields.length} {profile.missingFields.length === 1 ? "item" : "items"} still needed</a>}
-              <button className="button button-outline" type="button" onClick={() => void saveProfile()} disabled={!dirty || saveState === "saving"}>
+              <button className="button button-primary" type="button" onClick={() => void saveProfile()} disabled={!dirty || saveState === "saving"}>
                 {saveState === "saving" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : null}{saveState === "saving" ? "Saving…" : "Save changes"}
-              </button>
-              <button className="button button-primary" type="button" onClick={() => void submitForReview()} disabled={submitDisabled}>
-                {submitState === "submitting" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}{submitState === "submitting" ? "Submitting…" : "Submit for review"}
               </button>
             </div>
           </form>
@@ -698,59 +343,3 @@ function ChoiceGroup(props: Readonly<{ id: string; legend: string; description: 
   </fieldset>;
 }
 
-function EvidenceUpload(props: Readonly<{
-  kind: ProfileFileKind;
-  title: string;
-  description: string;
-  files: readonly ProfileFileSummary[];
-  busyFile: string | null;
-  uploadMessage: string;
-  previewUrls: Readonly<Record<string, string>>;
-  onUpload: (file: File) => void;
-  onPreview: (file: ProfileFileSummary) => void;
-  onRemove: (file: ProfileFileSummary) => void;
-}>) {
-  const readyCount = props.files.filter((file) => file.state === "ready").length;
-  const canAdd = props.kind === "photo" ? props.files.length < 6 : props.files.length === 0;
-  return <div className="evidence-card">
-    <div className="evidence-card-heading"><span className="evidence-icon">{props.kind === "photo" ? <ImagePlus aria-hidden="true" /> : <Camera aria-hidden="true" />}</span><div><h3>{props.title}</h3><p>{props.description}</p></div><span className={`evidence-count ${readyCount ? "is-ready" : ""}`}>{readyCount} ready</span></div>
-    {props.files.map((file) => <div className="evidence-file" key={file.fileId}>
-      <span className="evidence-file-state">{file.state === "ready" ? <BadgeCheck aria-hidden="true" /> : <Clock3 aria-hidden="true" />}{fileStatusLabel(file.state)}</span>
-      {file.state === "ready" && <button className="text-action" type="button" onClick={() => void props.onPreview(file)} disabled={props.busyFile === file.fileId}>{props.busyFile === file.fileId ? "Opening…" : "View privately"}</button>}
-      {file.state !== "ready" && <span className="evidence-file-note">This file is not available for review.</span>}
-      <button className="icon-action" type="button" aria-label={`Remove ${props.kind === "photo" ? "profile photo" : "selfie"}`} onClick={() => void props.onRemove(file)} disabled={props.busyFile === file.fileId}><Trash2 aria-hidden="true" /></button>
-      {props.previewUrls[file.fileId] && <figure className="evidence-preview"><img src={props.previewUrls[file.fileId]} alt={props.kind === "photo" ? "Your private profile photo" : "Your private selfie"} referrerPolicy="no-referrer" loading="lazy" /><figcaption>Private preview. Link expires shortly and is not saved.</figcaption></figure>}
-    </div>)}
-    {canAdd && <label className="evidence-upload-button"><input type="file" accept="image/jpeg,image/png,image/webp" capture={props.kind === "selfie" ? "user" : undefined} onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) props.onUpload(file); event.currentTarget.value = ""; }} disabled={Boolean(props.uploadMessage)} /><ImagePlus aria-hidden="true" /><span>{props.uploadMessage || (props.kind === "photo" ? "Add a photo" : "Add a selfie")}</span><small>JPEG, PNG or WebP · up to 8 MB</small></label>}
-    {!canAdd && props.kind === "photo" && <p className="field-hint">You have reached the six-photo limit. Remove a photo to add another.</p>}
-  </div>;
-}
-
-function friendlyMissingField(field: string): string {
-  const labels: Record<string, string> = {
-    firstName: "First name",
-    lastName: "Last name",
-    dateOfBirth: "Date of birth",
-    identity: "How you identify",
-    openTo: "Who you are open to meeting",
-    matchAgeMin: "Youngest matching age",
-    matchAgeMax: "Oldest matching age",
-    neighborhood: "Neighborhood",
-    nights: "Available nights",
-    lookingFor: "What you are looking for",
-    surpriseGame: "Surprise game preference",
-    photo: "At least one ready profile photo",
-    selfie: "One separate ready selfie",
-  };
-  return labels[field] ?? field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function fileStatusLabel(state: ProfileFileSummary["state"]): string {
-  return {
-    pending_upload: "Uploading",
-    ready: "Ready",
-    rejected: "Replace this photo",
-    superseded: "Replaced",
-    deleted: "Removed",
-  }[state];
-}

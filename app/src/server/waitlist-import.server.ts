@@ -68,6 +68,7 @@ export function buildWaitlistImport(rows: unknown, now = new Date()): ImportRepo
     "-- Generated waitlist import. Review, then run once in a transaction against the NEW project. Existing emails are left untouched.",
     "-- It creates no admissions, sends no email and grants no access.",
     "begin;",
+    "select set_config('app.skip_waitlist_confirmation','on',true);",
     "insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game,source,received_at) values",
     values.join(",\n"),
     "on conflict (email_normalized) do nothing;",

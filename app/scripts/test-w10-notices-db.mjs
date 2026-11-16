@@ -31,6 +31,8 @@ const [A, B, C, D, E, F, G] = guests;
 const paid = [0, 1, 2, 3, 4, 5];
 assert.equal(psql(`select count(*) from auth.users where id in (${[admin, host, ...members].map(q).join(",")})`), "0", "fixture collision");
 const sql = `begin;
+select set_config('app.skip_waitlist_confirmation','on',true); -- fixture signups need no confirmation email
+update public.app_notice_outbox set next_attempt_at=clock_timestamp()+interval '1 year' where state='queued'; -- other runs' queued email stays out of these claims
 create function pg_temp.shift(m integer) returns void language plpgsql as $f$
 begin
   update public.app_supply_table_revisions set content = content || jsonb_build_object(
@@ -50,9 +52,9 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
   ${members.map((_, i) => `(${q(signups[i])},${q(emails[i])},'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
   ${members.map((u, i) => `(${q(admissions[i])},${q(signups[i])},${q(emails[i])},'activated',${q(admin)},${q(u)},now())`).join(",\n  ")};
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
-  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'approved',1,1,'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
+  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${q(table)},'published','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
   (${q(revision)},${q(table)},1,'published',jsonb_build_object('title','W09 Table','localDate',to_char(current_date,'YYYY-MM-DD'),'startLocalTime','19:00','neighborhood','Inman Park','stops',jsonb_build_array(
@@ -64,8 +66,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   ${paid.map((i) => `(${q(requests[i])},${q(table)},${q(guests[i])},${q(members[i])},'W09 Table',current_date,'19:00','Inman Park','pending')`).join(",\n  ")};
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
   (${q(proposal)},${q(table)},1,'approved',${q(revision)},'{}'::jsonb,${q(admin)},${q(admin)},${q(admin)},${q(admin)},now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
-  ${paid.map((i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1,1,1)`).join(",\n  ")};
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+  ${paid.map((i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1)`).join(",\n  ")};
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
   ${paid.map((i) => `(${q(invitations[i])},${q(table)},${q(guests[i])},${q(members[i])},${q(requests[i])},${q(proposal)},${q(admin)},'active')`).join(",\n  ")};
 insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest_id,auth_user_id,proposal_revision,profile_revision,supply_revision_id,state,
@@ -86,7 +88,7 @@ do $w084$ declare v jsonb; items jsonb; n integer; nid uuid; lease uuid; msg tex
   -- T-48: the unpaid invitation holder (G) is reminded once, paid guests are not
   insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state)
     values(${q(id(700))},'${table}','${G}',${q(members[6])},'W10',current_date,'19:00','Inman Park','pending');
-  insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values(${q(proposal)},${q(id(700))},'${G}',1,1,1);
+  insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values(${q(proposal)},${q(id(700))},'${G}',1);
   insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values(${q(id(701))},'${table}','${G}',${q(members[6])},${q(id(700))},${q(proposal)},${q(admin)},'active');
   perform pg_temp.shift(-60*60);
   if (public.enqueue_due_notices()->>'t48Queued')::integer<>0 then raise exception 'reminder queued 60 hours out'; end if;

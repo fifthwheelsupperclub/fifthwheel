@@ -1,6 +1,6 @@
 /** Server-only production email adapters over Resend's REST API (fetch, no SDK). */
 
-import type { AdmissionEmailProvider, EmailSendResult, MagicLinkEmailProvider } from "./admission.contracts.server.ts";
+import type { EmailSendResult, MagicLinkEmailProvider } from "./admission.contracts.server.ts";
 import { whenLabel } from "./notice-templates.server.ts";
 import type { TableInvitationMailInput, TableInvitationMailResult } from "./table-invitation.email.mailpit.server.ts";
 
@@ -80,24 +80,6 @@ export function createResendEmail(config: ResendConfig, fetcher: typeof fetch = 
     } catch { return "unknown"; }
   }
 
-  const admission: AdmissionEmailProvider = {
-    async sendAppInvitation(input) {
-      const link = requireActionLink(input.actionLink, appOrigin);
-      if (!link || !emailPattern.test(input.recipientEmail) || ![input.deliveryId, input.attemptId, input.idempotencyKey].every((v) => idPattern.test(v))) {
-        return { state: "failed", safeErrorCode: "resend_invalid_request", retryable: false } as const;
-      }
-      return send(input.recipientEmail, "You’re in: welcome to Fifth Wheel",
-        `You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.\n\nSign in:\n${link}`,
-        `<p>You’re off the waitlist. Sign in, finish your profile, and start requesting seats at tables.</p><p><a href="${escapeHtml(link)}">Sign in</a></p>`,
-        `admission-${input.idempotencyKey}`, { "Delivery-ID": input.deliveryId, "Attempt-ID": input.attemptId });
-    },
-    async reconcile(input) {
-      if (!input.providerMessageId) return { state: "unknown" } as const;
-      const state = await lookup(input.providerMessageId, input.recipientEmail);
-      return state === "unknown" ? { state } as const : { state, providerMessageId: input.providerMessageId } as const;
-    },
-  };
-
   const magicLink: MagicLinkEmailProvider = {
     async sendSignInLink(input) {
       const link = requireActionLink(input.actionLink, appOrigin);
@@ -143,5 +125,5 @@ export function createResendEmail(config: ResendConfig, fetcher: typeof fetch = 
       return send(input.to, input.subject, input.text, input.html, `notice-${input.noticeId}-${input.attempt}`, { "Notice-ID": input.noticeId });
     },
   });
-  return Object.freeze({ admission: Object.freeze(admission), magicLink: Object.freeze(magicLink), tableInvitation, notice });
+  return Object.freeze({ magicLink: Object.freeze(magicLink), tableInvitation, notice });
 }

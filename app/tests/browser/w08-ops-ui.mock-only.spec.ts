@@ -126,55 +126,58 @@ test("restaurant workspace with no venue shows an empty state", async ({ page, c
   await expect(page.getByRole("heading", { name: "No venue yet" })).toBeVisible();
 });
 
-const invitationId = "e0800000-0000-4000-8000-000000000081", candidateRequest = "e0800000-0000-4000-8000-000000000065";
+const invitationId = "e0800000-0000-4000-8000-000000000081";
 const invitationItem = { invitationId, invitationState: "active", createdAt: "2026-11-10T15:00:00.000Z", guest: { guestId: "e0800000-0000-4000-8000-000000000031", displayName: "Maya Chen" },
   table: { tableId, title: "Autumn Table", localDate: "2026-12-12", startLocalTime: "19:00", neighborhood: "Inman Park" },
   delivery: { outboxId: "e0800000-0000-4000-8000-000000000091", state: "delivered", attemptCount: 1, queuedAt: "2026-11-10T15:00:00.000Z", nextAttemptAt: "2026-11-10T15:00:00.000Z", lastAttemptAt: "2026-11-10T15:01:00.000Z", safeErrorCode: null }, attempts: [] };
+const suggestion = (remainingValid: boolean) => ok({ invitationId, tableId, expectedRevision: 2, remainingValid, candidate: null });
 
 for (const scenario of [
-  { name: "Yes sends one replacement", button: "Remove and invite Riley Morgan", replacement: "sent", needsReview: false, text: "The replacement has been invited." },
-  { name: "stale suggestion removes without sending and flags the roster", button: "Remove and invite Riley Morgan", replacement: "stale", needsReview: true, text: "no invitation was sent" },
+  { name: "paid guest: refund owed, remaining group still valid", seatCancelled: true, refundCents: 1500, needsReview: false, text: "Seat cancelled. $15.00 refund owed. Send it from Refunds." },
+  { name: "invalid remaining group is flagged for review", seatCancelled: true, refundCents: 1500, needsReview: true, text: "Seat cancelled. $15.00 refund owed. Send it from Refunds." },
 ]) {
   test(`remove from Table: ${scenario.name}`, async ({ page, context }) => {
     const seen: Array<{ path: string; body: unknown }> = [];
     await mock(context, {
       "GET /api/admin/table-invitations": () => ok({ items: [invitationItem], nextCursor: null }),
-      [`GET /api/admin/invitations/${invitationId}/replacement-suggestion`]: () => ok({ invitationId, tableId, expectedRevision: 2, remainingValid: false,
-        candidate: { requestId: candidateRequest, guestId: "e0800000-0000-4000-8000-000000000035", displayName: "Riley Morgan", requestCreatedAt: "2026-11-02T15:00:00.000Z" } }),
-      [`POST /api/admin/invitations/${invitationId}/remove`]: () => ok({ removal: { invitationId, guestId: "x", seatCancelled: true, refundCents: 1500 },
-        replacement: { state: scenario.replacement, invitationId: scenario.replacement === "sent" ? "e0800000-0000-4000-8000-000000000099" : null },
-        roster: { revision: 2, valid: !scenario.needsReview, needsReview: scenario.needsReview } }),
+      [`GET /api/admin/invitations/${invitationId}/replacement-suggestion`]: () => suggestion(!scenario.needsReview),
+      [`POST /api/admin/invitations/${invitationId}/remove`]: () => ok({ removal: { invitationId, guestId: "x", seatCancelled: scenario.seatCancelled, refundCents: scenario.refundCents },
+        replacement: { state: "none", invitationId: null }, roster: { revision: 3, valid: !scenario.needsReview, needsReview: scenario.needsReview } }),
     }, seen);
     await page.goto("/admin/table-invitations");
     await page.getByRole("button", { name: "Remove from Table…" }).click();
-    await expect(page.getByText("Invite Riley Morgan instead?")).toBeVisible();
-    await page.getByLabel(/^Refund/).fill("15");
+    const dialog = page.getByRole("dialog", { name: "Remove Maya Chen from this table?" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/instead\?|Remove and invite/)).toHaveCount(0);
+    await dialog.getByLabel(/^Refund/).fill("15");
     await page.screenshot({ path: `${shots}/w08-remove-dialog-desktop-mock-only.png` });
-    await page.getByRole("button", { name: scenario.button }).click();
+    await dialog.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Maya Chen was removed" })).toBeVisible();
     await expect(page.getByText(scenario.text)).toBeVisible();
-    if (scenario.needsReview) await expect(page.getByText(/no longer meets the roster rules/)).toBeVisible();
+    await expect(page.getByText(/To fill the seat, add someone from the/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "waitlist queue" })).toHaveAttribute("href", "/admin/waitlist");
+    await expect(page.getByText(/no longer meets the roster rules/)).toHaveCount(scenario.needsReview ? 1 : 0);
     const post = seen.find((s) => s.path.endsWith("/remove"));
-    expect(post?.body).toMatchObject({ expectedRevision: 2, refundCents: 1500, replaceRequestId: candidateRequest });
-    expect(Object.keys(post?.body as object).sort()).toEqual(["expectedRevision", "operationId", "refundCents", "replaceRequestId"]);
+    expect(post?.body).toMatchObject({ expectedRevision: 2, refundCents: 1500 });
+    expect(Object.keys(post?.body as object).sort()).toEqual(["expectedRevision", "operationId", "refundCents"]);
   });
 }
 
-test("remove from Table: No sends a null replacement and a bad refund never posts", async ({ page, context }) => {
+test("remove from Table: a bad refund never posts; an unpaid guest's invitation is withdrawn", async ({ page, context }) => {
   const seen: Array<{ path: string; body: unknown }> = [];
   await mock(context, {
     "GET /api/admin/table-invitations": () => ok({ items: [invitationItem], nextCursor: null }),
-    [`GET /api/admin/invitations/${invitationId}/replacement-suggestion`]: () => ok({ invitationId, tableId, expectedRevision: 2, remainingValid: true,
-      candidate: { requestId: candidateRequest, guestId: "g", displayName: "Riley Morgan", requestCreatedAt: "2026-11-02T15:00:00.000Z" } }),
+    [`GET /api/admin/invitations/${invitationId}/replacement-suggestion`]: () => suggestion(true),
     [`POST /api/admin/invitations/${invitationId}/remove`]: () => ok({ removal: { invitationId, guestId: "x", seatCancelled: false, refundCents: 0 }, replacement: { state: "none", invitationId: null }, roster: { revision: 3, valid: true, needsReview: false } }),
   }, seen);
   await page.goto("/admin/table-invitations");
   await page.getByRole("button", { name: "Remove from Table…" }).click();
   await page.getByLabel(/^Refund/).fill("40");
-  await page.getByRole("button", { name: "Remove only" }).click();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.getByText("Enter a refund between $0 and $25.")).toBeVisible();
   expect(seen.some((s) => s.path.endsWith("/remove"))).toBe(false);
   await page.getByLabel(/^Refund/).fill("0");
-  await page.getByRole("button", { name: "Remove only" }).click();
-  await expect(page.getByText("No replacement was invited.")).toBeVisible();
-  expect(seen.find((s) => s.path.endsWith("/remove"))?.body).toMatchObject({ replaceRequestId: null, refundCents: 0 });
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByText("Invitation withdrawn.")).toBeVisible();
+  expect(seen.find((s) => s.path.endsWith("/remove"))?.body).toEqual({ operationId: expect.any(String), expectedRevision: 2, refundCents: 0 });
 });

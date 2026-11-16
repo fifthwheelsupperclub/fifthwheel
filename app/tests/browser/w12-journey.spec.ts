@@ -6,9 +6,9 @@ import { spawnSync } from "node:child_process";
 
 const appOrigin = "http://127.0.0.1:8086";
 const supabaseOrigin = "http://127.0.0.1:57421";
-type Member = { key: string; first: string; last: string; email: string; guest: string; request: string; invitation: string; table: number };
+type Member = { key: string; first: string; last: string; email: string; guest: string; invitation: string; table: number };
 const fx = JSON.parse(process.env.W12_FIXTURE!) as { db: string; mailpit: string; suffix: string; tag: string; adminEmail: string; hostEmail: string; hostId: string;
-  evidence: { file: string; key: string }; members: Member[]; tables: { id: string; title: string; date: string; revision: string; venues: string[] }[] };
+  members: Member[]; tables: { id: string; title: string; date: string; revision: string; venues: string[] }[] };
 const M = Object.fromEntries(fx.members.map((m) => [m.key, m])) as Record<string, Member>;
 const [T1, T2, T3, T4] = fx.tables;
 const stripeHost = (h: string) => /(^|\.)(stripe\.com|stripe\.network|stripecdn\.com|hcaptcha\.com)$/.test(h);
@@ -122,8 +122,23 @@ const state: Record<string, string> = {};
 
 test.afterAll(async () => { await Promise.all(contexts.map((c) => c.close().catch(() => undefined))); });
 
-// ---- Stage 1: roster curation and approval ---------------------------------------------------------------------------
-test("stage 1: host proposes, admin approves; replay creates no duplicates; stale revision refused", async ({ browser }) => {
+// Adds a waitlisted member to a Table through the admin placement queue; returns the exact POST body and the answer.
+async function placeFromQueue(ap: Page, m: Member, table: { id: string; title: string }) {
+  await ap.goto(`${appOrigin}/admin/waitlist`);
+  await ap.locator("li.ops-card", { hasText: `${m.first} ${m.last}` }).getByRole("button", { name: "Add to Table…" }).click();
+  const dialog = ap.getByRole("dialog", { name: `Add ${m.first} ${m.last} to a Table` });
+  await dialog.getByLabel("Table").selectOption(table.id);
+  const response = ap.waitForResponse((r) => r.url().endsWith("/api/admin/placements") && r.request().method() === "POST");
+  await dialog.getByRole("button", { name: "Add and send invitation" }).click();
+  const answer = await response;
+  expect(answer.status()).toBe(200);
+  await expect(ap.getByText(`${m.first} was added and their invitation email is on its way.`)).toBeVisible();
+  await expect(ap.locator("li.ops-card", { hasText: `${m.first} ${m.last}` })).toHaveCount(0); // placed people leave the queue
+  return { sent: answer.request().postDataJSON() as Record<string, unknown>, data: ((await answer.json()) as { data: unknown }).data as { invitationId: string } };
+}
+
+// ---- Stage 1: placement from the waitlist queue ----------------------------------------------------------------------
+test("stage 1: admin places four waitlisted members at a Table; replay creates no duplicates; a second placement is refused", async ({ browser }) => {
   const admin = await as(browser, fx.adminEmail);
   const ap = await admin.newPage();
   await ap.goto(`${appOrigin}/admin/staff-assignments`);
@@ -132,44 +147,29 @@ test("stage 1: host proposes, admin approves; replay creates no duplicates; stal
   await expect(hostCard.getByRole("checkbox", { name: new RegExp(T1.title) })).toBeChecked();
   await expect.poll(() => db(`select count(*) from public.app_supply_table_assignments where table_id='${T1.id}' and user_id='${fx.hostId}'`)).toBe("1");
 
-  const host = await as(browser, fx.hostEmail);
-  const hp = await host.newPage();
-  await hp.goto(`${appOrigin}/host/tables/${T1.id}/roster`);
-  await expect(hp.getByRole("heading", { name: "People who asked to join" })).toBeVisible();
-  for (const k of ["A", "B", "C", "D"]) await hp.getByLabel(`Select ${M[k].first}`, { exact: true }).check();
-  await hp.getByRole("button", { name: "Save draft" }).click();
-  await expect(hp.getByText("Saved.")).toBeVisible();
-  await hp.getByRole("button", { name: "Save draft" }).click(); // a second save supersedes revision 1 with revision 2
-  await expect.poll(() => db(`select max(revision) from public.app_table_roster_proposals where table_id='${T1.id}'`)).toBe("2");
-  await hp.getByRole("button", { name: "Send for approval" }).click();
-  await expect(hp.getByText("Sent for approval.")).toBeVisible();
-
-  // Stale revision: approving revision 1 is refused and creates nothing.
-  const stale = await post(admin, `/api/admin/seat-requests/${T1.id}/approve`, { operationId: randomUUID(), expectedProposalRevision: 1 });
-  expect(stale.status()).toBe(409);
-  expect((await body(stale))?.error?.code).toBe("revision_conflict");
-  expect(db(`select count(*) from public.app_table_invitations where table_id='${T1.id}'`)).toBe("0");
-
-  await ap.goto(`${appOrigin}/admin/seat-requests/${T1.id}`);
-  await ap.getByRole("button", { name: "Approve roster" }).click();
-  const dialog = ap.getByRole("dialog", { name: "Approve this roster?" });
-  for (const k of ["A", "B", "C", "D"]) await expect(dialog.getByText(`${M[k].first} ${M[k].last}`)).toBeVisible();
-  const approveRequest = ap.waitForRequest((r) => r.url().endsWith(`/api/admin/seat-requests/${T1.id}/approve`));
-  await ap.getByRole("button", { name: "Approve and send invitations" }).click();
-  const sent = (await approveRequest).postDataJSON() as { operationId: string; expectedProposalRevision: number };
-  await expect(ap.getByText(/Roster approved\. Invitations are on their way/)).toBeVisible();
+  const placements = [];
+  for (const k of ["A", "B", "C", "D"]) placements.push(await placeFromQueue(ap, M[k], T1));
   expect(db(`select count(*) from public.app_table_invitations where table_id='${T1.id}' and state='active'`)).toBe("4");
+  expect(db(`select count(*) from public.app_table_invitation_outbox o join public.app_table_invitations i using(invitation_id) where i.table_id='${T1.id}'`)).toBe("4");
 
-  // Replay of the exact approval: same answer, no duplicate invitations or outbox rows.
-  const replay = await post(admin, `/api/admin/seat-requests/${T1.id}/approve`, sent);
+  // Replay of the exact placement: same answer, no duplicate invitations or outbox rows.
+  const replay = await post(admin, "/api/admin/placements", placements[0].sent);
   expect(replay.status()).toBe(200);
-  expect((await body(replay))?.data?.invitations).toHaveLength(4);
+  expect((await body(replay))?.data?.invitationId).toBe(placements[0].data.invitationId);
   expect(db(`select count(*) from public.app_table_invitations where table_id='${T1.id}'`)).toBe("4");
   expect(db(`select count(*) from public.app_table_invitation_outbox o join public.app_table_invitations i using(invitation_id) where i.table_id='${T1.id}'`)).toBe("4");
-  // A fresh operation against the approved roster is refused too.
-  const again = await post(admin, `/api/admin/seat-requests/${T1.id}/approve`, { operationId: randomUUID(), expectedProposalRevision: 2 });
+  // A fresh operation for someone already at the Table is refused.
+  const again = await post(admin, "/api/admin/placements", { ...placements[0].sent, operationId: randomUUID() });
   expect(again.status()).toBe(409);
+  expect((await body(again))?.error?.reason).toBe("already_invited");
   for (const k of ["A", "B", "C", "D"]) state[`inv${k}`] = invitationOf(T1.id, M[k].guest);
+
+  // The assigned host sees the Table and its invited count on their landing page.
+  const hp = await (await as(browser, fx.hostEmail)).newPage();
+  await hp.goto(`${appOrigin}/host/assigned-tables`);
+  const hostTable = hp.locator("li.ops-card", { hasText: T1.title });
+  await expect(hostTable.getByText("4 invited")).toBeVisible();
+  await expect(hostTable.getByRole("link", { name: "Attendance" })).toHaveAttribute("href", `/host/attendance/${T1.id}`);
   await ap.close(); await hp.close();
 });
 
@@ -357,7 +357,7 @@ test("stage 6: partial refund, then admin cancels the Table; only the remainder 
   await ap.close();
 });
 
-// ---- Stage 7: removal with one replacement suggestion -----------------------------------------------------------------
+// ---- Stage 7: removal, then the seat is filled from the waitlist queue -----------------------------------------------
 async function openRemoval(ap: Page, m: Member) {
   await ap.goto(`${appOrigin}/admin/table-invitations`);
   const card = ap.locator("article.admin-invitation-card", { hasText: `${m.first} ${m.last}` }).filter({ hasText: "OPEN" });
@@ -369,28 +369,24 @@ async function openRemoval(ap: Page, m: Member) {
   await card.getByRole("button", { name: "Remove from Table…" }).click();
   return ap.getByRole("dialog");
 }
-test("stage 7: removal with one replacement suggestion (Yes path and stale suggestion)", async ({ browser }) => {
+test("stage 7: removal sends no replacement; the admin fills the seat from the waitlist queue", async ({ browser }) => {
   const ap = await (await as(browser, fx.adminEmail)).newPage();
-  let dialog = await openRemoval(ap, M.I);
-  await expect(dialog.getByText(`Invite ${M.M.first} ${M.M.last} instead?`)).toBeVisible();
-  await dialog.getByRole("button", { name: `Remove and invite ${M.M.first} ${M.M.last}` }).click();
-  await expect(dialog.getByText("The replacement has been invited.")).toBeVisible();
+  const dialog = await openRemoval(ap, M.I);
+  await expect(dialog.getByRole("heading", { name: `Remove ${M.I.first} ${M.I.last} from this table?` })).toBeVisible();
+  await expect(dialog.getByLabel("Refund ($0–$25)")).toHaveValue("0");
+  await dialog.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: `${M.I.first} ${M.I.last} was removed` })).toBeVisible();
+  await expect(dialog.getByText(/To fill the seat, add someone from the/)).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "waitlist queue" })).toHaveAttribute("href", "/admin/waitlist");
   expect(db(`select state from public.app_table_invitations where invitation_id='${M.I.invitation}'`)).not.toBe("active");
-  expect(invitationOf(T3.id, M.M.guest)).toMatch(/^[0-9a-f-]{36}$/);
-  expect(db(`select count(*) from public.app_table_invitations where table_id='${T3.id}' and state='active'`)).toBe("4");
+  expect(db(`select count(*) from public.app_table_invitations where table_id='${T3.id}' and state='active'`)).toBe("3");
   await dialog.getByRole("button", { name: "Close" }).click();
   await expectMail(M.I.email, new RegExp(`Your place at ${T3.title}`));
 
-  // Stale suggestion: the suggested applicant withdraws before the admin says Yes.
-  dialog = await openRemoval(ap, M.J);
-  await expect(dialog.getByText(`Invite ${M.N.first} ${M.N.last} instead?`)).toBeVisible();
-  const n = await as(browser, M.N.email);
-  expect((await post(n, `/api/me/requests/${M.N.request}/withdraw`, { operationId: randomUUID() })).status()).toBe(200);
-  await dialog.getByRole("button", { name: `Remove and invite ${M.N.first} ${M.N.last}` }).click();
-  await expect(dialog.getByText(/no invitation was sent/)).toBeVisible();
-  expect(db(`select state from public.app_table_invitations where invitation_id='${M.J.invitation}'`)).not.toBe("active");
-  expect(invitationOf(T3.id, M.N.guest)).toBe("");
-  expect(db(`select count(*) from public.app_table_invitations where table_id='${T3.id}' and state='active'`)).toBe("3");
+  await placeFromQueue(ap, M.M, T3);
+  expect(invitationOf(T3.id, M.M.guest)).toMatch(/^[0-9a-f-]{36}$/);
+  expect(db(`select count(*) from public.app_table_invitations where table_id='${T3.id}' and state='active'`)).toBe("4");
+  await expectMail(M.M.email, new RegExp(`You’re invited: ${T3.title}`));
   await ap.close();
 });
 
@@ -413,7 +409,7 @@ test("stage 9a (W05.4): a schedule edit on a published Table with invitations is
   await ap.getByRole("button", { name: /^Save/ }).click();
   await expect(ap.getByText(/schedule and venue changes require cancellation and a new Table/)).toBeVisible();
   expect(db(`select r.content::text from public.app_supply_table_heads h join public.app_supply_table_revisions r on r.revision_id=h.published_revision_id where h.table_id='${T4.id}'`)).toBe(before);
-  // The same edit on the Table whose roster was approved in the browser (stage 1) is refused by the API too.
+  // The same edit on the Table filled by placement in the browser (stage 1) is refused by the API too.
   const admin = await as(browser, fx.adminEmail);
   const draft = db(`select r.revision_id||'|'||r.revision||'|'||r.content::text from public.app_supply_table_heads h join public.app_supply_table_revisions r on r.revision_id=h.draft_revision_id where h.table_id='${T1.id}'`);
   const [draftId, revision, content] = [draft.split("|")[0], Number(draft.split("|")[1]), JSON.parse(draft.split("|").slice(2).join("|"))];
@@ -444,23 +440,4 @@ test("stage 9b: My Seats refresh/back keeps a safe state; calendar export refuse
   // Another member cannot read someone else's Seat or its calendar.
   expect((await a.request.get(`${appOrigin}/api/me/seats/${state.seatE}`)).status()).toBe(404);
   await page.close();
-});
-
-test("stage 9c (W04.4 + evidence cleanup): elapsed evidence is deleted by the worker; the approved guest still checks out 31 days after review", async ({ browser }) => {
-  const object = () => fetch(`${supabaseOrigin}/storage/v1/object/authenticated/identity-evidence/${fx.evidence.key}`, { headers: { apikey: process.env.SUPABASE_SECRET_KEY!, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` } }).then((r) => r.status);
-  expect(await object()).toBe(200);
-  db(`update public.app_profile_files set retention_due_at=now()-interval '1 day' where file_id='${fx.evidence.file}'`); // 30 days after the 31-day-old review
-  // EVIDENCE-CLEANUP HOOK: relies on the worker's `cleanupEvidence` step (src/server/worker.server.ts).
-  const { summary } = await workerPass();
-  expect(summary.evidenceCleanup).not.toBe("error");
-  await expect.poll(() => db(`select (deleted_at is not null)::text||':'||state from public.app_profile_files where file_id='${fx.evidence.file}'`)).toBe("true:deleted");
-  expect(db(`select (evidence_deleted_at is not null)::text from public.app_member_profiles where guest_id='${M.Q.guest}'`)).toBe("true");
-  expect(await object()).not.toBe(200);
-  // W04.4: approval stays valid after evidence retention; Quinn can still pay.
-  state.seatQ = await pay(browser, M.Q);
-  expect(db(`select state from public.app_seats where seat_id='${state.seatQ}'`)).toBe("confirmed");
-  const q = await as(browser, M.Q.email);
-  const ics = await q.request.get(`${appOrigin}/api/me/seats/${state.seatQ}/calendar.ics`);
-  expect(ics.status()).toBe(200);
-  expect(await ics.text()).toContain("BEGIN:VCALENDAR");
 });
