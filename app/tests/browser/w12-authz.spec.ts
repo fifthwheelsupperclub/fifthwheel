@@ -218,7 +218,6 @@ test.describe.serial("W12 authz sweep", () => {
           const acc = access(path, method, role);
           if (acc === "special") continue; // handled in 2/3
           if (role === "admin" && method !== "GET") { continue; } // admin is probed read-only; mutations are covered for denial only
-          if (role === "admin" && path === "/api/admin/supply/sync") { add("skip", "api", role, label, "admin GET of sync status skipped (touches shared supply state)"); continue; }
           let p: Probe;
           try { p = await probe(role, method, url, path.endsWith("/content") ? { raw: Buffer.from([0x89, 0x50, 0x4e, 0x47]) } : { body: bodyFor(path, method) }); } catch (e) { add("fail", "api", role, label, `request threw: ${(e as Error).message.slice(0, 100)}`); continue; }
           const snippet = p.text.replace(/\s+/g, " ").slice(0, 110);

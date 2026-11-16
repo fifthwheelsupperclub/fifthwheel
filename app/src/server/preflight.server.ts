@@ -57,6 +57,5 @@ export function checkProductionEnv(env: Environment): PreflightResult {
   if (env.CHECKOUT_FULFILLMENT_READY === "true") warnings.push("CHECKOUT_FULFILLMENT_READY=true: guests can pay. Confirm the signed webhook endpoint and a dry run first.");
   if (env.REFUND_WORKER_READY === "true" && env.CHECKOUT_FULFILLMENT_READY !== "true") warnings.push("REFUND_WORKER_READY=true while checkout is off: only existing obligations can be refunded.");
   if (mode === "test" && env.CHECKOUT_FULFILLMENT_READY === "true") warnings.push("STRIPE_MODE=test with checkout ready: this is a staging configuration, not a launch one.");
-  for (const name of ["SUPPLY_PROVIDER_MODE", "SUPPLY_FIXTURE_RUN_ID"]) if (has(name)) warnings.push(`${name}: set; supply provider fixtures are for local runs only.`);
   return { ok: problems.length === 0, problems, warnings };
 }

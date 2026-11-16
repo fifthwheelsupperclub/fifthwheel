@@ -129,8 +129,6 @@ insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,a
 insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
   (${q(m.guest)},${q(m.userId)},${q(m.admission)},'approved',1,1,${q(m.first)},${q(m.last)},${q(m.dob)},'woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');
-insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values
-  ('venue',${q(`w12-${f.prefix}-${k}-v1`)},${q(m.venue)}),('venue',${q(`w12-${f.prefix}-${k}-v2`)},${q(m.venue2)});
 insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values
   (${q(m.venue)},'Test Bar','1 Main St','Inman Park',${q(u.admin)}),(${q(m.venue2)},'Test Grill','2 Main St','Inman Park',${q(u.admin)});
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${q(m.table)},'published','current');
@@ -213,7 +211,6 @@ delete from public.app_staff_contacts where user_id in (${userIds});
 update public.app_supply_table_heads set published_revision_id=null where table_id in (${ids("table")});
 delete from public.app_supply_table_revisions where table_id in (${ids("table")});
 delete from public.app_supply_table_heads where table_id in (${ids("table")});
-delete from public.app_supply_external_mappings where core_id in (${ids("venue")},${ids("venue2")});
 delete from public.app_supply_venues where venue_id in (${ids("venue")},${ids("venue2")}) or created_by in (${userIds});
 delete from public.app_profile_files where file_id in (${ids("file")});
 delete from public.app_member_profiles where guest_id in (${ids("guest")});

@@ -18,7 +18,9 @@ related_evidence:
 related_decisions: []
 ---
 
-# W05 Airtable supply integration contract
+# W05 supply contract (historical: Airtable integration)
+
+> **Superseded 2026-11-17.** The Airtable sync described below was never connected. Supabase is now the only source of truth for supply: admins curate venues (`app_supply_venues`) and Tables in the app, weekly clone is one transactional RPC, and the sync tables, external mappings and staged-candidate path were dropped (migrations `20261117090000`, `20261117100000`, `20261117110000`). The current rules live in [architecture §2](../architecture.md). The rest of this file is kept as the record of the earlier provider-boundary decisions.
 
 Current implementation status is tracked in the [task ledger](task-ledger.md); this contract preserves its 2026-11-12 provider-boundary evidence and may contain dated implementation notes. W05.2 and W05.3 are now implemented locally, while W05.4 activity wiring and verified production Airtable mappings remain open.
 

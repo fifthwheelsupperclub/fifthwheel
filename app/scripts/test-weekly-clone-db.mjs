@@ -122,9 +122,9 @@ begin
     raise exception 'clone result malformed: %',v_op; end if;
   v_target:=(v_op->'items'->0->>'targetTableId')::uuid;
   if not exists(select 1 from public.app_supply_table_heads h join public.app_supply_table_revisions r on r.revision_id=h.draft_revision_id
-    where h.table_id=v_target and h.lifecycle='draft' and h.sync_state='current' and h.source_revision_id is null
+    where h.table_id=v_target and h.lifecycle='draft' and h.sync_state='current'
       and h.accepted_revision_id is null and h.published_revision_id is null
-      and r.revision=1 and r.state='draft' and r.source_revision_id is null and r.content->>'localDate'='2026-11-26' and r.content->>'hostNotes'='private fixture note') then
+      and r.revision=1 and r.state='draft' and r.content->>'localDate'='2026-11-26' and r.content->>'hostNotes'='private fixture note') then
     raise exception 'clone was not created as a shifted revision-1 draft'; end if;
   if not exists(select 1 from public.app_supply_table_heads where table_id='${source}' and draft_revision_id='${revision}') then raise exception 'source changed during clone'; end if;
   if (select count(*) from public.app_audit_events where operation_id='${operation}' and action='supply.weekly_clone.started')<>1

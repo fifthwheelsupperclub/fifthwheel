@@ -26,8 +26,6 @@ export default defineConfig({
       ...process.env,
       APP_ORIGIN: appOrigin,
       SUPABASE_URL: "http://127.0.0.1:57421",
-      SUPPLY_PROVIDER_MODE: "fixture",
-      SUPPLY_FIXTURE_RUN_ID: process.env.SUPPLY_FIXTURE_RUN_ID ?? "",
     },
   },
 });

@@ -195,7 +195,6 @@ function fixtureSql(f) {
     out.push(`update public.app_supply_table_revisions set state='published' where revision_id=${sql(t.revision)};`);
     // As the draft->accept->publish flow leaves it; seeded rosters also mark the Table protected, as roster approval does.
     out.push(`update public.app_supply_table_heads set lifecycle='published',draft_revision_id=${sql(t.revision)},accepted_revision_id=${sql(t.revision)},published_revision_id=${sql(t.revision)},protected_by_activity=${t.k === 0 ? "false" : "true"} where table_id=${sql(t.id)};`);
-    t.venues.forEach((v, j) => out.push(`insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values ('venue',${sql(`w12-${f.suffix}-${t.k}-${j}`)},${sql(v)});`));
     t.venues.forEach((v, j) => out.push(`insert into public.app_supply_venues(venue_id,name,address,neighborhood,created_by) values (${sql(v)},${sql(`W12 venue ${f.tag} ${t.k}-${j}`)},${sql(`${j + 1} Test Way`)},'Inman Park',${sql(f.admin.id)}) on conflict (venue_id) do nothing;`));
     const requesters = f.members.filter((m) => m.table === t.k);
     requesters.forEach((m, i) => out.push(`insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state,created_at) values (${sql(m.request)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(t.title)},${sql(t.date)},'19:00','Inman Park','pending',now()-interval '${10 - i} hours');`));
@@ -269,7 +268,6 @@ update public.app_supply_table_heads set draft_revision_id=null,accepted_revisio
 delete from public.app_supply_table_revisions where table_id in (${tabs});
 delete from public.app_table_runtime where table_id in (${tabs});
 delete from public.app_supply_table_heads where table_id in (${tabs});
-delete from public.app_supply_external_mappings where entity_kind='venue' and left(source_record_id,17)=${sql(`w12-${f.suffix}-`)};
 delete from public.app_supply_venues where venue_id in (${vens});
 delete from public.app_profile_files where guest_id in (${guests});
 delete from public.app_identity_reviews where guest_id in (${guests});
@@ -338,10 +336,7 @@ async function main() {
   let listener = null;
   process.env.JOB_SECRET = randomUUID() + randomUUID();
   process.env.REFUND_WORKER_SECRET = randomUUID() + randomUUID(); process.env.REFUND_WORKER_ID = randomUUID(); process.env.REFUND_WORKER_READY = "true";
-  // Local synthetic supply mode, so the W05.4 edit refusal is exercised through the real editor (never Airtable).
-  process.env.SUPPLY_PROVIDER_MODE = "fixture";
   const f = buildFixture(randomUUID().replaceAll("-", "").slice(0, 12));
-  process.env.SUPPLY_FIXTURE_RUN_ID = f.suffix;
   console.log(`W12 journey run ${f.suffix} (after a failed cleanup: node scripts/run-w12-journey-browser.mjs --recover ${f.suffix})`);
   const created = []; let seeded = false; let testExit = 1;
   try {
