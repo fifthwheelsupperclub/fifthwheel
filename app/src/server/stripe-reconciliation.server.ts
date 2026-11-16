@@ -111,7 +111,7 @@ export async function runReconciliation(deps: Deps): Promise<"not_due" | { findi
   // The database refuses more than 200 findings at once. A flood must still be recorded, not error out: keep the first 199 plus a summary,
   // and treat the run as incomplete so findings we left out are neither lost nor marked resolved.
   const total = findings.length, truncated = total > MAX_FINDINGS;
-  const recorded = truncated ? [...findings.slice(0, MAX_FINDINGS - 1), { kind: "findings_truncated", ref: "stripe", detail: { total } }] : findings;
+  const recorded = truncated ? [...findings.slice(0, MAX_FINDINGS - 1), { kind: "reconciliation_incomplete", ref: "findings_truncated", detail: { reason: "more_than_199_findings", total } }] : findings;
   await deps.rpc("record_reconciliation_findings", { p_findings: recorded, p_complete: complete && !truncated });
   return { findings: total, complete: complete && !truncated };
 }

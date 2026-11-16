@@ -79,7 +79,6 @@ test("run: more than 200 findings are recorded as 199 plus a truncation summary 
   assert.deepEqual(result, { findings: 250, complete: false });
   const sent = calls[0] as { p_findings: Array<{ kind: string; detail: { total?: number } }>; p_complete: boolean };
   assert.equal(sent.p_findings.length, 200);
-  assert.equal(sent.p_findings.at(-1)!.kind, "findings_truncated");
-  assert.equal(sent.p_findings.at(-1)!.detail.total, 250);
+  assert.deepEqual(sent.p_findings.at(-1), { kind: "reconciliation_incomplete", ref: "findings_truncated", detail: { reason: "more_than_199_findings", total: 250 } });
   assert.equal(sent.p_complete, false);
 });
