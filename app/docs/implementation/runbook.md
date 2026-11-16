@@ -89,6 +89,7 @@ Still open:
 - **Live Stripe mode:** live keys, the live webhook endpoint and a real card are unverified until the owner-run dry run (§9 step 5).
 - **Stripe Dashboard payment methods** are not card-only (Link, Cash App, Klarna and bank are offered). Turn them off in the Dashboard before checkout opens.
 - **Reconciliation** only shows findings. There is no resolution workflow: staff fix the problem in Stripe or the ledger, and the next complete run clears the finding. It has not run in live mode.
+- **Waitlist form rate limit:** production uses one process-local bucket shared by every caller (60 signups per 10 minutes). It caps abuse on one instance, but a flood can also block honest signups, and it resets on restart. Build a durable per-address limiter before running more than one instance.
 - **Not built:** backup expiry and an account-deletion screen (it's API only).
 - **Open product questions:** admins cannot submit or approve a roster they edited; no email for the extra refund remainder when a Table is cancelled after a partial refund (and the cancel-Table dialog wording is wrong then); wrong-method API paths return 200 empty HTML in dev (check the production build).
 - **Deferred (P2/P3), safe after launch:** removal before T−24 only warns the admin instead of pausing checkout; only Table applicants are suggested as replacements; no notice preview or refund-progress emails; no reconciliation resolution workflow; no recap for a cancelled Table; raw hex colours outside tokens; more than 100 refunds on one PaymentIntent.
