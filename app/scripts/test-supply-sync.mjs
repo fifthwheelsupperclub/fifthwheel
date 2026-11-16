@@ -124,4 +124,74 @@ const residual = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c",
   "select concat((not exists(select 1 from auth.users where id in ('" + admin + "'::uuid,'" + member + "'::uuid) or email in ('" + adminEmail + "','" + memberEmail + "')))::text,'|',(not exists(select 1 from public.app_user_roles where user_id in ('" + admin + "'::uuid,'" + member + "'::uuid)))::text,'|',(not exists(select 1 from public.app_supply_sync_runs where run_id='" + priorSyncRevision + "'::uuid or operation_id in ('" + priorOperation + "'::uuid,'" + incompleteOperation + "'::uuid,'" + invalidOperation + "'::uuid,'" + missingOperation + "'::uuid,'" + reappearOperation + "'::uuid)))::text,'|',(not exists(select 1 from public.app_supply_table_heads where table_id='" + tableId + "'::uuid))::text,'|',(not exists(select 1 from public.app_supply_table_revisions where revision_id in ('" + draftRevision + "'::uuid,'" + acceptedRevision + "'::uuid,'" + publishedRevision + "'::uuid)))::text,'|',(not exists(select 1 from public.app_supply_sync_revisions where revision_id='" + priorSyncRevision + "'::uuid))::text,'|',(not exists(select 1 from public.app_supply_external_mappings where (entity_kind='table' and source_record_id='" + tableSourceId + "') or (entity_kind='venue' and source_record_id='" + venueSourceId + "') or core_id in ('" + tableId + "'::uuid,'" + venueId + "'::uuid)))::text,'|',(not exists(select 1 from public.app_audit_events where operation_id in ('" + priorOperation + "'::uuid,'" + incompleteOperation + "'::uuid,'" + invalidOperation + "'::uuid,'" + missingOperation + "'::uuid,'" + reappearOperation + "'::uuid,'" + acceptOperation + "'::uuid,'" + publishOperation + "'::uuid)))::text,'|',(not exists(select 1 from public.app_supply_table_operations where operation_id in ('" + acceptOperation + "'::uuid,'" + publishOperation + "'::uuid)))::text)"]);
 assert.equal(residual.status, 0, residual.stderr);
 assert.equal(residual.stdout.trim(), "true|true|true|true|true|true|true|true|true", "rollback should leave no run-scoped fixture rows");
+// Partial-failure scenarios (rollback-only, own random fixtures): an abandoned run and a finish that aborts midway leave
+// last-good pointers, mappings, Table state and staged revisions untouched; the next complete run recovers once.
+const partial = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", `begin;
+do $partial$ declare
+  adm uuid := gen_random_uuid(); tbl uuid := gen_random_uuid(); other uuid := gen_random_uuid(); newv uuid := gen_random_uuid();
+  op1 uuid := gen_random_uuid(); op2 uuid := gen_random_uuid(); op3 uuid := gen_random_uuid();
+  src text := 'w05-partial-' || replace(gen_random_uuid()::text,'-','');
+  hx text := repeat('c',64); hy text := repeat('d',64);
+  c0 public.app_supply_control%rowtype; run1 uuid; run2 uuid; r jsonb; b jsonb; maps integer; revs integer; revs_all integer; caught boolean := false;
+begin
+  insert into auth.users(id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+    values (adm,'authenticated','authenticated','w05-partial-'||adm||'@example.test','','{}','{}',now(),now());
+  insert into public.app_user_roles(user_id,role) values (adm,'admin');
+  insert into public.app_supply_table_heads(table_id,sync_state,lifecycle) values (tbl,'current','draft');
+  insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values ('table',src,tbl);
+  perform set_config('request.jwt.claims','{"role":"service_role"}',true);
+  select * into c0 from public.app_supply_control where singleton;
+  select count(*) into maps from public.app_supply_external_mappings;
+  select count(*) into revs_all from public.app_supply_sync_revisions;
+
+  -- 1. worker died after begin: run stays running, then is failed on replay once stale; supply untouched
+  b := public.begin_supply_sync(op1,adm); run1 := (b->'run'->>'run_id')::uuid;
+  if public.begin_supply_sync(op1,adm)->'run'->>'state' <> 'running' or (public.begin_supply_sync(op1,adm)->>'created')::boolean then raise exception 'live run not replayed as running'; end if;
+  update public.app_supply_sync_runs set started_at = now() - interval '11 minutes' where run_id = run1;
+  r := public.begin_supply_sync(op1,adm);
+  if r->'run'->>'state' <> 'failed' or r->'run'->>'retry_disposition' <> 'new_operation_required' then raise exception 'stale abandoned run not failed %', r; end if;
+  if (select count(*) from public.app_supply_sync_revisions) <> revs_all then raise exception 'abandoned run staged a revision'; end if;
+
+  -- 2. finish aborts midway (mapping_conflict after the missing-Table reconcile ran): everything inside rolls back
+  b := public.begin_supply_sync(op2,adm); run2 := (b->'run'->>'run_id')::uuid;
+  begin
+    perform public.finish_supply_sync(run2,adm,'staged','{"tablePages":1,"venuePages":1,"tables":1,"venues":1}'::jsonb,hx,
+      jsonb_build_array(jsonb_build_object('id',other)),
+      jsonb_build_array(jsonb_build_object('entityKind','venue','sourceRecordId',src||'-new','coreId',newv),
+                        jsonb_build_object('entityKind','table','sourceRecordId',src,'coreId',other)),
+      '[]'::jsonb,'blocked',null,0);
+    raise exception 'conflicting mapping finish succeeded';
+  exception when unique_violation then caught := true; end;
+  if not caught then raise exception 'no mapping_conflict raised'; end if;
+  if (select state from public.app_supply_sync_runs where run_id=run2) <> 'running' then raise exception 'aborted finish moved the run out of running'; end if;
+  if exists(select 1 from public.app_supply_external_mappings where source_record_id = src||'-new') then raise exception 'partial mapping insert survived the abort'; end if;
+  if (select count(*) from public.app_supply_external_mappings) <> maps or (select core_id from public.app_supply_external_mappings where entity_kind='table' and source_record_id=src) <> tbl then raise exception 'mappings changed by aborted finish'; end if;
+  if (select count(*) from public.app_supply_sync_revisions) <> revs_all then raise exception 'aborted finish staged a revision'; end if;
+  if (select sync_state from public.app_supply_table_heads where table_id=tbl) <> 'current' then raise exception 'aborted finish left Table marked missing'; end if;
+  if exists(select 1 from public.app_audit_events where subject_id=tbl and action like 'supply.sync.missing%') then raise exception 'aborted finish left a missing audit row'; end if;
+  if (select (latest_staged_revision_id,latest_candidate_hash,last_good_published_revision_id,last_good_published_at) from public.app_supply_control where singleton)
+     is distinct from (select (c0.latest_staged_revision_id,c0.latest_candidate_hash,c0.last_good_published_revision_id,c0.last_good_published_at)) then raise exception 'aborted finish changed supply pointers'; end if;
+
+  -- 3. the worker records the failure; the next complete run (new operation) stages once, advances only the staged pointer
+  r := public.finish_supply_sync(run2,adm,'failed','{"tablePages":1,"venuePages":1,"tables":1,"venues":1}'::jsonb,null,null,'[]'::jsonb,'[]'::jsonb,'new_operation_required','finish aborted',null);
+  if r->>'state' <> 'failed' then raise exception 'failure not recorded %', r; end if;
+  b := public.begin_supply_sync(op3,adm);
+  r := public.finish_supply_sync((b->'run'->>'run_id')::uuid,adm,'staged','{"tablePages":1,"venuePages":1,"tables":1,"venues":1}'::jsonb,hy,
+    jsonb_build_array(jsonb_build_object('id',tbl),jsonb_build_object('id',newv)),
+    jsonb_build_array(jsonb_build_object('entityKind','table','sourceRecordId',src,'coreId',tbl),jsonb_build_object('entityKind','venue','sourceRecordId',src||'-new','coreId',newv)),
+    '[]'::jsonb,'blocked',null,0);
+  if r->>'state' <> 'staged' or r->>'candidate_revision_id' is null then raise exception 'recovery run did not stage %', r; end if;
+  if (select count(*) from public.app_supply_sync_revisions) <> revs_all + 1 or (select count(*) from public.app_supply_external_mappings) <> maps + 1 then raise exception 'recovery duplicated or skipped rows'; end if;
+  if (select latest_staged_revision_id from public.app_supply_control where singleton) <> (r->>'candidate_revision_id')::uuid
+     or (select last_good_published_revision_id from public.app_supply_control where singleton) is distinct from c0.last_good_published_revision_id
+     or (select last_good_published_at from public.app_supply_control where singleton) is distinct from c0.last_good_published_at then raise exception 'recovery moved the wrong pointers'; end if;
+  -- replaying the finished run changes nothing
+  if public.finish_supply_sync((b->'run'->>'run_id')::uuid,adm,'staged','{"tablePages":1,"venuePages":1,"tables":1,"venues":1}'::jsonb,hy,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'blocked',null,0)->>'state' <> 'staged'
+     or (select count(*) from public.app_supply_sync_revisions) <> revs_all + 1 then raise exception 'finish replay not idempotent'; end if;
+end $partial$;
+rollback;`]);
+assert.equal(partial.status, 0, partial.stderr || partial.stdout);
+const left = run("psql", [db, "-X", "-At", "-c", "select count(*) from public.app_supply_external_mappings where source_record_id like 'w05-partial-%' or source_record_id like 'w05-partial-%-new'"]);
+assert.equal(left.stdout.trim(), "0", "partial-failure scenario left mappings");
+console.log("supply-sync-test: partial failure (abandoned run, aborted finish, recovery on next complete run) passed; rolled back");
 console.log("supply-sync-test: guarded project fifthwheel-rewrite-test; migration " + migration + "; complete/malformed scan, missing/reappearance, pointers, guards, audit, and rollback cleanup passed");

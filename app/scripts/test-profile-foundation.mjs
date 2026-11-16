@@ -505,8 +505,74 @@ async function main() {
   console.log("W04 profile DB checks passed: role denials, evidence-set versioning, preference edit, stale-decision conflict, critical-edit invalidation, fresh review, approval, and version-safe retention");
 }
 
+// Rollback-only DB edge cases: 21+ birthdate cutoff (America/New_York), 29 Feb, 21-120 matching bounds. Leaves no rows.
+function assertDobAndAgeRangeEdges() {
+  const sql = `begin;
+do $edge$ declare
+  today date := timezone('America/New_York', now())::date;
+  cutoff date := (timezone('America/New_York', now())::date - interval '21 years')::date;
+  u uuid := gen_random_uuid(); s uuid := gen_random_uuid(); a uuid := gen_random_uuid();
+  em text := 'edge-' || replace(gen_random_uuid()::text,'-','') || '@example.test';
+  n integer := 0;
+  -- attempt an insert into one of the two age-constrained tables; return sqlstate or 'ok'
+  r text;
+begin
+  insert into auth.users(id,aud,role,email,email_confirmed_at,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+    values (u,'authenticated','authenticated',em,now(),'','{}','{}',now(),now());
+  insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game)
+    values (s,em,'Edge','Case','1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me');
+  insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at)
+    values (a,s,em,'activated',u,u,now());
+  insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game)
+    values (gen_random_uuid(),u,a,'Edge','Case',cutoff,'woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');  -- exactly 21 today passes
+  update public.app_member_profiles set date_of_birth=date '2004-02-29' where auth_user_id=u;  -- 29 Feb birthdate, long past 21
+  update public.app_member_profiles set match_age_min=21,match_age_max=120 where auth_user_id=u;  -- 21 and 120 both accepted
+
+  -- each bad update must fail with check_violation (23514) and not change the row
+  foreach r in array array[
+    format('date_of_birth=%L', cutoff + 1),                      -- turns 21 tomorrow
+    format('date_of_birth=%L', today),
+    'match_age_min=20,match_age_max=120',
+    'match_age_min=21,match_age_max=121',                        -- 121 refused as upper bound
+    'match_age_min=30,match_age_max=29'                          -- inverted range
+  ] loop
+    begin execute 'update public.app_member_profiles set '||r||' where auth_user_id='||quote_literal(u);
+      raise exception 'profile accepted %', r;
+    exception when check_violation then n := n + 1; end;
+  end loop;
+  if n<>5 then raise exception 'expected 5 refusals, got %', n; end if;
+  if (select date_of_birth from public.app_member_profiles where auth_user_id=u) <> date '2004-02-29' then raise exception 'row changed by refused update'; end if;
+
+  -- waitlist_signups: same 21+ cutoff and 21-120 range
+  update public.waitlist_signups set birthdate=cutoff where id=s;
+  update public.waitlist_signups set match_age_min=21,match_age_max=120 where id=s;
+  n := 0;
+  foreach r in array array[format('birthdate=%L', cutoff + 1),'match_age_min=20','match_age_max=121','match_age_min=40,match_age_max=39'] loop
+    begin execute 'update public.waitlist_signups set '||r||' where id='||quote_literal(s);
+      raise exception 'signup accepted %', r;
+    exception when check_violation then n := n + 1; end;
+  end loop;
+  if n<>4 then raise exception 'expected 4 signup refusals, got %', n; end if;
+
+  -- 21 + 29 Feb arithmetic the cutoff and age() rely on: leap-day birth turns 21 on 1 Mar in a non-leap year
+  if (date '2025-02-28' - interval '21 years')::date <> date '2004-02-28' or (date '2025-03-01' - interval '21 years')::date <> date '2004-03-01' then raise exception 'cutoff arithmetic changed'; end if;
+  if date '2004-02-29' <= (date '2025-02-28' - interval '21 years')::date then raise exception '29 Feb birth counted as 21 on 28 Feb'; end if;
+  if date '2004-02-29' > (date '2025-03-01' - interval '21 years')::date then raise exception '29 Feb birth not 21 on 1 Mar'; end if;
+  if extract(year from age(date '2025-02-28', date '2004-02-29'))::integer <> 20 or extract(year from age(date '2025-03-01', date '2004-02-29'))::integer <> 21 then raise exception 'age() leap-day semantics changed'; end if;
+  -- age 120 / 121 as a computed attendee age
+  if extract(year from age(date '2026-11-15', date '1906-11-15'))::integer <> 120 or extract(year from age(date '2026-11-15', date '1905-11-15'))::integer <> 121 then raise exception 'age 120/121 arithmetic'; end if;
+end $edge$;
+rollback;`;
+  const r = run("psql", [dbUrl, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", sql]);
+  assert.equal(r.status, 0, r.stderr || r.stdout);
+  const left = run("psql", [dbUrl, "-X", "-At", "-c", "select count(*) from auth.users where email like 'edge-%@example.test'"]);
+  assert.equal(left.stdout.trim(), "0", "dob edge check left rows");
+  console.log("W04 DOB/age-range edges passed: 21 today ok, 21 tomorrow refused, 29 Feb, 21-120 bounds, inverted range; rolled back");
+}
+
 async function runMain() {
   assertGuardedTestStack();
+  assertDobAndAgeRangeEdges();
   try {
     await main();
   } finally {

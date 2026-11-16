@@ -166,8 +166,64 @@ do $w083$ declare v jsonb; b jsonb; a jsonb; msg text; n integer; begin
   exception when sqlstate 'P0002' then null; end;
   -- money and other guests survive: payments untouched, other members' profiles intact
   if (select count(*) from public.app_payments where state in ('verified_paid','refund_pending'))<6 or (select first_name from public.app_member_profiles where guest_id='${A}')<>'VoteA' then raise exception 'deletion touched other records'; end if;
+  -- ---- 200+ row queues: overview counts, claim_notices batch drain (the paginated queue), notice problem list ------
+  declare
+    base_q integer; base_p integer; got uuid[]:='{}'; batch jsonb; total integer; b2 jsonb; a2 jsonb; ids uuid[]; lease uuid; nid uuid; att integer;
+  begin
+    -- overview counts stay exact with 250 synthetic waitlist rows
+    b2:=public.read_admin_overview(${q(admin)})->'counts';
+    insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game)
+      select gen_random_uuid(),'w083-bulk-'||g||'@vote.example','Bulk','Row'||g,'1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me' from generate_series(1,250) g;
+    a2:=public.read_admin_overview(${q(admin)})->'counts';
+    if (a2->>'waitlistAwaitingInvite')::integer<>(b2->>'waitlistAwaitingInvite')::integer+250 then raise exception 'waitlist count with 250 rows: % -> %',b2->>'waitlistAwaitingInvite',a2->>'waitlistAwaitingInvite'; end if;
+
+    -- 250 queued notices, plus whatever the fixture triggers queued: claim in batches of 20 until empty
+    delete from public.app_notice_outbox where recipient_user_id=${q(members[6])};
+    insert into public.app_notice_outbox(kind,recipient_user_id,dedupe_key,payload)
+      select 't48_reminder',${q(members[0])},'w083-bulk:'||g,'{}'::jsonb from generate_series(1,250) g;
+    select count(*) into total from public.app_notice_outbox where state='queued';
+    if total<250 then raise exception 'seed failed %',total; end if;
+    begin perform public.claim_notices(21); raise exception 'limit 21 accepted'; exception when sqlstate '22023' then null; end;
+    begin perform public.claim_notices(0); raise exception 'limit 0 accepted'; exception when sqlstate '22023' then null; end;
+    loop
+      batch:=public.claim_notices(20);
+      exit when jsonb_array_length(batch)=0;
+      if jsonb_array_length(batch)>20 then raise exception 'batch over limit'; end if;
+      ids:=array(select (e->>'noticeId')::uuid from jsonb_array_elements(batch) e);
+      if ids && got then raise exception 'a notice was claimed twice across batches'; end if;
+      got:=got||ids;
+    end loop;
+    if cardinality(got)<>total or (select count(distinct x) from unnest(got) x)<>total then raise exception 'drain returned % of % notices',cardinality(got),total; end if;
+    if exists(select 1 from public.app_notice_outbox where state='queued' and next_attempt_at<=clock_timestamp()) or (select count(*) from public.app_notice_outbox where state='sending')<>total then raise exception 'drain left queued or mis-stated rows'; end if;
+
+    -- worker died mid-send: expired leases become unknown, are never handed out again, and wait for an operator
+    update public.app_notice_outbox set lease_until=clock_timestamp()-interval '1 second' where state='sending';
+    batch:=public.claim_notices(20);
+    if jsonb_array_length(batch)<>0 then raise exception 'expired lease re-sent automatically %',batch; end if;
+    if (select count(*) from public.app_notice_outbox where state='unknown' and error_code='lease_expired' and lease_token is null)<>total or exists(select 1 from public.app_notice_outbox where state in ('queued','sending')) then raise exception 'abandoned leases not unknown'; end if;
+    if jsonb_array_length(public.claim_notices(20))<>0 then raise exception 'unknown notice claimed on a later pass'; end if;
+    perform public.enqueue_due_notices();
+    if exists(select 1 from public.app_notice_outbox where state in ('queued','sending')) then raise exception 'enqueue re-queued an unknown notice'; end if;
+    -- a late finish from the dead worker's stale lease is refused
+    select notice_id into nid from public.app_notice_outbox where dedupe_key='w083-bulk:1';
+    begin perform public.finish_notice(nid,gen_random_uuid(),'accepted',false,'m1',null); raise exception 'finish on abandoned notice accepted';
+    exception when sqlstate 'P0001' then get stacked diagnostics msg=message_text; if msg<>'lease_lost' then raise; end if; end;
+    -- operator list returns every row exactly once (it is unpaginated: 250+ items in one reply)
+    v:=public.list_notice_problems(${q(admin)});
+    if jsonb_array_length(v->'items')<>total or (select count(distinct i->>'noticeId') from jsonb_array_elements(v->'items') i)<>total then raise exception 'problem list % of %',jsonb_array_length(v->'items'),total; end if;
+    -- operator retry re-queues exactly that notice once; attempt_count is capped below the limit
+    select attempt_count into att from public.app_notice_outbox where notice_id=nid;
+    perform public.resolve_notice(${q(admin)},nid,'retry');
+    batch:=public.claim_notices(20);
+    if jsonb_array_length(batch)<>1 or batch->0->>'noticeId'<>nid::text then raise exception 'retry not claimed exactly once %',batch; end if;
+    perform public.finish_notice(nid,(batch->0->>'leaseToken')::uuid,'accepted',false,'m1',null);
+    begin perform public.resolve_notice(${q(admin)},nid,'retry'); raise exception 'accepted notice re-queued';
+    exception when sqlstate 'P0001' then null; end;
+  end;
 end $w083$;
 rollback;`;
 psql(sql);
+assert.equal(psql(`select count(*) from public.waitlist_signups where email_normalized like 'w083-%'`), "0", "rollback left signups");
+assert.equal(psql(`select count(*) from public.app_notice_outbox where dedupe_key like 'w083-bulk:%'`), "0", "rollback left notices");
 assert.equal(psql(`select count(*) from public.app_conduct_reports where operation_id in (${[id(901), id(902), id(903)].map(q).join(",")})`), "0", "rollback left rows");
 console.log("w10-ops-db-test: heartbeat health, overview counts move by exactly one and expose no text, ratings de-identified at 90 days and deleted at 12 months, audit expiry, idempotent retention, conduct deletion review (hold and age), account deletion (guards, pseudonymisation, sign-in ended, idempotent); rolled back.");
