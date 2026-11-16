@@ -126,3 +126,12 @@ test("bad date/time/venue inputs are rejected before repository mutation", async
   if (!result.ok) assert.equal(result.error.code, "validation_failed");
   assert.equal(calls.update, 0);
 });
+
+test("an unassigned caller is refused before the mutation gate or body validation reveal anything", async () => {
+  const { service } = setup({ providerState: "disabled_unmapped" });
+  for (const accessToken of ["other-host", "member"]) {
+    const result = await service.updateDraft({ accessToken, draftId: revisionId, request: { operationId, expectedDraftRevision: 1, content } });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.error.code, "forbidden");
+  }
+});

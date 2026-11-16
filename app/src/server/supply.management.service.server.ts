@@ -197,10 +197,11 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and operation identifiers.");
-      if (!mutationsAvailable()) return fail("provider_unavailable", "Draft mutations are enabled only for local synthetic supply until Airtable mappings are verified.");
-      if (!isDraftContent(input.request.content)) return fail("invalid_input", "Check the draft fields and try again.");
       try {
+        // Authorize before the feature gate or body validation, so a caller without access never learns anything else about the route.
         if (!(await authorizeDraft(actor, input.draftId))) return fail("forbidden", "You are not assigned to this draft.");
+        if (!mutationsAvailable()) return fail("provider_unavailable", "Draft mutations are enabled only for local synthetic supply until Airtable mappings are verified.");
+        if (!isDraftContent(input.request.content)) return fail("invalid_input", "Check the draft fields and try again.");
         const normalized = normalizeInputContent(input.request.content);
         const validation = validateContent(normalized);
         if (validation.issues.length) return fail("validation_failed", "Correct the highlighted fields before saving.", Object.fromEntries(validation.issues.map((issue) => [issue.field, issue.message])));
