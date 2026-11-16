@@ -136,7 +136,7 @@ test("stage 1: host proposes, admin approves; replay creates no duplicates; stal
   const hp = await host.newPage();
   await hp.goto(`${appOrigin}/host/tables/${T1.id}/roster`);
   await expect(hp.getByRole("heading", { name: "People who asked to join" })).toBeVisible();
-  for (const k of ["A", "B", "C", "D"]) await hp.getByLabel(`Select ${M[k].first} ${M[k].last}`).check();
+  for (const k of ["A", "B", "C", "D"]) await hp.getByLabel(`Select ${M[k].first}`, { exact: true }).check();
   await hp.getByRole("button", { name: "Save draft" }).click();
   await expect(hp.getByText("Saved.")).toBeVisible();
   await hp.getByRole("button", { name: "Save draft" }).click(); // a second save supersedes revision 1 with revision 2
