@@ -15,7 +15,7 @@ type ViewState = "loading" | "ready" | "empty" | "error" | "unauthenticated" | "
 type ActionKind = "dispatch" | "retry" | "reconcile";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const obligationStates = new Set<RefundObligationSummaryDTO["state"]>(["open", "pending", "submitted", "unknown", "failed", "succeeded"]);
-const sources = new Set<RefundObligationSummaryDTO["source"]>(["late_checkout_ineligible", "cancellation"]);
+const sources = new Set<RefundObligationSummaryDTO["source"]>(["late_checkout_ineligible", "cancellation", "table_cancellation", "removal"]);
 const operationStates = new Set<RefundOperationDTO["state"]>(["pending", "submitted", "unknown", "failed", "succeeded"]);
 const blockedReasons = new Set<NonNullable<RefundObligationSummaryDTO["dispatchBlockedReason"]>>(["balance_reserved", "operation_in_progress", "manual_review", "settled", "provider_unavailable"]);
 
@@ -100,7 +100,7 @@ function operationLabel(state: RefundOperationDTO["state"]): string {
   }
 }
 function sourceLabel(source: RefundObligationSummaryDTO["source"]): string {
-  return source === "late_checkout_ineligible" ? "Paid after the table filled" : "Cancellation";
+  return source === "late_checkout_ineligible" ? "Paid after the table filled" : source === "table_cancellation" ? "Table cancelled" : source === "removal" ? "Removed from the table" : "Cancellation";
 }
 function blockedCopy(reason: RefundObligationSummaryDTO["dispatchBlockedReason"]): string {
   switch (reason) {

@@ -478,9 +478,10 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       if (!response.ok || !result?.ok) {
         const error = result && !result.ok ? result.error : null;
         const isConflict = response.status === 409 || error?.code === "revision_conflict" || error?.code === "protected_change";
-        setMutationState(isConflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? "Draft changes could not be confirmed."); setFieldErrors(error?.fields ?? {});
+        // loadDetail() resets the feedback, so reload first and then explain why the save was refused.
         if (isConflict) { saveOperation.current = null; await loadDetail(); }
         else if (!error?.retryable) saveOperation.current = null;
+        setMutationState(isConflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? "Draft changes could not be confirmed."); setFieldErrors(error?.fields ?? {});
         return;
       }
       saveOperation.current = null; setDetail((current) => current ? { ...current, draft: result.data } : current);
@@ -522,9 +523,9 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       if (!response.ok || !result?.ok) {
         const error = result && !result.ok ? result.error : null;
         const conflict = response.status === 409 || error?.code === "revision_conflict" || error?.code === "protected_change";
-        setMutationState(conflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? `The ${kind} result could not be confirmed.`);
         if (conflict) { operationRef.current = null; await loadDetail(); }
         else if (!error?.retryable) operationRef.current = null;
+        setMutationState(conflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? `The ${kind} result could not be confirmed.`);
         return;
       }
       operationRef.current = null; setDialog("closed"); setPreview(null); setMutationState("idle");

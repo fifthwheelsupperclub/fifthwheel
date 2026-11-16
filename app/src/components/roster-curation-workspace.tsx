@@ -342,12 +342,12 @@ function RosterDetail({ actor, tableId }: { actor: Actor; tableId: string }) {
       }
       retryOperation.current = null;
       try { sessionStorage.removeItem(retryStorageKey); } catch { /* Operation is confirmed by the server. */ }
+      setConfirmApproval(false);
+      await load(); // load() clears the notice, so reload first and then confirm the outcome
       if (action === "approve") {
         setNotice({ tone: "good", text: "Roster approved. Invitations are on their way. Track them in Table invitation delivery." });
       } else if (action === "submit") setNotice({ tone: "good", text: "Sent for approval." });
       else setNotice({ tone: "good", text: "Saved." });
-      setConfirmApproval(false);
-      await load();
     } catch {
       setNotice({ tone: "bad", text: "We’re not sure that worked. Try again (it’s safe) or reload." });
     } finally { setBusy(null); }
