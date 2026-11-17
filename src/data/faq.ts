@@ -51,14 +51,14 @@ export const faqs: FaqItem[] = [
   {
     question: "What does my $25 reservation actually include and what do I pay for that night?",
     answers: [
-      "The $25 fee covers curation, identity verification, coordination with the venues, reserved space, and the Fifth Wheel experience, including voting. Food and drinks aren’t included; everyone pays their own restaurant/bar tabs, tax, gratuity, transportation, and parking.",
+      "The $25 fee covers curation, coordination with the venues, reserved space, and the Fifth Wheel experience, including voting. Food and drinks aren’t included; everyone pays their own restaurant/bar tabs, tax, gratuity, transportation, and parking.",
     ],
   },
   {
     question: "What if I feel uncomfortable or someone behaves inappropriately?",
     answers: [
       "If you feel uncomfortable or unsafe, you may leave the experience at any time. If you believe you are in immediate danger, call 911 or local emergency services.",
-      "All participants are required to complete identity verification. Verification confirms biometric selfies to video. This is not a criminal background check, sex offender registry search, or assessment of a participant’s character, intentions, or safety.",
+      "A coordinator reviews every guest before inviting them to a table. We do not check identity documents, and this review is not a criminal background check, sex offender registry search, or assessment of a participant’s character, intentions, or safety.",
     ],
   },
   {
