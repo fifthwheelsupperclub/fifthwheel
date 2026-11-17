@@ -58,13 +58,12 @@ test("restaurant workspace takes an optional venue id and rejects junk", async (
   assert.equal((await s.handle("restaurantWorkspace", get("/r?venueId=junk"))).status, 400);
 });
 
-test("removal and replacement: admin only, exact body, null replacement allowed, conflicts surfaced", async () => {
-  const body = { operationId: id(3), expectedRevision: 2, refundCents: 1500, replaceRequestId: id(5) };
+test("removal: admin only, exact body, never a replacement, conflicts surfaced", async () => {
+  const body = { operationId: id(3), expectedRevision: 2, refundCents: 1500 };
   const admin = setup(who("admin"));
   assert.equal((await admin.handle("removeAndReplace", post(body), { invitationId: id(7) })).status, 200);
-  assert.deepEqual(admin.calls[0], ["remove_and_replace", { p_actor: id(1), p_invitation_id: id(7), p_operation_id: id(3), p_expected_revision: 2, p_refund_cents: 1500, p_replace_request_id: id(5) }]);
-  assert.equal((await admin.handle("removeAndReplace", post({ ...body, replaceRequestId: null }), { invitationId: id(7) })).status, 200);
-  assert.equal((await admin.handle("removeAndReplace", post({ operationId: id(3), expectedRevision: 2, refundCents: 0 }), { invitationId: id(7) })).status, 400);
+  assert.deepEqual(admin.calls[0], ["remove_and_replace", { p_actor: id(1), p_invitation_id: id(7), p_operation_id: id(3), p_expected_revision: 2, p_refund_cents: 1500, p_replace_request_id: null }]);
+  assert.equal((await admin.handle("removeAndReplace", post({ ...body, replaceRequestId: id(5) }), { invitationId: id(7) })).status, 400);
   assert.equal((await admin.handle("removeAndReplace", post({ ...body, refundCents: "5" }), { invitationId: id(7) })).status, 400);
   assert.equal((await admin.handle("replacementSuggestion", get("/s"), { invitationId: id(7) })).status, 200);
   const host = setup(who("host"));
@@ -74,6 +73,32 @@ test("removal and replacement: admin only, exact body, null replacement allowed,
   const conflict = await setup(who("admin"), async () => { throw new OpsRpcError("revision_conflict"); }).handle("removeAndReplace", post(body), { invitationId: id(7) });
   assert.equal(conflict.status, 409);
   assert.equal((await conflict.json()).error.reason, "revision_conflict");
+});
+
+test("placement: admin only, the Auth user is created only after the role check, warnings come back as issues", async () => {
+  const body = { signupId: id(4), tableId: id(5), operationId: id(6), acknowledgeWarnings: false };
+  const created: string[] = [];
+  const make = (principal: ServerVerifiedPrincipal, rpc?: (n: string, a: Record<string, unknown>) => Promise<unknown>) => {
+    const calls: Array<[string, Record<string, unknown>]> = [];
+    const handle = createOpsHandler({ resolvePrincipal: async () => principal, rpc: async (n, a) => { calls.push([n, a]); return rpc ? rpc(n, a) : { ok: 1 }; },
+      ensureGuestAuthUser: async (signupId) => { created.push(signupId); return id(9); } }, origin);
+    return { calls, handle };
+  };
+  const host = make(who("host"));
+  assert.equal((await host.handle("place", post(body))).status, 403);
+  assert.deepEqual(created, []);
+  const admin = make(who("admin"));
+  assert.equal((await admin.handle("place", post({ ...body, extra: 1 }))).status, 400);
+  assert.equal((await admin.handle("place", post(body))).status, 200);
+  assert.deepEqual(admin.calls[0], ["place_guest_at_table", { p_actor: id(1), p_signup_id: id(4), p_table_id: id(5), p_operation_id: id(6), p_acknowledge_warnings: false, p_auth_user_id: id(9) }]);
+  assert.deepEqual(created, [id(4)]);
+  const warned = await make(who("admin"), async () => { throw new OpsRpcError("placement_warnings", JSON.stringify({ issues: ["age_span_exceeded", "<bad>"] })); }).handle("place", post(body));
+  assert.equal(warned.status, 409);
+  assert.deepEqual((await warned.json()).error.issues, ["age_span_exceeded"]);
+  const full = await make(who("admin"), async () => { throw new OpsRpcError("table_full"); }).handle("place", post(body));
+  assert.equal((await full.json()).error.reason, "table_full");
+  assert.equal((await admin.handle("placementQueue", get("/q"))).status, 200);
+  assert.equal((await host.handle("placementQueue", get("/q"))).status, 403);
 });
 
 test("member routes need an activated admission, not a staff role; ballot body is exactly one key", async () => {

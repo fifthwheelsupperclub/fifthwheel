@@ -2,6 +2,18 @@
 
 Version 3 · 2026-11-11 · Fresh-rewrite requirements baseline. This document records inherited policies and the explicit clarifications below; it does not claim a finished app, approved screen designs or release authorization.
 
+## 0. Version 4 change (2026-11-16): no approval steps
+
+Version 4 removes every staff approval before an invitation (`knowledge/decisions/staff-place-guests-directly.md`). Where this section conflicts with anything below, this section wins.
+
+- **Waitlist → queue.** Joining the waitlist queues a confirmation email and adds the person to a staff placement queue. Test submissions and the legacy import send nothing.
+- **No admission approval (replaces the admin-confirmed app invitation in R00, A27, A31, D14).** Access is created when an admin places the person at a Table. A placed guest signs in through the link in their Table invitation email. People on the waitlist who haven't been placed cannot sign in.
+- **No photo, selfie or profile review (replaces D05, the photo/selfie and review parts of R01, A02, A33).** Profiles are form fields only, and edits take effect immediately.
+- **No browsing or seat requests (replaces D02, D11, R02, A04, A05).** Guests are invite-only.
+- **No roster proposal or approval (replaces R03, A06 and the host proposal role).** An admin adds one guest at a time; the invitation is queued in the same step. The hard blocks at placement are 21+ on the Table date and at most five active invitations. Mutual age ranges, the 12-year span and mutual openness are warnings the admin may override; this replaces D06's "staff cannot override". The three-guest minimum stays with the T−24 decision (D07).
+- **Removal (R16).** Removal no longer suggests a replacement. Staff fill the seat from the placement queue.
+- Payment, Seats, cancellations, refunds, the night of, voting and feedback are unchanged.
+
 ## 1. Purpose and authority
 
 Deliver the complete product-app MVP: verified guest onboarding, staff-curated paid Tables, night-of attendance and private voting, post-night feedback, and staff/restaurant operations. Build a fresh app from these requirements. Preserve the previous app’s visual style; improve UI layouts, information architecture and navigation where that makes the experience more intuitive. The root Astro marketing presentation remains unchanged; its waitlist submission integration is explicitly in scope.
@@ -15,15 +27,15 @@ Explicit current-chat decisions: app access is invited from the marketing waitli
 | ID | Current decision | Earlier material affected |
 | --- | --- | --- |
 | D01 | Complete the MVP, including persisted night-of workflows. | Earlier refactor-only non-goals. |
-| D02 | Guests browse published Tables and request a Seat; staff approve composition before invitations enable payment. | Clarifies `knowledge/decisions/staff-approve-before-invites.md`; replaces open browse/pay ambiguity. |
+| D02 | *Superseded by §0 (v4):* staff place guests from the waitlist queue; the invitation enables payment. ~~Guests browse published Tables and request a Seat; staff approve composition before invitations enable payment.~~ | Clarifies `knowledge/decisions/staff-approve-before-invites.md`; replaces open browse/pay ambiguity. |
 | D03 | Table invitations stay open until revoked or the Table closes. Checkout holds and authentication links have independent expiry rules. T−2-day unpaid reminder. | Preserves `invitations-do-not-expire.md`; replaces current two-hour invite reservation. |
 | D04 | Guests request cancellation. Staff confirm removal and decide full/partial/no refund; Table cancellation refunds all remaining paid amounts. | Resolves proposed `refunds.md`; replaces current automatic timed tiers. |
-| D05 | Staff review identity photos/selfie before payment. | Resolves verification-gate uncertainty. |
+| D05 | *Superseded by §0 (v4):* no photo/selfie review. ~~Staff review identity photos/selfie before payment.~~ | Resolves verification-gate uncertainty. |
 | D06 | 21+, age from DOB on Table date; mutual age ranges for every pair; span ≤12 years; 3–5 guests; each guest has at least one mutually open connection. Staff cannot override hard rules. | Replaces prototype ten-year scoring constraint; preserves accepted age rules. |
 | D07 | T−24-hour staff alert and mandatory staff cancellation below three paid guests; 3–5 may proceed if valid. | Resolves proposed `table-cutoffs.md`. |
 | D08 | Checked-in paid guests choose one eligible attendee or nobody, during [start+90m, start+120m); reveal only own mutual result after close. | Resolves eligibility, ballot and reveal questions in `voting-window-mutual-only.md`. |
 | D09 | Ratings and private conduct reports; no chat or contact exchange. | Replaces prototype chat/outcome controls. |
-| D10 | Supabase owns core guest/transaction/night-of records; Airtable owns Table and venue supply. | Replaces earlier Airtable-primary architectural assumption. |
+| D10 | Supabase owns all records, including Table and venue supply, which admins curate in the app. | Replaces the earlier Airtable-owned supply assumption (2026-11-17); the Airtable sync was never connected. |
 | D11 | Friend shares a Table URL; friend applies through normal review. No reserved Seat. | Replaces guest-created Table hold/invite send. |
 | D12 | $25 USD checkout, email notifications, America/New_York time, no rescheduling. | Explicit hand-off defaults from approved plan. |
 | D13 | Historical single-choice preference decision is superseded by D16. Own identity remains one Woman / Man / Non-binary choice. | Retained as history; do not implement the old Women / Men / Everyone restriction. |
@@ -131,7 +143,7 @@ My Seats shows pending payments, confirmed Seats, cancellation requests, cancell
 
 ### R06 — Table operations, minimum and replacements
 
-Staff manage supply through Airtable-backed app tools: create/edit draft Table, link three itinerary stops, publish, preview/clone/undo a week of drafts. Approval uses a stable supply revision. No in-place rescheduling of Tables with invitations/paid Seats; use cancellation and a new Table. At T−24h an alert requires admin review. Fewer than three paid guests must be cancelled by staff; 3–5 may proceed if the paid roster passes matching rules. Without a valid proceed decision at/after T−24h, payment stays paused and the UI says staff review pending. A loss of validity after proceed suspends it and alerts admin; guest activity is blocked until resolved. No automatic Table cancellation.
+Admins curate supply in the app: manage venues, create/edit draft Table, link three itinerary stops, publish, preview/clone/undo a week of drafts. Approval uses a stable supply revision. No in-place rescheduling of Tables with invitations/paid Seats; use cancellation and a new Table. At T−24h an alert requires admin review. Fewer than three paid guests must be cancelled by staff; 3–5 may proceed if the paid roster passes matching rules. Without a valid proceed decision at/after T−24h, payment stays paused and the UI says staff review pending. A loss of validity after proceed suspends it and alerts admin; guest activity is blocked until resolved. No automatic Table cancellation.
 
 On confirmed removal, show “Replace with [name] from the waitlist?” using one eligible existing guest/application; Yes revalidates under lock and sends one invitation; No removes without sending. An email-only signup is not eligible until verified, profiled and identity-approved. Never guess missing age/preferences. No safe suggestion means no replacement action; removal still succeeds. A roster below three can retain drafts but cannot send a new invitation until an approvable 3–5 composition exists.
 
@@ -162,7 +174,7 @@ Explicit staff tools cover supply, requests/matching, identity review, waitlist,
 
 ### R10 — Architecture, migration and release
 
-Supabase owns identities, applications, rosters, invitations, holds, Seats, payments/refunds, attendance/votes/feedback and audit. Airtable owns supply title/date/time/venue/itinerary/draft publication intent; synchronized Supabase supply is the app read model. Financial/operational lifecycle cannot be overwritten by Airtable. No public-demo data in production.
+Supabase owns identities, applications, rosters, invitations, holds, Seats, payments/refunds, attendance/votes/feedback and audit. Supabase also owns supply (venues, Table drafts and published revisions), curated by admins in the app. Financial/operational lifecycle cannot be overwritten by Airtable. No public-demo data in production.
 
 - **A23:** interrupted/partial sync cannot delete published supply or overwrite runtime lifecycle. Duplicate imports preserve UUID mappings. Missing upstream row becomes a conflict for review, not automatic cancellation/deletion.
 - **A24:** migrate with count, linkage, payment/refund balance and unresolved-identity reconciliation; rehearse cutover and rollback. Unmatched identity/DOB/payment rows are quarantined with named remediation, never silently merged or converted.
@@ -186,10 +198,10 @@ Success for this hand-off is traceable R00–R11 coverage, acceptance A01–A35 
 
 This baseline supplies the documented product direction, subject to the current requirements-only hold. Engineering defaults below make the implementation bounded; they are not claims of user research: 30-minute card checkout holds; admin-only identity/roster approval/refunds; host-assigned attendance; no late ballot entry; draft-only safe clone undo; no schedule edits after first invitation; email retries and scheduler tolerances in Architecture. Freeze eligibility on the server at opening, using attendance timestamps if the scheduler is late.
 
-Deployment/provider configuration, actual Airtable schema/content quality, existing Stripe modes/payment history, existing Supabase RLS/storage settings, and the hosting scheduler remain unverified external facts. They block production cutover, not local development. [Review disposition](review-disposition.md) owns the current readiness decision.
+Deployment/provider configuration, existing Stripe modes/payment history, existing Supabase RLS/storage settings, and the hosting scheduler remain unverified external facts. They block production cutover, not local development. [Review disposition](review-disposition.md) owns the current readiness decision.
 
 ## 6. Readiness and remaining evidence
 
 The known functional gaps from the reset review are addressed by D14–D18, R00 and A26–A35. A complete requirement/task mapping is necessary for the rewrite; passing documentation checks is not evidence that application behavior works.
 
-External evidence remains: actual waitlist store/import inventory, email sender/redirect/delivery configuration, trusted admin setup, Airtable dictionary/sync, Supabase permissions/backups, Stripe modes/history, scheduler/hosting and production data reconciliation. Those tasks have explicit discovery and release gates in the backlog. They must not be guessed. Final legal/cancellation/retention copy and the release operator remain launch dependencies, not a claim that functional product choices are still open. No deployment, live email or charge is authorized by this packet.
+External evidence remains: actual waitlist store/import inventory, email sender/redirect/delivery configuration, trusted admin setup, Supabase permissions/backups, Stripe modes/history, scheduler/hosting and production data reconciliation. Those tasks have explicit discovery and release gates in the backlog. They must not be guessed. Final legal/cancellation/retention copy and the release operator remain launch dependencies, not a claim that functional product choices are still open. No deployment, live email or charge is authorized by this packet.

@@ -234,3 +234,16 @@ test("fails closed in production without a durable limiter and on malformed allo
   assert.equal((await invalidConfig(crossOriginRequest(JSON.stringify(payload)))).status, 503);
   assert.equal(calls, 0);
 });
+
+test("production with the shared bounded limiter accepts submissions and then rate limits", async () => {
+  let calls = 0;
+  const service: () => WaitlistService = () => ({
+    async submit() { calls += 1; return { ok: true, value: { received: true } as const }; },
+  });
+  const handler = createWaitlistPostHandler(service, { allowedOrigin: marketingOrigin, mode: "production", limiter: createBoundedWaitlistRateLimiter({ maxRequests: 2 }) });
+  assert.equal((await handler(crossOriginRequest(JSON.stringify(payload)))).status, 200);
+  assert.equal((await handler(crossOriginRequest(JSON.stringify(payload)))).status, 200);
+  assert.equal((await handler(crossOriginRequest(JSON.stringify(payload)))).status, 429);
+  assert.equal(calls, 2);
+});
+

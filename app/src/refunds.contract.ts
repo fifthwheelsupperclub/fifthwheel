@@ -1,6 +1,6 @@
 /** Browser-safe W07.5 refund operations DTOs. Never add provider IDs or raw provider errors. */
 
-export type RefundObligationSource = "late_checkout_ineligible" | "cancellation";
+export type RefundObligationSource = "late_checkout_ineligible" | "cancellation" | "table_cancellation" | "removal";
 export type RefundObligationState = "open" | "pending" | "submitted" | "unknown" | "failed" | "succeeded";
 export type RefundOperationState = "pending" | "submitted" | "unknown" | "failed" | "succeeded";
 

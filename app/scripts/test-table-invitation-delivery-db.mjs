@@ -116,7 +116,7 @@ try {
   const userValues = authIds.map((id, i) => `('${id}','authenticated','authenticated','${i < 3 ? `w06-table-staff-${i}@example.test` : emails[i - 3]}',now(),'','{}','{}',now(),now())`).join(",\n");
   const memberValues = members.map((id, i) => `('${signups[i]}','${emails[i]}','Table${i + 1}','Guest','1990-01-01','Woman',array['Women'],21,120,'Inman Park',array[]::text[],'','Open','Yes, surprise me')`).join(",\n");
   const admissionValues = members.map((id, i) => `('${admissions[i]}','${signups[i]}','${emails[i]}','activated','${admin}','${id}',now())`).join(",\n");
-  const profileValues = members.map((id, i) => `('${guests[i]}','${id}','${admissions[i]}','approved',1,1,'Table${i + 1}','Guest','1990-01-01','woman',array['woman'],21,120,'Inman Park',array[]::text[],'Open','Yes, surprise me')`).join(",\n");
+  const profileValues = members.map((id, i) => `('${guests[i]}','${id}','${admissions[i]}','Table${i + 1}','Guest','1990-01-01','woman',array['woman'],21,120,'Inman Park',array[]::text[],'Open','Yes, surprise me')`).join(",\n");
   const headValues = tables.map((id) => `('${id}','published','current',null)`).join(",\n");
   const revisionValues = tables.map((tableId, i) => `('${revisions[i]}','${tableId}',1,'published',jsonb_build_object(
     'title','W06.5 Dinner ${i + 1}','localDate','2099-12-${String(10 + i).padStart(2, "0")}','startLocalTime','19:00','neighborhood','Inman Park',
@@ -128,7 +128,7 @@ try {
     '2099-12-${String(10 + i).padStart(2, "0")}','19:00','Inman Park','pending')`).join(",\n");
   const proposalValues = proposals.map((id, i) => `('${id}','${tables[i]}',1,'approved','${revisions[i]}','{"valid":true,"issues":[]}',
     '${admin}','${admin}','${admin}','${admin}',now(),now(),now(),now())`).join(",\n");
-  const proposalMemberValues = proposals.map((id, i) => `('${id}','${requests[i]}','${guests[i]}',1,1,1)`).join(",\n");
+  const proposalMemberValues = proposals.map((id, i) => `('${id}','${requests[i]}','${guests[i]}',1)`).join(",\n");
   const invitationValues = invitations.map((id, i) => `('${id}','${tables[i]}','${guests[i]}','${members[i]}','${requests[i]}','${proposals[i]}','${admin}','active')`).join(",\n");
   const outboxValues = outboxes.map((id, i) => {
     const state = i === 1 ? "failed" : "queued"; const attemptsCount = i === 1 ? 1 : 0;
@@ -142,7 +142,7 @@ insert into auth.users(id,aud,role,email,email_confirmed_at,encrypted_password,r
 insert into public.app_user_roles(user_id,role) values ('${admin}','admin'),('${secondAdmin}','admin'),('${host}','host');
 insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game) values ${memberValues};
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values ${admissionValues};
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values ${profileValues};
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state,published_revision_id) values ${headValues};
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values ${revisionValues};
@@ -150,7 +150,7 @@ update public.app_supply_table_heads h set published_revision_id=r.revision_id
   from public.app_supply_table_revisions r where h.table_id=r.table_id and r.revision=1;
 insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state) values ${requestValues};
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,created_at,updated_at,submitted_at,approved_at) values ${proposalValues};
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values ${proposalMemberValues};
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values ${proposalMemberValues};
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values ${invitationValues};
 insert into public.app_table_invitation_outbox(outbox_id,invitation_id,operation_id,state,attempt_count,error_code,queued_at,next_attempt_at,lease_until,attempted_at,accepted_at,delivered_at,message_kind,manual_retry_requested) values ${outboxValues};
 insert into public.app_table_invitation_attempts(attempt_id,outbox_id,operation_id,attempt_number,state,provider_message_id,error_code,started_at,finished_at) values ${failedAttempt};

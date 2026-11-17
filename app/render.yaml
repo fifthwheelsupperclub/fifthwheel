@@ -5,7 +5,7 @@ services:
     runtime: node
     rootDir: app
     plan: starter # always-on so Stripe webhooks and magic links never hit a cold instance; "free" sleeps
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    buildCommand: npm install -g pnpm@10.17.1 && pnpm install --frozen-lockfile && pnpm build # not corepack: Node 22.12's bundled corepack fails signature checks
     startCommand: pnpm start
     healthCheckPath: /api/health
     envVars:
@@ -18,7 +18,7 @@ services:
       - { key: RESEND_API_KEY, sync: false }
       - { key: MAIL_FROM_EMAIL, sync: false }
       - { key: MAIL_FROM_NAME, value: Fifth Wheel }
-      - { key: STRIPE_MODE, value: live }
+      - { key: STRIPE_MODE, value: test } # first deploy runs on Stripe test keys; change to live (and rebuild) only for the live dry run
       - { key: STRIPE_SECRET_KEY, sync: false }
       - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
       - { key: VITE_STRIPE_PUBLISHABLE_KEY, sync: false }

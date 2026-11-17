@@ -3,7 +3,7 @@
 import { env } from "node:process";
 import { createAdmissionRepository } from "./admission.repository.server.ts";
 import { createResendEmail } from "./email.resend.server.ts";
-import { createMailpitAdmissionEmailProvider, createMailpitMagicLinkEmailProvider } from "./admission.email.mailpit.server.ts";
+import { createMailpitMagicLinkEmailProvider } from "./admission.email.mailpit.server.ts";
 import { createSupabaseAuthLinkProvider } from "./auth.link.supabase.server.ts";
 import { createMemberLinkRepository } from "./member-link.repository.server.ts";
 import { createVerifiedPrincipalResolver } from "./principal.server.ts";
@@ -48,7 +48,6 @@ export function createAdmissionRuntime() {
     authProvider,
     supabase,
     admissionRepository,
-    emailProvider: resend ? resend.admission : createMailpitAdmissionEmailProvider(mailpitConfig!),
     magicLinkEmailProvider: resend ? resend.magicLink : createMailpitMagicLinkEmailProvider(mailpitConfig!),
     memberLinkRepository: createMemberLinkRepository(config),
     resolvePrincipal: createVerifiedPrincipalResolver(supabase),

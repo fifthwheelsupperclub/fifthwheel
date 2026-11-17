@@ -57,7 +57,7 @@ Email, refunds and payments can end in an *unknown* state when a provider did no
 - Each worker pass runs `purge_vote_data` (ballots at 30 days after the Table, results at 90 days) and `run_retention` (rating identifiers removed at 90 days, ratings deleted at 12 months, audit rows deleted after 90 days).
 - Conduct reports are reviewed, not auto-deleted: they show as review-due after 12 months; delete one from Reports & ratings unless it is on hold.
 - **Account deletion** (support request): an admin posts to `POST /api/admin/member-accounts/delete` with `{"guestId":"<uuid>","confirm":"delete"}` using an admin session. It refuses while the person has a live paid Seat (remove the Seat first, with its refund decision) and for staff accounts. It ends sign-in, pseudonymises the person, withdraws pending requests and invitations, and keeps money rows and held cases. There is no screen for this yet.
-- Not yet built: deleting uploaded identity photos from storage (the profile is marked evidence-deleted; the storage cleanup job is open) and backup expiry. Both need the release owner's retention decision.
+- **Identity photos (removed 2026-11-16):** the app no longer collects photos or selfies. **[human, once per project]** after applying `20261117120000_remove_approval_steps.sql`, empty and delete the `identity-evidence` Storage bucket from the Supabase dashboard (Storage → identity-evidence → select all → delete, then delete the bucket). SQL cannot remove Storage objects.
 
 ## 7. Secrets and rotation **[human]**
 
@@ -81,4 +81,16 @@ You confirmed the previous app holds no members, paid Seats or live charges, onl
 
 ## 10. Known gaps this runbook cannot close
 
-Nightly Stripe reconciliation is not built. A real send through Resend, a real Stripe sandbox journey and a real scheduler run have not happened. Release-owner decisions are open on retention periods, finance record retention, the T−48 reminder wording, refunds Stripe confirmed as failed, and terms copy (see [policy copy inventory](policy-copy-inventory.md)).
+Updated 2026-11-16. Closed since the first draft (evidence in the [task ledger](task-ledger.md) and [receipts](w12-verification-receipts.md)): Stripe test-mode payments and refunds on the real local stack, refund retry that no longer relies on Stripe's 24-hour idempotency window, the nightly reconciliation step, the full guest/admin/host journey on the real local stack (11/11), the permission and direct-route sweep (1550 pass, 0 fail), and identity-photo storage cleanup.
+
+Still open:
+
+- **Never run on a host:** no deploy, real send through Resend, run of the GitHub scheduler, or heartbeat alert has happened. The `pnpm start` entry point was only run locally.
+- **Live Stripe mode:** live keys, the live webhook endpoint and a real card are unverified until the owner-run dry run (§9 step 5).
+- **Stripe Dashboard payment methods** are not card-only (Link, Cash App, Klarna and bank are offered). Turn them off in the Dashboard before checkout opens.
+- **Reconciliation** only shows findings. There is no resolution workflow: staff fix the problem in Stripe or the ledger, and the next complete run clears the finding. It has not run in live mode.
+- **Waitlist form rate limit:** production uses one process-local bucket shared by every caller (60 signups per 10 minutes). It caps abuse on one instance, but a flood can also block honest signups, and it resets on restart. Build a durable per-address limiter before running more than one instance.
+- **Not built:** backup expiry and an account-deletion screen (it's API only).
+- **Open product questions:** admins cannot submit or approve a roster they edited; no email for the extra refund remainder when a Table is cancelled after a partial refund (and the cancel-Table dialog wording is wrong then); wrong-method API paths return 200 empty HTML in dev (check the production build).
+- **Deferred (P2/P3), safe after launch:** removal before T−24 only warns the admin instead of pausing checkout; only Table applicants are suggested as replacements; no notice preview or refund-progress emails; no reconciliation resolution workflow; no recap for a cancelled Table; raw hex colours outside tokens; more than 100 refunds on one PaymentIntent.
+- **Release-owner decisions:** retention periods, finance record retention, the T−48 reminder wording, refunds Stripe confirmed as failed, and terms copy (Terms §6/§7 were updated 2026-11-16; see [policy copy inventory](policy-copy-inventory.md)). Defaults accepted 2026-11-16: refunds Stripe confirmed as failed stay owed/manual, the T−48 reminder goes to unpaid invitation holders, retention periods as built.

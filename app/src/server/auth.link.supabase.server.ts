@@ -47,7 +47,8 @@ function normalizedEmail(value: unknown): string | null {
   return email.length <= 320 && emailPattern.test(email) ? email : null;
 }
 
-function parseLoopbackHttpUrl(value: string): URL | null {
+// https for any host (hosted Supabase and the production app origin); plain http only for loopback (the local stack).
+function parseServiceUrl(value: string): URL | null {
   let url: URL;
   try {
     url = new URL(value);
@@ -55,8 +56,7 @@ function parseLoopbackHttpUrl(value: string): URL | null {
     return null;
   }
   if (
-    url.protocol !== "http:"
-    || !localHosts.has(url.hostname)
+    (url.protocol !== "https:" && !(url.protocol === "http:" && localHosts.has(url.hostname)))
     || url.username !== ""
     || url.password !== ""
     || url.search !== ""
@@ -66,8 +66,8 @@ function parseLoopbackHttpUrl(value: string): URL | null {
 }
 
 function validateConfig(config: SupabaseAuthLinkConfig): Readonly<{ authUrl: URL; callbackUrl: string }> {
-  const authUrl = parseLoopbackHttpUrl(config.url);
-  const siteUrl = parseLoopbackHttpUrl(config.siteUrl);
+  const authUrl = parseServiceUrl(config.url);
+  const siteUrl = parseServiceUrl(config.siteUrl);
   if (
     !authUrl
     || authUrl.pathname !== "/"

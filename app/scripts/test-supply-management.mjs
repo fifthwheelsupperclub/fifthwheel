@@ -13,7 +13,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workdir = join(root, "test-stack");
 const api = "http://127.0.0.1:57421";
 const db = "postgresql://postgres:postgres@127.0.0.1:57422/postgres";
-const migrations = ["20261112202411", "20261112205628", "20261112211128", "20261112212740", "20261112215610"];
+const migrations = ["20261112202411", "20261117090000", "20261117110000"];
 const admin = "d7a6c8e2-51e8-4a2b-9672-052160a54001";
 const host = "d7a6c8e2-51e8-4a2b-9672-052160a54002";
 const member = "d7a6c8e2-51e8-4a2b-9672-052160a54003";
@@ -21,11 +21,7 @@ const venueA = "d7a6c8e2-51e8-4a2b-9672-052160a54101";
 const venueB = "d7a6c8e2-51e8-4a2b-9672-052160a54102";
 const venueC = "d7a6c8e2-51e8-4a2b-9672-052160a54103";
 const venueD = "d7a6c8e2-51e8-4a2b-9672-052160a54104";
-const candidateTable = "7f7d8f66-30de-5de3-9ef1-53910370c301";
-const candidateSourceId = "fixture:ac9f65fc94e4:table:2026-11-19-example";
-const syncRun = "d7a6c8e2-51e8-4a2b-9672-052160a54301";
-const syncOperation = "d7a6c8e2-51e8-4a2b-9672-052160a54302";
-const candidateCreateOp = "d7a6c8e2-51e8-4a2b-9672-052160a54303";
+const venueArchived = "d7a6c8e2-51e8-4a2b-9672-052160a54105";
 const createOp = "d7a6c8e2-51e8-4a2b-9672-052160a54201";
 const updateOp = "d7a6c8e2-51e8-4a2b-9672-052160a54202";
 const acceptOp = "d7a6c8e2-51e8-4a2b-9672-052160a54203";
@@ -83,12 +79,11 @@ const collisions = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", 
 select concat(
  (not exists(select 1 from auth.users where id in ('${admin}','${host}','${member}') or email in ('w05.2-admin@example.test','w05.2-host@example.test','w05.2-member@example.test')))::text,'|',
  (not exists(select 1 from public.app_user_roles where user_id in ('${admin}','${host}','${member}')))::text,'|',
- (not exists(select 1 from public.app_supply_table_operations where operation_id in ('${createOp}','${candidateCreateOp}','${updateOp}','${acceptOp}','${publishOp}','d7a6c8e2-51e8-4a2b-9672-052160a54205','d7a6c8e2-51e8-4a2b-9672-052160a54206','d7a6c8e2-51e8-4a2b-9672-052160a54207','d7a6c8e2-51e8-4a2b-9672-052160a54208'))
-   and not exists(select 1 from public.app_supply_sync_runs where run_id='${syncRun}' or operation_id='${syncOperation}')
-   and not exists(select 1 from public.app_audit_events where operation_id in ('${createOp}','${candidateCreateOp}','${updateOp}','${acceptOp}','${publishOp}','${syncOperation}','d7a6c8e2-51e8-4a2b-9672-052160a54205','d7a6c8e2-51e8-4a2b-9672-052160a54206','d7a6c8e2-51e8-4a2b-9672-052160a54207','d7a6c8e2-51e8-4a2b-9672-052160a54208')))::text,'|',
- (not exists(select 1 from public.app_supply_external_mappings where source_record_id in ('w05.2-venue-a','w05.2-venue-b','w05.2-venue-c','w05.2-venue-d','${candidateSourceId}') or core_id in ('${venueA}','${venueB}','${venueC}','${venueD}','${candidateTable}')))::text,'|',
- (not exists(select 1 from public.app_supply_table_heads where table_id in ('${admin}','${host}','${member}','${venueA}','${venueB}','${venueC}','${venueD}','${candidateTable}'))
-   and not exists(select 1 from public.app_supply_table_revisions where table_id in ('${admin}','${host}','${member}','${venueA}','${venueB}','${venueC}','${venueD}','${candidateTable}')))::text)`]);
+ (not exists(select 1 from public.app_supply_table_operations where operation_id in ('${createOp}','${updateOp}','${acceptOp}','${publishOp}','d7a6c8e2-51e8-4a2b-9672-052160a54205','d7a6c8e2-51e8-4a2b-9672-052160a54206','d7a6c8e2-51e8-4a2b-9672-052160a54207','d7a6c8e2-51e8-4a2b-9672-052160a54208'))
+   and not exists(select 1 from public.app_audit_events where operation_id in ('${createOp}','${updateOp}','${acceptOp}','${publishOp}','d7a6c8e2-51e8-4a2b-9672-052160a54205','d7a6c8e2-51e8-4a2b-9672-052160a54206','d7a6c8e2-51e8-4a2b-9672-052160a54207','d7a6c8e2-51e8-4a2b-9672-052160a54208')))::text,'|',
+ (not exists(select 1 from public.app_supply_venues where venue_id in ('${venueA}','${venueB}','${venueC}','${venueD}','${venueArchived}')))::text,'|',
+ (not exists(select 1 from public.app_supply_table_heads where table_id in ('${admin}','${host}','${member}','${venueA}','${venueB}','${venueC}','${venueD}','${venueArchived}'))
+   and not exists(select 1 from public.app_supply_table_revisions where table_id in ('${admin}','${host}','${member}','${venueA}','${venueB}','${venueC}','${venueD}','${venueArchived}')))::text)`]);
 assert.equal(collisions.status, 0, collisions.stderr);
 assert.equal(collisions.stdout.trim(), "true|true|true|true|true", "refusing synthetic fixture ID/email/source/core collisions");
 const auditBaselineResult = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", "select count(*) from public.app_audit_events"]);
@@ -111,52 +106,30 @@ assert.equal(grants.stdout.trim(), "false|false|true|false|false|true|true");
 
 const sql = `
 begin;
-insert into auth.users(id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-values ('${admin}','authenticated','authenticated','w05.2-admin@example.test','','{}','{}',now(),now()),
-       ('${host}','authenticated','authenticated','w05.2-host@example.test','','{}','{}',now(),now()),
-       ('${member}','authenticated','authenticated','w05.2-member@example.test','','{}','{}',now(),now());
+insert into auth.users(id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,email_confirmed_at)
+values ('${admin}','authenticated','authenticated','w05.2-admin@example.test','','{}','{}',now(),now(),now()),
+       ('${host}','authenticated','authenticated','w05.2-host@example.test','','{}','{}',now(),now(),now()),
+       ('${member}','authenticated','authenticated','w05.2-member@example.test','','{}','{}',now(),now(),now());
 insert into public.app_user_roles(user_id,role) values ('${admin}','admin'),('${host}','host');
-insert into public.app_supply_external_mappings(entity_kind,source_record_id,core_id) values
-('venue','w05.2-venue-a','${venueA}'),('venue','w05.2-venue-b','${venueB}'),('venue','w05.2-venue-c','${venueC}'),('venue','w05.2-venue-d','${venueD}'),
-('table','${candidateSourceId}','${candidateTable}');
-insert into public.app_supply_sync_runs(run_id,operation_id,actor_user_id,state,started_at,finished_at,table_count,venue_count,candidate_source_hash)
-values('${syncRun}','${syncOperation}','${admin}','staged',now(),now(),1,4,repeat('c',64));
-with candidate as (
-  insert into public.app_supply_sync_revisions(run_id,source_hash,table_count,venue_count,normalized_candidate)
-  values('${syncRun}',repeat('c',64),1,4,jsonb_build_array(
-    jsonb_build_object('id','${venueA}','sourceRecordId','w05.2-venue-a','name','Test Venue A','address','1 Test Way','neighborhood','Inman Park'),
-    jsonb_build_object('id','${venueB}','sourceRecordId','w05.2-venue-b','name','Test Venue B','address','2 Test Way','neighborhood','Inman Park'),
-    jsonb_build_object('id','${venueC}','sourceRecordId','w05.2-venue-c','name','Test Venue C','address','3 Test Way','neighborhood','Inman Park'),
-    jsonb_build_object('id','${venueD}','sourceRecordId','w05.2-venue-d','name','Unassigned Venue','address','4 Test Way','neighborhood','Inman Park'),
-    jsonb_build_object('id','${candidateTable}','sourceRecordId','${candidateSourceId}','title','Synthetic Candidate Table',
-      'localDate','2026-12-03','startLocalTime','19:00','startsAt','2026-12-04T00:00:00Z','neighborhood','Inman Park','publicationIntent','candidate',
-      'stops',jsonb_build_array(jsonb_build_object('role','drinks','venueId','${venueA}','minutesFromStart',0),
-        jsonb_build_object('role','dinner','venueId','${venueB}','minutesFromStart',45),jsonb_build_object('role','dessert','venueId','${venueC}','minutesFromStart',120)))))
-  returning revision_id
-) update public.app_supply_sync_runs set candidate_revision_id=(select revision_id from candidate) where run_id='${syncRun}';
-update public.app_supply_control set latest_staged_revision_id=(select revision_id from public.app_supply_sync_revisions where run_id='${syncRun}'),latest_candidate_hash=repeat('c',64) where singleton;
 set local request.jwt.claims='{"role":"service_role"}';
 do $management_test$
 declare content jsonb; req jsonb; created jsonb; replay jsonb; updated jsonb; updated_replay jsonb; preview jsonb; accepted jsonb; accepted_replay jsonb; published jsonb; published_replay jsonb;
-  v_table uuid; draft_id uuid; accepted_id uuid; candidate_revision uuid; candidate_created jsonb; candidate_replay jsonb; candidate_request jsonb; stale_message text; admin_list jsonb; host_list jsonb; host_detail jsonb; venue_list jsonb; admin_venues jsonb;
+  v_table uuid; draft_id uuid; accepted_id uuid; stale_message text; admin_list jsonb; host_list jsonb; host_detail jsonb; venue_list jsonb; admin_venues jsonb;
+  saved jsonb;
 begin
-  select revision_id into candidate_revision from public.app_supply_sync_revisions where run_id='${syncRun}';
-  admin_list:=public.list_supply_tables('${admin}'::uuid,null,null,25);
-  if admin_list->>'canCreateDraft'<>'true'
-    or not exists(select 1 from jsonb_array_elements(admin_list->'stagedCandidates') candidate(value)
-      where candidate.value->>'tableId'='${candidateTable}' and candidate.value->>'canCreateDraft'='true') then
-    raise exception 'admin list-level or candidate-level create capability missing';
-  end if;
-  host_list:=public.list_supply_tables('${host}'::uuid,null,null,25);
-  if host_list->>'canCreateDraft'<>'false' or jsonb_array_length(host_list->'stagedCandidates')<>0 then
-    raise exception 'host staged candidate capability was not denied';
-  end if;
-  candidate_request:=jsonb_build_object('operationId','${candidateCreateOp}','source',jsonb_build_object('kind','candidate','revisionId',candidate_revision,'tableId','${candidateTable}'));
-  candidate_created:=public.create_supply_draft('${admin}'::uuid,candidate_request);
-  candidate_replay:=public.create_supply_draft('${admin}'::uuid,candidate_request);
-  if candidate_created<>candidate_replay or candidate_created->>'tableId'<>'${candidateTable}' or candidate_created->'draft'->>'state'<>'draft'
-    or candidate_created->'draft'->'content'->'stops'->2->>'venueName'<>'Test Venue C' then raise exception 'staged candidate create lookup/content/replay failed'; end if;
-
+  -- Venues are app-owned: admins create them through save_supply_venue; a retry with the same id updates instead of duplicating.
+  perform public.save_supply_venue('${admin}'::uuid,'${venueA}'::uuid,'Test Venue A','1 Test Way','Inman Park',true);
+  perform public.save_supply_venue('${admin}'::uuid,'${venueB}'::uuid,'Test Venue B','2 Test Way','Inman Park',true);
+  perform public.save_supply_venue('${admin}'::uuid,'${venueC}'::uuid,'Test Venue C','3 Test Way','Inman Park',true);
+  perform public.save_supply_venue('${admin}'::uuid,'${venueD}'::uuid,'Unassigned Venue','4 Test Way','Inman Park',true);
+  perform public.save_supply_venue('${admin}'::uuid,'${venueArchived}'::uuid,'Archived Venue','5 Test Way','Inman Park',true);
+  saved := public.save_supply_venue('${admin}'::uuid,'${venueArchived}'::uuid,'Archived Venue','5 Test Way','Inman Park',false);
+  if saved->>'active'<>'false' or (select count(*) from public.app_supply_venues where venue_id='${venueArchived}')<>1 then raise exception 'venue upsert/archive failed'; end if;
+  if (select count(*) from public.app_audit_events where actor_user_id='${admin}'::uuid and action='supply.venue.saved')<>6 then raise exception 'venue save audit missing'; end if;
+  begin perform public.save_supply_venue('${host}'::uuid,'${venueA}'::uuid,'Hijacked','1 Test Way','Inman Park',true); raise exception 'host venue save was allowed';
+  exception when insufficient_privilege then null; end;
+  begin perform public.save_supply_venue('${admin}'::uuid,'${venueA}'::uuid,' ','1 Test Way','Inman Park',true); raise exception 'blank venue name was allowed';
+  exception when sqlstate '22023' then null; end;
   content := jsonb_build_object('title','Synthetic integration Table','localDate','2026-12-03','startLocalTime','19:00',
     'neighborhood','Inman Park','hostNotes','Staff-only operational note',
     'stops',jsonb_build_array(
@@ -170,7 +143,7 @@ begin
   v_table := (created->>'tableId')::uuid; draft_id := (created->'draft'->>'revisionId')::uuid;
   if created->'draft'->'content'->>'hostNotes'<>'Staff-only operational note' then raise exception 'management draft DTO lost hostNotes'; end if;
   admin_list := public.list_supply_tables('${admin}'::uuid,null,null,25);
-  if admin_list->>'canCreateDraft'<>'true' or admin_list->'stagedCandidates' is null then raise exception 'admin capabilities/candidate envelope invalid'; end if;
+  if admin_list->>'canCreateDraft'<>'true' or admin_list ? 'stagedCandidates' then raise exception 'admin capabilities envelope invalid'; end if;
   if exists(select 1 from jsonb_array_elements(admin_list->'items') item(value)
     where item.value->>'syncState' is null or item.value->>'syncState' not in ('current','stale','missing')) then
     raise exception 'Table list syncState projection missing or invalid';
@@ -180,7 +153,7 @@ begin
   exception when insufficient_privilege then null; end;
   insert into public.app_supply_table_assignments(table_id,user_id,assigned_by) values(v_table,'${host}'::uuid,'${admin}'::uuid);
   host_list := public.list_supply_tables('${host}'::uuid,null,null,25);
-  if host_list->>'canCreateDraft'<>'false' or jsonb_array_length(host_list->'stagedCandidates')<>0 then raise exception 'host create capability leaked'; end if;
+  if host_list->>'canCreateDraft'<>'false' then raise exception 'host create capability leaked'; end if;
   host_detail := public.read_supply_table_detail('${host}'::uuid,v_table);
   if host_detail->>'canEditDraft'<>'true' or host_detail->>'canAccept'<>'false' or host_detail->>'canPublish'<>'false' then raise exception 'host role capability mismatch'; end if;
   venue_list := public.list_supply_venues('${host}'::uuid,null);
@@ -188,7 +161,14 @@ begin
   if (select count(*) from jsonb_array_elements(venue_list->'items') venue where venue.value->>'venueId' in ('${venueA}','${venueB}','${venueC}'))<>3
     or exists(select 1 from jsonb_array_elements(venue_list->'items') venue where venue.value->>'venueId'='${venueD}') then raise exception 'host saw venue outside assigned draft'; end if;
   admin_venues := public.list_supply_venues('${admin}'::uuid,null);
-  if (select count(*) from jsonb_array_elements(admin_venues->'items'))<>4 then raise exception 'admin venue list did not include complete staged venue set'; end if;
+  if (select count(*) from jsonb_array_elements(admin_venues->'items'))<>5
+    or not exists(select 1 from jsonb_array_elements(admin_venues->'items') venue where venue.value->>'venueId'='${venueArchived}' and venue.value->>'active'='false')
+    then raise exception 'admin venue list did not include every venue with its active flag'; end if;
+  begin
+    perform public.create_supply_draft('${admin}'::uuid,jsonb_build_object('operationId','d7a6c8e2-51e8-4a2b-9672-052160a54212','source',jsonb_build_object('kind','manual','content',
+      content || jsonb_build_object('stops',jsonb_set(content->'stops','{0,venueId}',to_jsonb('${venueArchived}'::text))))));
+    raise exception 'draft with an archived venue was allowed';
+  exception when sqlstate '22023' then null; end;
   begin perform public.create_supply_draft('${host}'::uuid,req); raise exception 'host draft creation was allowed';
   exception when insufficient_privilege then null; end;
 
@@ -260,8 +240,15 @@ begin
   exception when insufficient_privilege then null; end;
   begin perform public.publish_supply_draft('${host}'::uuid,draft_id,jsonb_build_object('operationId','d7a6c8e2-51e8-4a2b-9672-052160a54208','expectedDraftRevision',3)); raise exception 'host publication was allowed';
   exception when insufficient_privilege then null; end;
-  if (select count(*) from public.app_audit_events where actor_user_id='${admin}'::uuid and action in ('supply.draft.created','supply.draft.accepted','supply.draft.published'))<>4 then raise exception 'admin action audit missing'; end if;
+  if (select count(*) from public.app_audit_events where actor_user_id='${admin}'::uuid and action in ('supply.draft.created','supply.draft.accepted','supply.draft.published'))<>3 then raise exception 'admin action audit missing'; end if;
   if (select count(*) from public.app_audit_events where actor_user_id='${host}'::uuid and action='supply.draft.updated')<>1 then raise exception 'host edit audit missing'; end if;
+
+  -- Restaurant staff can be attached to an app-owned venue that has no Tables yet; unknown venues are refused.
+  insert into public.app_user_roles(user_id,role) values ('${member}','restaurant');
+  if public.set_venue_membership('${admin}'::uuid,'${venueD}'::uuid,'${member}'::uuid,true)->>'assigned'<>'true' then raise exception 'venue membership on app-owned venue failed'; end if;
+  begin perform public.set_venue_membership('${admin}'::uuid,'d7a6c8e2-51e8-4a2b-9672-052160a54199'::uuid,'${member}'::uuid,true); raise exception 'membership on unknown venue was allowed';
+  exception when sqlstate 'P0002' then null; end;
+  if (public.read_staff_assignments('${admin}'::uuid)->'venues')::text like '%${venueArchived}%' then raise exception 'archived venue offered for staff assignment'; end if;
 end;
 $management_test$;
 rollback;
@@ -271,7 +258,7 @@ assert.equal(result.status, 0, result.stderr || result.stdout);
 const auditAfterResult = run("psql", [db, "-X", "-At", "-v", "ON_ERROR_STOP=1", "-c", "select count(*) from public.app_audit_events"]);
 assert.equal(auditAfterResult.status, 0, auditAfterResult.stderr);
 assert.equal(auditAfterResult.stdout.trim(), auditBaseline, "fixture audit rows must roll back with the fixture transaction");
-console.log(`supply-management-test: guarded project fifthwheel-rewrite-test; migrations ${migrations.join(",")}; role grants, admin/host boundaries, create/update replay, preview, accept/publish, pointer preservation, stale and activity-latch critical conflicts, cosmetic correction audit passed; auth/role/operation/mapping/core collisions absent; audit count ${auditBaseline} unchanged after fixture transaction rollback`);
+console.log(`supply-management-test: guarded project fifthwheel-rewrite-test; migrations ${migrations.join(",")}; role grants, venue save/archive/role boundaries, archived-venue draft refusal, venue membership, admin/host boundaries, create/update replay, preview, accept/publish, pointer preservation, stale and activity-latch critical conflicts, cosmetic correction audit passed; auth/role/operation/mapping/core collisions absent; audit count ${auditBaseline} unchanged after fixture transaction rollback`);
 } finally {
   try { unlinkSync(lockPath); } catch { /* already removed */ }
 }

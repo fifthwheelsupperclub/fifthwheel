@@ -10,7 +10,7 @@ const ctx: NoticeContext = { firstName: "Maya <b>", tableTitle: "Autumn & Table"
 const claim = (n: number, over: object = {}) => ({ noticeId: id(n), leaseToken: id(100 + n), kind: "seat_confirmed", attempt: 1, to: `g${n}@example.com`, gone: false, context: ctx, ...over });
 
 test("templates escape guest-supplied text, show money and times plainly, and never carry a token", () => {
-  for (const kind of ["seat_confirmed", "cancellation_decision", "table_cancelled", "member_removed", "t48_reminder"] as const) {
+  for (const kind of ["seat_confirmed", "cancellation_decision", "table_cancelled", "member_removed", "t48_reminder", "waitlist_confirmed"] as const) {
     const r = renderNotice(kind, ctx, origin);
     assert.ok(r.subject.length > 0 && r.text.includes("hello@fifthwheel.community"));
     assert.ok(!r.html.includes("<b>") && !r.html.includes("<this>"), kind);
@@ -20,6 +20,7 @@ test("templates escape guest-supplied text, show money and times plainly, and ne
   assert.match(renderNotice("seat_confirmed", ctx, origin).text, /Saturday, December 12 at 7:00 PM/);
   assert.match(renderNotice("cancellation_decision", { ...ctx, decision: "denied", refundCents: 0 }, origin).subject, /About your cancellation request/);
   assert.match(renderNotice("t48_reminder", ctx, origin).text, /sign-in\?returnTo=%2Finvitations%2Fe0840000/);
+  assert.match(renderNotice("waitlist_confirmed", ctx, origin).text, /Visit Fifth Wheel: https:\/\/fifthwheel\.community\n/);
 });
 
 test("delivery reports every outcome, never blocks on one failure, and flags gone recipients without sending", async () => {

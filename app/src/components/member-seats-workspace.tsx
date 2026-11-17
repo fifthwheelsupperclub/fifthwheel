@@ -281,7 +281,7 @@ export function MemberSeatsListWorkspace() {
       {current.length > 0 && <section className="seat-section" aria-labelledby="seats-upcoming"><h2 id="seats-upcoming">Upcoming</h2><div className="seat-list">{current.map((seat) => <SeatCard key={seat.seatId} seat={seat} />)}</div></section>}
       {pending.length > 0 && <section className="seat-section" aria-labelledby="seats-payments"><h2 id="seats-payments">Payments</h2><div className="seat-list">{pending.map((attempt) => <PendingCheckoutCard key={attempt.attemptId} value={attempt} />)}</div></section>}
       {past.length > 0 && <details className="seat-past"><summary>Past evenings ({past.length})</summary><div className="seat-list">{past.map((seat) => <SeatCard key={seat.seatId} seat={seat} />)}</div></details>}
-      {items.length === 0 && pending.length === 0 && <PageState variant="empty" title="No seats yet" message="When you pay for an invitation, your seat shows up here." action={<a className="button button-primary" href="/tables">Browse tables</a>} />}
+      {items.length === 0 && pending.length === 0 && <PageState variant="empty" title="No seats yet" message="When you pay for an invitation, your seat shows up here." />}
       {canLoadMore && <div className="member-seat-load-more"><button className="button button-outline" type="button" onClick={() => void load(cursor, true)} disabled={loadingMore}>{loadingMore ? "Loading more…" : "Load more"}</button></div>}
     </>}
   </div></MemberWorkspaceShell>;

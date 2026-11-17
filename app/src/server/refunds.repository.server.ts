@@ -23,7 +23,7 @@ function integer(x: unknown, max = 2500): number {
   return Number(x);
 }
 function parseSummary(x: unknown): RefundObligationSummaryDTO {
-  const sources = ["late_checkout_ineligible", "cancellation"] as const;
+  const sources = ["late_checkout_ineligible", "cancellation", "table_cancellation", "removal"] as const;
   const states = ["open", "pending", "submitted", "unknown", "failed", "succeeded"] as const;
   const blocked = [null, "balance_reserved", "operation_in_progress", "manual_review", "settled", "provider_unavailable"] as const;
   if (!record(x) || !uuid.test(String(x.obligationId)) || !sources.includes(x.source as typeof sources[number])

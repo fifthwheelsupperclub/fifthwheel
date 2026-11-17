@@ -41,6 +41,16 @@ begin
   update public.app_mutual_results set expires_at=app_private.table_start('${table}')+interval '90 days';
   update public.app_table_attendance a set checked_in_at=app_private.table_start('${table}')+(case when a.guest_id='${E}' then 95 else 10 end)*interval '1 minute';
 end $f$;
+-- second-granularity clock: start = now - s seconds (clock only moves forward, so elapsed >= s by microseconds)
+create function pg_temp.shift_s(s numeric) returns void language plpgsql as $f$
+begin
+  update public.app_supply_table_revisions set content = content || jsonb_build_object(
+    'localDate', to_char((clock_timestamp() - s * interval '1 second') at time zone 'America/New_York','YYYY-MM-DD'),
+    'startLocalTime', to_char((clock_timestamp() - s * interval '1 second') at time zone 'America/New_York','HH24:MI:SS.US')) where revision_id='${revision}';
+  update public.app_vote_periods set opens_at=app_private.table_start('${table}')+interval '90 minutes',closes_at=app_private.table_start('${table}')+interval '120 minutes';
+  update public.app_mutual_results set expires_at=app_private.table_start('${table}')+interval '90 days';
+  update public.app_table_attendance a set checked_in_at=app_private.table_start('${table}')+(case when a.guest_id='${E}' then 95 else 10 end)*interval '1 minute';
+end $f$;
 insert into auth.users(id,aud,role,email,email_confirmed_at,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
   (${q(admin)},'authenticated','authenticated','w082-admin@vote.example',now(),'','{}','{}',now(),now()),
   (${q(host)},'authenticated','authenticated','w082-host@vote.example',now(),'','{}','{}',now(),now()),
@@ -50,9 +60,9 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
   ${members.map((_, i) => `(${q(signups[i])},${q(emails[i])},'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
   ${members.map((u, i) => `(${q(admissions[i])},${q(signups[i])},${q(emails[i])},'activated',${q(admin)},${q(u)},now())`).join(",\n  ")};
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
-  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'approved',1,1,'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
+  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'Vote${"ABCDEFG"[i]}','Surname${i}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${q(table)},'published','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
   (${q(revision)},${q(table)},1,'published',jsonb_build_object('title','W09 Table','localDate',to_char(current_date,'YYYY-MM-DD'),'startLocalTime','19:00','neighborhood','Inman Park','stops',jsonb_build_array(
@@ -64,8 +74,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   ${paid.map((i) => `(${q(requests[i])},${q(table)},${q(guests[i])},${q(members[i])},'W09 Table',current_date,'19:00','Inman Park','pending')`).join(",\n  ")};
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
   (${q(proposal)},${q(table)},1,'approved',${q(revision)},'{}'::jsonb,${q(admin)},${q(admin)},${q(admin)},${q(admin)},now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
-  ${paid.map((i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1,1,1)`).join(",\n  ")};
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+  ${paid.map((i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1)`).join(",\n  ")};
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
   ${paid.map((i) => `(${q(invitations[i])},${q(table)},${q(guests[i])},${q(members[i])},${q(requests[i])},${q(proposal)},${q(admin)},'active')`).join(",\n  ")};
 insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest_id,auth_user_id,proposal_revision,profile_revision,supply_revision_id,state,
@@ -100,6 +110,16 @@ do $w082$ declare v jsonb; msg text; elig uuid[]; elig2 uuid[]; t1 timestamptz; 
   perform pg_temp.shift(89);
   begin perform public.submit_ballot(${q(members[0])},'${table}',null); raise exception 'ballot at 89 minutes';
   exception when sqlstate 'P0001' then get stacked diagnostics msg=message_text; if msg<>'voting_not_open' then raise; end if; end;
+  -- second granularity: 89:59 refused, 90:00 accepted (half-open window); probe with a replay-safe null ballot on a voter checked in on time
+  perform pg_temp.shift_s(5399);
+  begin perform public.submit_ballot(${q(members[0])},'${table}',null); raise exception 'ballot at 89:59';
+  exception when sqlstate 'P0001' then get stacked diagnostics msg=message_text; if msg<>'voting_not_open' then raise; end if; end;
+  if exists(select 1 from public.app_ballots) or exists(select 1 from public.app_vote_periods) then raise exception 'refused 89:59 ballot left state'; end if;
+  perform pg_temp.shift_s(5400);
+  if public.read_tonight(${q(members[0])},'${table}')->'vote'->>'state'<>'open' then raise exception 'not open at 90:00'; end if;
+  perform pg_temp.shift_s(5400);
+  perform public.submit_ballot(${q(members[3])},'${table}',null);
+  delete from public.app_ballots; delete from public.app_ballot_eligibility where table_id='${table}'; delete from public.app_vote_periods where table_id='${table}';
 
   -- open at 90: snapshot holds exactly the on-time checked-in guests; delayed materialisation gives the identical set
   perform pg_temp.shift(90);
@@ -145,11 +165,32 @@ do $w082$ declare v jsonb; msg text; elig uuid[]; elig2 uuid[]; t1 timestamptz; 
   -- 119 minutes: still accepted; D votes for A (one-way)
   perform pg_temp.shift(119);
   perform public.submit_ballot(${q(members[3])},'${table}','${A}');
+  -- 119:59 still accepted (replay of an existing ballot proves the window check passed), 120:00 refused
+  perform pg_temp.shift_s(7199);
+  perform public.submit_ballot(${q(members[3])},'${table}','${A}');
+  perform pg_temp.shift_s(7200);
+  begin perform public.submit_ballot(${q(members[3])},'${table}','${A}'); raise exception 'ballot at 120:00';
+  exception when sqlstate 'P0001' then get stacked diagnostics msg=message_text; if msg<>'voting_closed' then raise; end if; end;
   -- 120 minutes: closed
   perform pg_temp.shift(120);
   begin perform public.submit_ballot(${q(members[1])},'${table}','${A}'); raise exception 'ballot at close';
   exception when sqlstate 'P0001' then get stacked diagnostics msg=message_text; if msg<>'voting_closed' then raise; end if; end;
   if public.read_tonight(${q(members[0])},'${table}')->'vote'->>'state'<>'closed' then raise exception 'closed state wrong'; end if;
+
+  -- finalisation interrupted midway (aborted subtransaction) leaves nothing; the retry and a repeat call give one result set
+  begin
+    perform app_private.finalize_vote_period('${table}');
+    if (select count(*) from public.app_mutual_results)<>4 then raise exception 'finalizer wrote % rows',(select count(*) from public.app_mutual_results); end if;
+    raise exception using errcode='57014',message='simulated_crash';
+  exception when sqlstate '57014' then null; end;
+  if exists(select 1 from public.app_mutual_results) or (select finalized_at from public.app_vote_periods) is not null then raise exception 'aborted finalisation left partial state'; end if;
+  perform app_private.finalize_vote_period('${table}');
+  select finalized_at into t1 from public.app_vote_periods;
+  perform app_private.finalize_vote_period('${table}');
+  if t1 is null or (select finalized_at from public.app_vote_periods)<>t1 or (select count(*) from public.app_mutual_results)<>4
+     or (select count(distinct guest_id) from public.app_mutual_results)<>4
+     or (select count(*) from public.app_mutual_results where guest_id='${A}' and counterpart_guest_id='${B}')<>1
+     or (select count(*) from public.app_mutual_results where guest_id='${B}' and counterpart_guest_id='${A}')<>1 then raise exception 'finalisation not single-result after retry'; end if;
 
   -- reveal: own mutual pair only; Nobody, one-way and no-ballot look identical; ineligible people are refused
   v:=public.read_my_reveal(${q(members[0])},'${table}');

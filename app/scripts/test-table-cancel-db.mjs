@@ -41,9 +41,9 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
   ${members.map((_, i) => `(${q(signups[i])},${q(emails[i])},'Cancel','Guest ${i + 1}','1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
   ${members.map((u, i) => `(${q(admissions[i])},${q(signups[i])},${q(emails[i])},'activated',${q(admin)},${q(u)},now())`).join(",\n  ")};
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
-  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'approved',1,1,'Cancel','Guest ${i + 1}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
+  ${members.map((u, i) => `(${q(guests[i])},${q(u)},${q(admissions[i])},'Cancel','Guest ${i + 1}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${q(table)},'published','current'),(${q(otherTable)},'published','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
   ${[[revision, table], [otherRevision, otherTable]].map(([r, t]) => `(${q(r)},${q(t)},1,'published',jsonb_build_object('title','W07.6 Table','localDate',to_char(current_date+60,'YYYY-MM-DD'),'startLocalTime','19:00','neighborhood','Inman Park','stops',jsonb_build_array('{}','{}','{}')),${q(admin)})`).join(",\n  ")};
@@ -52,8 +52,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   ${members.map((u, i) => `(${q(requests[i])},${q(table)},${q(guests[i])},${q(u)},'W07.6 Table',current_date+60,'19:00','Inman Park','pending')`).join(",\n  ")};
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
   (${q(proposal)},${q(table)},1,'approved',${q(revision)},'{}'::jsonb,${q(admin)},${q(admin)},${q(admin)},${q(admin)},now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
-  ${members.map((_, i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1,1,1)`).join(",\n  ")};
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+  ${members.map((_, i) => `(${q(proposal)},${q(requests[i])},${q(guests[i])},1)`).join(",\n  ")};
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
   ${members.map((u, i) => `(${q(invitations[i])},${q(table)},${q(guests[i])},${q(u)},${q(requests[i])},${q(proposal)},${q(admin)},'active')`).join(",\n  ")};
 insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest_id,auth_user_id,proposal_revision,profile_revision,supply_revision_id,state,
@@ -103,13 +103,8 @@ do $w076$ declare v jsonb; v2 jsonb; msg text; begin
   begin perform public.cancel_table(${q(admin)},${q(id(999))},${q(ops[2])},'x'); raise exception 'unknown Table cancelled';
   exception when sqlstate 'P0002' then null; end;
   if (select state from public.app_table_runtime where table_id='${otherTable}')<>'open' then raise exception 'other Table affected'; end if;
-  -- browse surfaces: a cancelled Table is not requestable and not listed
-  if public.read_published_table_preview('${table}') is not null then raise exception 'cancelled Table still has a public preview'; end if;
-  if exists(select 1 from jsonb_array_elements(public.list_published_tables(${q(members[0])})->'items') i where i->>'tableId'='${table}') then raise exception 'cancelled Table still listed'; end if;
-  if not exists(select 1 from jsonb_array_elements(public.list_published_tables(${q(members[0])})->'items') i where i->>'tableId'='${otherTable}') then raise exception 'other Table missing from list'; end if;
-  if public.read_published_table_detail(${q(members[0])},'${table}')->'table'->'ownRequest'->>'state'<>'closed_by_table' then raise exception 'member cannot see own closed request'; end if;
-  begin perform public.create_table_request(${q(members[0])},'${table}',${q(id(150))}); raise exception 'request accepted on a cancelled Table';
-  exception when sqlstate 'P0002' then null; end;
+  -- a cancelled Table takes no new placements
+  if (select state from public.app_table_requests where table_id='${table}' and auth_user_id=${q(members[0])} order by created_at desc limit 1)<>'closed_by_table' then raise exception 'request not closed by the Table'; end if;
 end $w076$;
 rollback;`;
 psql(sql);

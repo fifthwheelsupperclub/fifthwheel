@@ -178,9 +178,12 @@ function AuthCallbackPage() {
           >
             {state === "verifying" ? "Signing in…" : "Continue"}<ArrowRight aria-hidden="true" />
           </button>
-          {state === "error" && <div className="auth-feedback auth-feedback-error" role="alert">
-            <CircleAlert aria-hidden="true" /><span><strong>This link has expired or was already used.</strong><small>Send a new link and try again.</small></span>
-          </div>}
+          {state === "error" && <>
+            <div className="auth-feedback auth-feedback-error" role="alert">
+              <CircleAlert aria-hidden="true" /><span><strong>This link has expired or was already used.</strong><small>Send a new link and try again.</small></span>
+            </div>
+            <a className="button button-outline callback-link" href="/sign-in">Send a new link<ArrowRight aria-hidden="true" /></a>
+          </>}
           {(state === "signed-out" || state === "signed-out-uncertain") && <a className="button button-outline callback-link" href="/sign-in">Return to sign in<ArrowRight aria-hidden="true" /></a>}
         </>}
       </div>

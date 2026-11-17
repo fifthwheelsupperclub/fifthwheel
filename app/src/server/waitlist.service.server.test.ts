@@ -89,3 +89,21 @@ test("maps repository failures to a safe temporary error without leaking provide
     },
   });
 });
+
+test("accepts the marketing form's attribution and is_test fields and passes them to persistence", async () => {
+  const seen: Array<{ attribution: unknown; isTest: boolean }> = [];
+  const service = createWaitlistService({
+    repository: {
+      async insertIfAbsent(intake) {
+        seen.push({ attribution: intake.attribution, isTest: intake.isTest });
+        return { kind: "created", signup: {} as never };
+      },
+    },
+  });
+  const result = await service.submit({ ...payload, attribution: { utm_source: "meta", campaign_id: "c1" }, is_test: false });
+  assert.equal(result.ok, true);
+  assert.deepEqual(seen, [{ attribution: { utm_source: "meta", campaign_id: "c1" }, isTest: false }]);
+  // Still strict about anything else.
+  assert.equal((await service.submit({ ...payload, surprise: "extra" })).ok, false);
+  assert.equal(seen.length, 1);
+});

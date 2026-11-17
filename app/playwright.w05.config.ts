@@ -4,7 +4,7 @@ const appOrigin = "http://127.0.0.1:8086";
 
 export default defineConfig({
   testDir: "./tests/browser",
-  testMatch: /w05-(?:supply-sync|weekly-clone)\.spec\.ts$/,
+  testMatch: /w05-(?:supply-curation|weekly-clone)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   reporter: "list",
@@ -26,8 +26,6 @@ export default defineConfig({
       ...process.env,
       APP_ORIGIN: appOrigin,
       SUPABASE_URL: "http://127.0.0.1:57421",
-      SUPPLY_PROVIDER_MODE: "fixture",
-      SUPPLY_FIXTURE_RUN_ID: process.env.SUPPLY_FIXTURE_RUN_ID ?? "",
     },
   },
 });

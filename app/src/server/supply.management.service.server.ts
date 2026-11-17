@@ -1,14 +1,14 @@
-/** W05.2 role-aware server use cases. Provider writes remain disabled until mapping verification. */
+/** Role-aware supply use cases. Supabase is the source of truth; admins curate Venues and Tables. */
 
 import { authorize, type ServerVerifiedPrincipal } from "./authorization.server.ts";
 import type {
   SupplyCreateInput, SupplyDetailInput, SupplyManagementFailure, SupplyManagementResult,
   SupplyManagementService, SupplyManagementServiceDependencies, SupplyPreviewInput,
-  SupplyRevisionActionInput, SupplyVenueListInput, SupplyListInput, SupplyUpdateInput,
+  SupplyRevisionActionInput, SupplySaveVenueInput, SupplyVenueListInput, SupplyListInput, SupplyUpdateInput,
 } from "./supply.management.contract.server.ts";
 import type {
   SupplyDraftContent, SupplyDraftPreviewDTO, SupplyManagementErrorCode, SupplyRevisionSummaryDTO,
-  SupplyTableDetailDTO, SupplyTableListDTO, SupplyVenueListDTO,
+  SupplyTableDetailDTO, SupplyTableListDTO, SupplyVenueListDTO, SupplyVenueOptionDTO,
 } from "../supply.management.contract.ts";
 import { atlantaLocalDateTime } from "./supply.time.server.ts";
 import { SupplyManagementRepositoryError } from "./supply.management.repository.server.ts";
@@ -29,7 +29,6 @@ function repositoryFailure(error: unknown): SupplyManagementResult<never> {
       case "revision_conflict": return fail("revision_conflict", "This draft changed. Reload it and review the latest version.");
       case "protected_change": return fail("protected_change", "This published Table has active invitations or paid Seats; schedule and venue changes require cancellation and a new Table.");
       case "operation_conflict": return fail("operation_conflict", "This operation identifier was already used for a different change.");
-      case "provider_unavailable": return fail("provider_unavailable", "Supply changes are unavailable until provider mappings are verified.");
       case "validation_failed": return fail("validation_failed", "Review the highlighted fields and try again.");
       case "configuration_invalid":
       case "request_failed":
@@ -126,7 +125,6 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
   async function principal(token: string | null | undefined): Promise<ServerVerifiedPrincipal | null> {
     try { return await dependencies.resolvePrincipal(token); } catch { return null; }
   }
-  function mutationsAvailable(): boolean { return dependencies.mutationsEnabled && dependencies.providerState === "fixture"; }
   function tableAccess(actor: ServerVerifiedPrincipal, tableId: string): boolean {
     if (isAdmin(actor)) return true;
     return authorize(actor, { workspace: "host", action: "supply:draft", tableId }).allowed;
@@ -145,7 +143,7 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       if (!canReadSupply(actor)) return fail("forbidden", "You are not allowed to view supply.");
       try {
         const result = await dependencies.repository.listTables(actor.userId, [...actor.assignedTableIds], input);
-        return { ok: true, value: Object.freeze({ ...result, providerState: dependencies.providerState, mutationsEnabled: mutationsAvailable(), canCreateDraft: isAdmin(actor) }) };
+        return { ok: true, value: Object.freeze({ ...result, canCreateDraft: isAdmin(actor) }) };
       } catch (error) { return repositoryFailure(error); }
     },
 
@@ -157,7 +155,7 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       try {
         const stored = await dependencies.repository.readTable(actor.userId, input.tableId);
         if (!stored) return fail("not_found", "The supply record could not be found.");
-        return { ok: true, value: Object.freeze({ ...stored.detail, providerState: dependencies.providerState, mutationsEnabled: mutationsAvailable() }) };
+        return { ok: true, value: Object.freeze(stored.detail) };
       } catch (error) { return repositoryFailure(error); }
     },
 
@@ -167,28 +165,38 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       if (!canReadSupply(actor)) return fail("forbidden", "You are not allowed to view supply venues.");
       try {
         const result = await dependencies.repository.listVenues(actor.userId, [...actor.assignedTableIds], input.query);
-        return { ok: true, value: Object.freeze({ ...result, providerState: dependencies.providerState }) };
+        return { ok: true, value: Object.freeze(result) };
       } catch (error) { return repositoryFailure(error); }
+    },
+
+    async saveVenue(input: SupplySaveVenueInput): Promise<SupplyManagementResult<SupplyVenueOptionDTO>> {
+      const actor = await principal(input.accessToken);
+      if (!actor) return fail("unauthenticated", "Sign in to continue.");
+      if (!actor.emailVerified || !isAdmin(actor)) return fail("forbidden", "Only admins can manage venues.");
+      if (!uuidPattern.test(input.venueId)) return fail("invalid_input", "Use a valid venue identifier.");
+      const { name, address, neighborhood, active } = input.request;
+      if (typeof name !== "string" || typeof address !== "string" || typeof neighborhood !== "string" || typeof active !== "boolean") return fail("invalid_input", "Check the venue fields and try again.");
+      const request = { name: name.trim(), address: address.trim(), neighborhood: neighborhood.trim(), active };
+      const fields: Record<string, string> = {};
+      if (!request.name || request.name.length > 180) fields.name = "Enter a venue name up to 180 characters.";
+      if (!request.address || request.address.length > 400) fields.address = "Enter an address up to 400 characters.";
+      if (!request.neighborhood || request.neighborhood.length > 120) fields.neighborhood = "Enter a neighborhood up to 120 characters.";
+      if (Object.keys(fields).length) return fail("validation_failed", "Complete the venue fields.", fields);
+      try { return { ok: true, value: await dependencies.repository.saveVenue(actor.userId, input.venueId, request) }; }
+      catch (error) { return repositoryFailure(error); }
     },
 
     async createDraft(input: SupplyCreateInput) {
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
       if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
-      if (!mutationsAvailable()) return fail("provider_unavailable", "Draft mutations are enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.request.operationId)) return fail("invalid_input", "Use a valid operation identifier.");
       const source = input.request.source;
-      if (source.kind === "manual") {
-        if (!isAdmin(actor)) return fail("forbidden", "Hosts cannot create unassigned Tables.");
-        if (!isDraftContent(source.content)) return fail("invalid_input", "Check the draft fields and try again.");
-        const normalizedContent = normalizeInputContent(source.content);
-        const validation = validateContent(normalizedContent);
-        if (validation.issues.length) return fail("validation_failed", "Complete the required Table fields before creating a draft.", Object.fromEntries(validation.issues.map((issue) => [issue.field, issue.message])));
-        input = { ...input, request: { ...input.request, source: { kind: "manual", content: normalizedContent } } };
-      } else {
-        if (!uuidPattern.test(source.revisionId) || !uuidPattern.test(source.tableId)) return fail("invalid_input", "Select a valid staged candidate.");
-        if (!tableAccess(actor, source.tableId)) return fail("forbidden", "You are not assigned to this staged Table.");
-      }
+      if (source.kind !== "manual" || !isDraftContent(source.content)) return fail("invalid_input", "Check the draft fields and try again.");
+      const normalizedContent = normalizeInputContent(source.content);
+      const validation = validateContent(normalizedContent);
+      if (validation.issues.length) return fail("validation_failed", "Complete the required Table fields before creating a draft.", Object.fromEntries(validation.issues.map((issue) => [issue.field, issue.message])));
+      input = { ...input, request: { ...input.request, source: { kind: "manual", content: normalizedContent } } };
       try { return { ok: true as const, value: await dependencies.repository.createDraft(actor.userId, input.request) }; }
       catch (error) { return repositoryFailure(error); }
     },
@@ -197,10 +205,10 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and operation identifiers.");
-      if (!mutationsAvailable()) return fail("provider_unavailable", "Draft mutations are enabled only for local synthetic supply until Airtable mappings are verified.");
-      if (!isDraftContent(input.request.content)) return fail("invalid_input", "Check the draft fields and try again.");
       try {
+        // Authorize before body validation, so a caller without access never learns anything else about the route.
         if (!(await authorizeDraft(actor, input.draftId))) return fail("forbidden", "You are not assigned to this draft.");
+        if (!isDraftContent(input.request.content)) return fail("invalid_input", "Check the draft fields and try again.");
         const normalized = normalizeInputContent(input.request.content);
         const validation = validateContent(normalized);
         if (validation.issues.length) return fail("validation_failed", "Correct the highlighted fields before saving.", Object.fromEntries(validation.issues.map((issue) => [issue.field, issue.message])));
@@ -221,14 +229,14 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
         if (!content) return fail("not_found", "The draft could not be found.");
         const validation = validateContent(content);
         const isAdminActor = isAdmin(actor);
-        const canAccept = isAdminActor && mutationsAvailable() && validation.issues.length === 0;
-        const canPublish = isAdminActor && mutationsAvailable() && validation.issues.length === 0
+        const canAccept = isAdminActor && validation.issues.length === 0;
+        const canPublish = isAdminActor && validation.issues.length === 0
           && stored.detail.accepted?.revisionId === stored.detail.draft?.revisionId;
         const preview: SupplyDraftPreviewDTO = Object.freeze({
           tableId, draftRevision: input.expectedDraftRevision, valid: validation.issues.length === 0,
           startsAt: validation.startsAt,
           changes: compareContent(stored.detail.published?.content ?? null, content),
-          issues: validation.issues, canAccept, canPublish, providerState: dependencies.providerState,
+          issues: validation.issues, canAccept, canPublish,
         });
         return { ok: true as const, value: preview };
       } catch (error) { return repositoryFailure(error); }
@@ -238,7 +246,6 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
       if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
-      if (!mutationsAvailable()) return fail("provider_unavailable", "Acceptance is enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and revision.");
       try { return { ok: true as const, value: await dependencies.repository.acceptDraft(actor.userId, input.draftId, input.request) }; }
       catch (error) { return repositoryFailure(error); }
@@ -248,11 +255,9 @@ export function createSupplyManagementService(dependencies: SupplyManagementServ
       const actor = await principal(input.accessToken);
       if (!actor) return fail("unauthenticated", "Sign in to continue.");
       if (!isAdmin(actor)) return fail("forbidden", "Only admins can do this.");
-      if (!mutationsAvailable()) return fail("provider_unavailable", "Publication is enabled only for local synthetic supply until Airtable mappings are verified.");
       if (!uuidPattern.test(input.draftId) || !uuidPattern.test(input.request.operationId) || !Number.isInteger(input.request.expectedDraftRevision) || input.request.expectedDraftRevision < 1) return fail("invalid_input", "Check the draft and revision.");
       try {
-        const detail = await dependencies.repository.publishDraft(actor.userId, input.draftId, input.request);
-        return { ok: true as const, value: Object.freeze({ ...detail, providerState: dependencies.providerState, mutationsEnabled: mutationsAvailable() }) };
+        return { ok: true as const, value: Object.freeze(await dependencies.repository.publishDraft(actor.userId, input.draftId, input.request)) };
       }
       catch (error) { return repositoryFailure(error); }
     },

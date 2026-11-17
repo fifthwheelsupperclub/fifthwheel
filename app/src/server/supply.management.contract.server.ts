@@ -2,8 +2,8 @@
 
 import type {
   SupplyCreateDraftRequest, SupplyCreateDraftResultDTO, SupplyDraftContent, SupplyDraftPreviewDTO,
-  SupplyManagementErrorCode, SupplyRevisionActionRequest, SupplyRevisionSummaryDTO,
-  SupplyTableDetailDTO, SupplyTableListDTO, SupplyUpdateDraftRequest, SupplyVenueListDTO,
+  SupplyManagementErrorCode, SupplyRevisionActionRequest, SupplyRevisionSummaryDTO, SupplySaveVenueRequest,
+  SupplyTableDetailDTO, SupplyTableListDTO, SupplyUpdateDraftRequest, SupplyVenueListDTO, SupplyVenueOptionDTO,
 } from "../supply.management.contract.ts";
 
 export type SupplyManagementFailure = Readonly<{
@@ -18,6 +18,7 @@ export type SupplyManagementResult<T> =
 export type SupplyListInput = Readonly<{ accessToken?: string | null; state?: string; cursor?: string; limit: number }>;
 export type SupplyDetailInput = Readonly<{ accessToken?: string | null; tableId: string }>;
 export type SupplyVenueListInput = Readonly<{ accessToken?: string | null; query?: string }>;
+export type SupplySaveVenueInput = Readonly<{ accessToken?: string | null; venueId: string; request: SupplySaveVenueRequest }>;
 export type SupplyCreateInput = Readonly<{ accessToken?: string | null; request: SupplyCreateDraftRequest }>;
 export type SupplyUpdateInput = Readonly<{ accessToken?: string | null; draftId: string; request: SupplyUpdateDraftRequest }>;
 export type SupplyPreviewInput = Readonly<{ accessToken?: string | null; draftId: string; expectedDraftRevision: number }>;
@@ -32,6 +33,7 @@ export interface SupplyManagementRepository {
   listTables(actorUserId: string, assignedTableIds: readonly string[], input: Omit<SupplyListInput, "accessToken">): Promise<SupplyTableListDTO>;
   readTable(actorUserId: string, tableId: string): Promise<SupplyStoredTableDetail | null>;
   listVenues(actorUserId: string, assignedTableIds: readonly string[], query?: string): Promise<SupplyVenueListDTO>;
+  saveVenue(actorUserId: string, venueId: string, request: SupplySaveVenueRequest): Promise<SupplyVenueOptionDTO>;
   readDraftTableId(actorUserId: string, draftId: string): Promise<string | null>;
   createDraft(actorUserId: string, request: SupplyCreateDraftRequest): Promise<SupplyCreateDraftResultDTO>;
   updateDraft(actorUserId: string, draftId: string, request: SupplyUpdateDraftRequest): Promise<SupplyRevisionSummaryDTO>;
@@ -43,14 +45,13 @@ export interface SupplyManagementRepository {
 export type SupplyManagementServiceDependencies = Readonly<{
   resolvePrincipal: (accessToken: string | null | undefined) => Promise<import("./authorization.server.ts").ServerVerifiedPrincipal | null>;
   repository: SupplyManagementRepository;
-  providerState: "fixture" | "disabled_unmapped" | "ready" | "unavailable";
-  mutationsEnabled: boolean;
 }>;
 
 export interface SupplyManagementService {
   listTables(input: SupplyListInput): Promise<SupplyManagementResult<SupplyTableListDTO>>;
   readTable(input: SupplyDetailInput): Promise<SupplyManagementResult<SupplyTableDetailDTO>>;
   listVenues(input: SupplyVenueListInput): Promise<SupplyManagementResult<SupplyVenueListDTO>>;
+  saveVenue(input: SupplySaveVenueInput): Promise<SupplyManagementResult<SupplyVenueOptionDTO>>;
   createDraft(input: SupplyCreateInput): Promise<SupplyManagementResult<SupplyCreateDraftResultDTO>>;
   updateDraft(input: SupplyUpdateInput): Promise<SupplyManagementResult<SupplyRevisionSummaryDTO>>;
   previewDraft(input: SupplyPreviewInput): Promise<SupplyManagementResult<SupplyDraftPreviewDTO>>;

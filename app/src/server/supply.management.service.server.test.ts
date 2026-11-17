@@ -37,15 +37,16 @@ function revision(state: "draft" | "accepted" | "published" = "draft"): SupplyRe
 }
 
 function detail(): SupplyTableDetailDTO {
-  return { providerState: "fixture", mutationsEnabled: true, tableId, lifecycle: "draft", draft: revision(), accepted: null, published: null, syncState: "current", currentSyncState: "current", canEditDraft: true, canAccept: false, canPublish: false };
+  return { tableId, lifecycle: "draft", draft: revision(), accepted: null, published: null, syncState: "current", currentSyncState: "current", canEditDraft: true, canAccept: false, canPublish: false };
 }
 
-function setup(options: Readonly<{ providerState?: "fixture" | "disabled_unmapped" | "ready" | "unavailable" }> = {}) {
-  const calls = { list: 0, read: 0, venues: 0, create: 0, update: 0, preview: 0, accept: 0, publish: 0, access: 0 };
+function setup() {
+  const calls = { list: 0, read: 0, venues: 0, saveVenue: 0, create: 0, update: 0, preview: 0, accept: 0, publish: 0, access: 0 };
   const repository: SupplyManagementRepository = {
-    async listTables() { calls.list += 1; return { providerState: "fixture", mutationsEnabled: true, canCreateDraft: true, items: [], stagedCandidates: [], nextCursor: null }; },
+    async listTables() { calls.list += 1; return { canCreateDraft: true, items: [], nextCursor: null }; },
     async readTable() { calls.read += 1; return { detail: detail(), draftContent: content }; },
-    async listVenues() { calls.venues += 1; return { providerState: "fixture", items: [] }; },
+    async listVenues() { calls.venues += 1; return { items: [] }; },
+    async saveVenue(_actor, id, request) { calls.saveVenue += 1; return { venueId: id, ...request }; },
     async readDraftTableId() { calls.access += 1; return tableId; },
     async createDraft(_actor, request): Promise<SupplyCreateDraftResultDTO> { calls.create += 1; return { tableId, draft: revision() }; },
     async updateDraft() { calls.update += 1; return revision(); },
@@ -56,7 +57,7 @@ function setup(options: Readonly<{ providerState?: "fixture" | "disabled_unmappe
   const service = createSupplyManagementService({
     resolvePrincipal: async (token) => token === "admin" ? principal("admin") : token === "host" ? principal("host", [tableId])
       : token === "other-host" ? principal("host", []) : token === "member" ? principal("member") : null,
-    repository, providerState: options.providerState ?? "fixture", mutationsEnabled: (options.providerState ?? "fixture") === "fixture",
+    repository,
   });
   return { service, calls };
 }
@@ -65,7 +66,7 @@ test("admin can list/detail/create/update/preview/accept/publish with server-onl
   const { service, calls } = setup();
   const list = await service.listTables({ accessToken: "admin", limit: 25 });
   assert.equal(list.ok, true);
-  if (list.ok) { assert.equal(list.value.providerState, "fixture"); assert.equal(list.value.mutationsEnabled, true); assert.equal(list.value.canCreateDraft, true); }
+  if (list.ok) assert.equal(list.value.canCreateDraft, true);
   const created = await service.createDraft({ accessToken: "admin", request: { operationId, source: { kind: "manual", content } } });
   assert.equal(created.ok, true);
   if (created.ok) assert.equal(created.value.tableId, tableId);
@@ -108,14 +109,24 @@ test("host assignment is checked before read/edit and members cannot access supp
   assert.equal(calls.read, 0); assert.equal(calls.update, 0);
 });
 
-test("draft mutations fail closed outside the synthetic provider while status reads remain available", async () => {
-  const { service, calls } = setup({ providerState: "disabled_unmapped" });
-  const read = await service.listTables({ accessToken: "admin", limit: 25 });
-  const create = await service.createDraft({ accessToken: "admin", request: { operationId, source: { kind: "manual", content } } });
-  assert.equal(read.ok, true);
-  assert.equal(create.ok, false);
-  if (!create.ok) assert.equal(create.error.code, "provider_unavailable");
-  assert.equal(calls.create, 0);
+test("only admins save venues, and blank fields are rejected before the repository", async () => {
+  const { service, calls } = setup();
+  const venue = { name: " Olive Room ", address: "10 Example Way", neighborhood: "Inman Park", active: true };
+  for (const accessToken of ["host", "member"]) {
+    const refused = await service.saveVenue({ accessToken, venueId, request: venue });
+    assert.equal(refused.ok, false);
+    if (!refused.ok) assert.equal(refused.error.code, "forbidden");
+  }
+  const blank = await service.saveVenue({ accessToken: "admin", venueId, request: { ...venue, address: "  " } });
+  assert.equal(blank.ok, false);
+  if (!blank.ok) assert.deepEqual(Object.keys(blank.error.fields ?? {}), ["address"]);
+  const badId = await service.saveVenue({ accessToken: "admin", venueId: "nope", request: venue });
+  assert.equal(badId.ok, false);
+  assert.equal(calls.saveVenue, 0);
+  const saved = await service.saveVenue({ accessToken: "admin", venueId, request: venue });
+  assert.equal(saved.ok, true);
+  if (saved.ok) assert.equal(saved.value.name, "Olive Room");
+  assert.equal(calls.saveVenue, 1);
 });
 
 test("bad date/time/venue inputs are rejected before repository mutation", async () => {
@@ -125,4 +136,13 @@ test("bad date/time/venue inputs are rejected before repository mutation", async
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.error.code, "validation_failed");
   assert.equal(calls.update, 0);
+});
+
+test("an unassigned caller is refused before body validation reveals anything", async () => {
+  const { service } = setup();
+  for (const accessToken of ["other-host", "member"]) {
+    const result = await service.updateDraft({ accessToken, draftId: revisionId, request: { operationId, expectedDraftRevision: 1, content } });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.error.code, "forbidden");
+  }
 });

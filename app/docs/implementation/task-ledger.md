@@ -131,3 +131,10 @@ Not covered (W07.7 stays unchecked): refund outcome `unknown` after a provider t
 - A reconciliation failure (e.g. Stripe outage) is reported in the pass summary but does not fail the pass or the heartbeat.
 - Evidence: 6 new unit tests (330/330 total, typecheck clean); rollback-only `scripts/test-reconciliation-db.mjs` passes (exclusive claim, record/resolve/reopen, incomplete run, overview, stale flag, guards). Real Stripe test-mode run through the worker handler against the isolated test stack: completed, second pass `not_due`. It reported 57 differences (36 `paid_not_recorded`, 16 `refund_unrecorded`, 5 `refund_outside_app`) — expected, since earlier test runs' fixtures were deleted from the test DB while their Stripe objects remain; I did not match each one individually. Findings were cleared from the test DB afterwards.
 - Not done: no resolution workflow beyond visibility (staff fix in Stripe or the ledger; the next run clears it); not run in live mode; no browser run of the overview card; W10.4 stays unchecked (heartbeat/aged-work parts exist, support links and operator resolution paths are separate).
+
+## 2026-11-16 — Release-readiness wave 1 (real-stack proof)
+
+- Built: journey runner (`run-w12-journey-browser.mjs`), authz sweep (`run-w12-authz.mjs`), worker step `cleanupEvidence` (deletes due identity files from storage), Terms/Privacy/support footer on all layouts, host first-name roster redaction, extra DB edge cases.
+- Result: journey 11/11, sweep 1550/0, all unit tests, build and lint green. W06.3–W06.5b, W07.1–W07.2, W07.4–W07.6, W08.1–W08.4, W09.1–W09.5, W04.1 and W04.4 ticked in the [checklist](../tasks-checklist.md).
+- Policy defaults accepted by the owner: Stripe-confirmed-failed refunds stay owed/manual; T−48 reminder to unpaid invitation holders; retention periods as built; evidence photos 7/30 days. Marketing Terms §6/§7 now state staff-reviewed refunds and a refund for evenings we cancel (commit `89005e1`).
+- Open: hosted staging and live proof, accessibility passes, the three product questions in the receipts, and an account-deletion screen.

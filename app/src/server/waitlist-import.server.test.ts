@@ -12,7 +12,7 @@ test("valid rows become one reviewable idempotent insert that keeps ids and time
   assert.equal(r.accepted, 2);
   assert.deepEqual(r.quarantined, []);
   assert.match(r.sql, /^-- Generated waitlist import/);
-  assert.match(r.sql, /begin;\ninsert into public\.waitlist_signups/);
+  assert.match(r.sql, /begin;\nselect set_config\('app\.skip_waitlist_confirmation','on',true\);\ninsert into public\.waitlist_signups/);
   assert.match(r.sql, /on conflict \(email_normalized\) do nothing;\ncommit;/);
   assert.match(r.sql, /'ada@example\.com'/);
   assert.match(r.sql, /'O''Neil'/);

@@ -1,7 +1,7 @@
 ---
 id: decision-staff-approve-before-invites
 type: decision
-status: accepted
+status: superseded
 date: 2026-10-23
 owner: liza
 related_evidence: [evidence-linear-pre-mvp-scope]
@@ -11,6 +11,8 @@ reversibility: reversible
 ---
 
 # Staff approve a curated table before invitations send
+
+> Superseded on 2026-11-16 by `decision-staff-place-guests-directly`: there is no roster approval; an admin places each guest and the invitation sends on placement.
 
 ## Context
 

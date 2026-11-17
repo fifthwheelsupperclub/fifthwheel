@@ -20,7 +20,7 @@ export interface WaitlistService {
 const acceptedKeys = new Set([
   "first_name", "last_name", "email", "birthdate", "match_age_min", "match_age_max",
   "neighborhood", "identity", "open_to", "nights", "looking_for", "surprise_game",
-  "referral", "source", "submitted_at", "_gotcha",
+  "referral", "source", "submitted_at", "_gotcha", "attribution", "is_test",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

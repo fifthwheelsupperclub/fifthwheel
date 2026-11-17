@@ -18,7 +18,6 @@ import {
   Mail,
   MessageSquareText,
   MapPin,
-  Plus,
   RefreshCw,
   Search,
   Sparkles,
@@ -145,7 +144,7 @@ function PreviewPage() {
           </PreviewFrame>
 
           <SectionHeader n="03" id="profile" label="PROFILE" title="Your details, your say" />
-          <PreviewFrame n="03" name="PROFILE" alternateLabel="Upload error">
+          <PreviewFrame n="03" name="PROFILE" alternateLabel="Save error">
             <div className="frame-head"><span>03 / PROFILE &amp; PREFERENCES</span><span>DESKTOP · 1440</span></div>
             <div className="screen-default"><div className="member-app"><MemberNav active="Account" />
               <div className="member-body profile-body">
@@ -156,11 +155,10 @@ function PreviewPage() {
                 <div className="profile-grid"><label>First name<input disabled placeholder="First name" /></label><label>Last name<input disabled placeholder="Last name" /></label><label className="span-two">Email address<input disabled placeholder="Verified email" /></label><label>Date of birth<input disabled placeholder="MM / DD / YYYY" /></label><label>Neighborhood<input disabled placeholder="Choose a neighborhood" /></label></div>
                 <fieldset className="preference-field"><legend>How do you identify?</legend><p>Choose one option.</p><div className="choice-row"><label className="check-option"><input type="radio" name="identity" checked disabled readOnly /> Woman</label><label className="check-option"><input type="radio" name="identity" disabled /> Man</label><label className="check-option"><input type="radio" name="identity" disabled /> Non-binary</label></div></fieldset>
                 <fieldset className="preference-field"><legend>Who would you like to meet?</legend><p>Choose every group you’re open to.</p><div className="choice-row"><label className="check-option"><input type="checkbox" checked disabled readOnly /> Women</label><label className="check-option"><input type="checkbox" disabled /> Men</label><label className="check-option"><input type="checkbox" checked disabled readOnly /> Non-binary people</label></div></fieldset>
-                <div className="upload-row"><div className="upload-icon"><Plus aria-hidden="true" /></div><div><strong>Photos and a private selfie</strong><small>Only the review team sees your verification photos.</small></div><span className="upload-status">NOT CONNECTED</span></div>
-                <button className="button button-primary profile-submit" disabled>Save and submit for review <ArrowRight aria-hidden="true" /></button>
+                <button className="button button-primary profile-submit" disabled>Save changes <ArrowRight aria-hidden="true" /></button>
               </div>
             </div></div>
-            <div className="screen-alternate"><StatePanel tone="error" label="PHOTO UPLOAD FAILED" title="Your profile is still here" body="The private photo upload did not finish. Keep the form values, show which file needs attention, and let the member retry when service is available." /></div>
+            <div className="screen-alternate"><StatePanel tone="error" label="SAVE FAILED" title="Your profile is still here" body="Your changes did not save. Keep the form values and let the member retry when service is available." /></div>
           </PreviewFrame>
 
           <SectionHeader n="04" id="table" label="TABLE DETAILS" title="Make a night of it" />

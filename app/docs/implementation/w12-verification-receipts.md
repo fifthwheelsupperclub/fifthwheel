@@ -50,3 +50,17 @@ Stale test strings (copy edits made after the tests were written) were corrected
 ## Housekeeping
 
 An accidental `app/Untitled` file holding placeholder Stripe values (no real keys) was committed and then untracked and ignored. The runners that create Table fixtures now delete their runtime rows; a stale lock directory left by a failed run (`$TMPDIR/fifthwheel-rewrite-test-w06-table-invitation.lock`) blocks the next run and must be removed after a failure.
+
+## 2026-11-16 addendum (local stack, working tree at the commit after `89005e1`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck`, `pnpm test` (340/340), `pnpm build`, `pnpm lint:ui` | passed |
+| Real-stack journey `node scripts/run-w12-journey-browser.mjs` | passed 11/11 on the final run (two earlier runs each failed one stage on a timeout or a 503 while the machine was at a load average of about 18; the next run passed with no code change). Fixtures cleaned; Stripe test-mode objects remain in the sandbox. |
+| Permission and direct-route sweep `node scripts/run-w12-authz.mjs` | 1550 pass, 0 fail, 1 deliberately skipped (admin GET of supply sync), of 1551 |
+| DB harnesses extended: vote window to the second, DOB and age edges, 250-notice drain, abandoned lease → unknown, supply sync partial failure | passed |
+| Worker evidence cleanup (journey stage 9c) | object removed from the private bucket, row `deleted`, checkout still works 31 days after review |
+
+Defects found by these runs and fixed: Table-cancel refunds invisible/unsendable in the admin queue (`56261d8`); lost save confirmations after reload; unknown upload returned 503 instead of 404 (two RPC messages, `9ae4c0c` and `63b6b23`); draft update checked the mutation gate before authorization (`9ae4c0c`); hosts saw full guest names (now first names, `97613d7`).
+
+Still not run: anything on a host (Supabase, Render, Resend, the GitHub scheduler, heartbeat alarm); live Stripe; backup restore rehearsal; keyboard, 320px, 200% zoom and screen-reader passes; archived-style visual comparison. Known open items: admins cannot submit or approve a roster they edited; no email for the extra refund remainder when a Table is cancelled after a partial refund; wrong-method API paths return 200 empty HTML in dev (production build not yet checked).

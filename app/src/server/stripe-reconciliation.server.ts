@@ -7,7 +7,7 @@ export type StripeSession = Readonly<{ paymentIntentId: string; paid: boolean; a
 export type StripeRefund = Readonly<{ id: string; paymentIntentId: string; status: string; amountCents: number; created: number; operationId: string | null }>;
 export type Finding = Readonly<{ kind: string; ref: string; detail: Record<string, unknown> }>;
 
-const GRACE_MS = 3_600_000, WINDOW_MS = 72 * 3_600_000, LIVE = new Set(["pending", "requires_action", "succeeded"]);
+const MAX_FINDINGS = 200, GRACE_MS = 3_600_000, WINDOW_MS = 72 * 3_600_000, LIVE = new Set(["pending", "requires_action", "succeeded"]);
 
 export function reconcile(input: { payments: readonly LedgerPayment[]; refunds: readonly LedgerRefund[]; sessions: readonly StripeSession[]; stripeRefunds: readonly StripeRefund[]; mode: Mode; now: number }): Finding[] {
   const { now } = input, out: Finding[] = [];
@@ -108,8 +108,12 @@ export async function runReconciliation(deps: Deps): Promise<"not_due" | { findi
   const complete = sessions.complete && stripeRefunds.complete;
   const findings = reconcile({ payments: claim.payments ?? [], refunds: claim.refunds ?? [], sessions: sessions.rows, stripeRefunds: stripeRefunds.rows, mode: deps.mode, now });
   if (!complete) findings.push({ kind: "reconciliation_incomplete", ref: "stripe", detail: { reason: "more_than_20_pages" } });
-  await deps.rpc("record_reconciliation_findings", { p_findings: findings, p_complete: complete });
-  return { findings: findings.length, complete };
+  // The database refuses more than 200 findings at once. A flood must still be recorded, not error out: keep the first 199 plus a summary,
+  // and treat the run as incomplete so findings we left out are neither lost nor marked resolved.
+  const total = findings.length, truncated = total > MAX_FINDINGS;
+  const recorded = truncated ? [...findings.slice(0, MAX_FINDINGS - 1), { kind: "reconciliation_incomplete", ref: "findings_truncated", detail: { reason: "more_than_199_findings", total } }] : findings;
+  await deps.rpc("record_reconciliation_findings", { p_findings: recorded, p_complete: complete && !truncated });
+  return { findings: total, complete: complete && !truncated };
 }
 
 export function createReconciliationRuntime(environment: Readonly<Record<string, string | undefined>>, rpc: Deps["rpc"]): (() => ReturnType<typeof runReconciliation>) | null {

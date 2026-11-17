@@ -76,6 +76,8 @@ function toInsertRow(intake: ValidatedWaitlistIntake): Record<string, unknown> {
     surprise_game: intake.surpriseGame,
     referral: intake.referral,
     source: intake.source,
+    attribution: intake.attribution,
+    is_test: intake.isTest,
   };
 }
 

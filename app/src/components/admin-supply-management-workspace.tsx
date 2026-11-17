@@ -5,26 +5,25 @@ import { PageHeader } from "./ui/page-header";
 import { PageState } from "./ui/page-state";
 import { AppShell } from "./app-shell";
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, BadgeCheck, Ban, CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Database, FileCheck2, FilePlus2, LoaderCircle, MapPin, RefreshCw, Save, ShieldCheck, Table2, WifiOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarDays, Check, ChevronDown, CircleAlert, Copy, FileCheck2, FilePlus2, LoaderCircle, MapPin, Pencil, Plus, RefreshCw, Save, ShieldCheck, Store, Table2 } from "lucide-react";
 import type {
   SupplyCreateDraftRequest, SupplyCreateDraftResultDTO, SupplyDraftContent, SupplyDraftPreviewDTO,
-  SupplyManagementError, SupplyManagementResponse, SupplyRevisionSummaryDTO, SupplyStagedCandidateDTO,
+  SupplyManagementError, SupplyManagementResponse, SupplyRevisionSummaryDTO, SupplySaveVenueRequest,
   SupplyTableDetailDTO, SupplyTableLifecycle, SupplyTableListDTO, SupplyTableListItemDTO,
-  SupplyValidationIssue, SupplyVenueListDTO,
+  SupplyValidationIssue, SupplyVenueListDTO, SupplyVenueOptionDTO,
 } from "../supply.management.contract.ts";
 import "./admin-supply-management-workspace.css";
 
 type LoadState = "loading" | "ready" | "error" | "unauthenticated" | "forbidden";
 type MutationState = "idle" | "running" | "error" | "unknown" | "conflict";
-type ActionKind = "create" | "save" | "preview" | "accept" | "publish" | "sync" | null;
+type ActionKind = "create" | "save" | "preview" | "accept" | "publish" | null;
 type PendingOperation = Readonly<{ fingerprint: string; id: string }>;
 type FormErrors = Readonly<Record<string, string>>;
 type DialogMode = "closed" | "create" | "accept" | "publish";
 
 const lifecycleLabels: Record<SupplyTableLifecycle, string> = {
-  draft: "Draft", accepted: "Approved", published: "Live", review_required: "Needs review", upstream_missing: "Removed from Airtable",
+  draft: "Draft", accepted: "Approved", published: "Live", review_required: "Needs review", upstream_missing: "Unavailable",
 };
-const syncPath = "/api/admin/supply/sync";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -32,12 +31,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function validLifecycle(value: unknown): value is SupplyTableLifecycle {
   return ["draft", "accepted", "published", "review_required", "upstream_missing"].includes(String(value));
 }
-function validProviderState(value: unknown): value is SupplyTableListDTO["providerState"] {
-  return ["fixture", "disabled_unmapped", "ready", "unavailable"].includes(String(value));
+function isVenue(value: unknown): value is SupplyVenueOptionDTO {
+  return isRecord(value) && typeof value.venueId === "string" && typeof value.name === "string" && typeof value.address === "string"
+    && typeof value.neighborhood === "string" && typeof value.active === "boolean";
 }
 function isVenueList(value: unknown): value is SupplyVenueListDTO {
-  return isRecord(value) && validProviderState(value.providerState) && Array.isArray(value.items)
-    && value.items.every((item) => isRecord(item) && typeof item.venueId === "string" && typeof item.name === "string" && typeof item.address === "string" && typeof item.neighborhood === "string");
+  return isRecord(value) && Array.isArray(value.items) && value.items.every(isVenue);
 }
 function isListItem(value: unknown): value is SupplyTableListItemDTO {
   return isRecord(value) && typeof value.tableId === "string" && typeof value.title === "string"
@@ -46,19 +45,13 @@ function isListItem(value: unknown): value is SupplyTableListItemDTO {
     && (Number.isSafeInteger(value.draftRevision) || value.draftRevision === null)
     && (typeof value.acceptedRevisionId === "string" || value.acceptedRevisionId === null)
     && (typeof value.publishedRevisionId === "string" || value.publishedRevisionId === null)
-    && typeof value.updatedAt === "string" && (typeof value.sourceRevisionId === "string" || value.sourceRevisionId === null)
+    && typeof value.updatedAt === "string"
     && ["current", "stale", "missing"].includes(String(value.syncState))
     && typeof value.canCreateDraft === "boolean";
 }
-function isCandidate(value: unknown): value is SupplyStagedCandidateDTO {
-  return isRecord(value) && typeof value.tableId === "string" && typeof value.sourceRevisionId === "string"
-    && typeof value.title === "string" && typeof value.localDate === "string" && typeof value.startLocalTime === "string" && typeof value.neighborhood === "string"
-    && typeof value.canCreateDraft === "boolean";
-}
 function isList(value: unknown): value is SupplyTableListDTO {
-  return isRecord(value) && validProviderState(value.providerState) && typeof value.mutationsEnabled === "boolean"
-    && typeof value.canCreateDraft === "boolean"
-    && Array.isArray(value.items) && value.items.every(isListItem) && Array.isArray(value.stagedCandidates) && value.stagedCandidates.every(isCandidate)
+  return isRecord(value) && typeof value.canCreateDraft === "boolean"
+    && Array.isArray(value.items) && value.items.every(isListItem)
     && (typeof value.nextCursor === "string" || value.nextCursor === null);
 }
 function isStop(value: unknown, role: "drinks" | "dinner" | "dessert"): boolean {
@@ -76,8 +69,7 @@ function isRevision(value: unknown): value is SupplyRevisionSummaryDTO {
     && typeof value.updatedAt === "string" && isContent(value.content);
 }
 function isDetail(value: unknown): value is SupplyTableDetailDTO {
-  return isRecord(value) && validProviderState(value.providerState) && typeof value.mutationsEnabled === "boolean"
-    && typeof value.tableId === "string" && validLifecycle(value.lifecycle)
+  return isRecord(value) && typeof value.tableId === "string" && validLifecycle(value.lifecycle)
     && (value.draft === null || isRevision(value.draft)) && (value.accepted === null || isRevision(value.accepted))
     && (value.published === null || isRevision(value.published))
     && ["current", "stale", "missing"].includes(String(value.syncState))
@@ -93,7 +85,7 @@ function isPreview(value: unknown): value is SupplyDraftPreviewDTO {
   return isRecord(value) && typeof value.tableId === "string" && Number.isSafeInteger(value.draftRevision)
     && typeof value.valid === "boolean" && (typeof value.startsAt === "string" || value.startsAt === null)
     && Array.isArray(value.changes) && value.changes.every((item) => isRecord(item) && typeof item.field === "string" && (typeof item.before === "string" || item.before === null) && (typeof item.after === "string" || item.after === null))
-    && Array.isArray(value.issues) && value.issues.every(isIssue) && typeof value.canAccept === "boolean" && typeof value.canPublish === "boolean" && validProviderState(value.providerState);
+    && Array.isArray(value.issues) && value.issues.every(isIssue) && typeof value.canAccept === "boolean" && typeof value.canPublish === "boolean";
 }
 function isCreateResult(value: unknown): value is SupplyCreateDraftResultDTO {
   return isRecord(value) && typeof value.tableId === "string" && isRevision(value.draft);
@@ -112,14 +104,6 @@ function parseEnvelope<T>(body: unknown, valid: (value: unknown) => value is T):
 
 const formatDate = (value: string, _time?: string) => eventDate(value);
 const formatTimestamp = (value: string) => timestamp(value);
-function providerDescription(state: SupplyTableListDTO["providerState"]): Readonly<{ title: string; text: string; className: string; icon: typeof Database }> {
-  switch (state) {
-    case "fixture": return { title: "Test mode", text: "Changes don’t reach Airtable.", className: "supply-mode-fixture", icon: Database };
-    case "ready": return { title: "Airtable is connected", text: "Editing is turned off here.", className: "supply-mode-ready", icon: Database };
-    case "unavailable": return { title: "Airtable is unavailable", text: "Live tables are unaffected. Changes that need Airtable are paused.", className: "supply-mode-unavailable", icon: WifiOff };
-    case "disabled_unmapped": return { title: "Airtable isn’t set up yet", text: "Ask the operations owner to connect the Airtable fields. Editing is paused until then.", className: "supply-mode-disabled", icon: Ban };
-  }
-}
 function operationIdFor(ref: { current: PendingOperation | null }, payload: unknown): string {
   const fingerprint = JSON.stringify(payload);
   if (ref.current?.fingerprint === fingerprint) return ref.current.id;
@@ -127,7 +111,7 @@ function operationIdFor(ref: { current: PendingOperation | null }, payload: unkn
   ref.current = { fingerprint, id };
   return id;
 }
-const FIELD_LABEL: Record<string, string> = { new_table: "New table", title: "Title", neighborhood: "Neighborhood", localDate: "Date", startLocalTime: "Start time", hostNotes: "Staff notes", schedule: "Date and time", stops: "Itinerary", venue: "Venue", source: "Airtable details" };
+const FIELD_LABEL: Record<string, string> = { new_table: "New table", title: "Title", neighborhood: "Neighborhood", localDate: "Date", startLocalTime: "Start time", hostNotes: "Staff notes", schedule: "Date and time", stops: "Itinerary", venue: "Venue", source: "Source" };
 const STOP_PART: Record<string, string> = { venueId: "venue", venueName: "venue", venueAddress: "address", minutesFromStart: "timing", publicNotes: "note" };
 function fieldLabel(field: string): string {
   const m = /^stops\.(\w+)\.(\w+)$/.exec(field);
@@ -180,10 +164,10 @@ function AdminSupplyTableList() {
   const [venues, setVenues] = useState<SupplyVenueListDTO | null>(null);
   const [venueState, setVenueState] = useState<LoadState>("loading");
   const [mutationState, setMutationState] = useState<MutationState>("idle");
-  const [pendingListAction, setPendingListAction] = useState<"create" | "sync" | null>(null);
+  const [pendingListAction, setPendingListAction] = useState<"create" | null>(null);
   const [mutationMessage, setMutationMessage] = useState("");
+  const [editingVenue, setEditingVenue] = useState<SupplyVenueOptionDTO | "new" | null>(null);
   const createOperation = useRef<PendingOperation | null>(null);
-  const syncOperation = useRef<PendingOperation | null>(null);
   const manualFormRef = useRef<HTMLFormElement>(null);
   const [content, setContent] = useState<SupplyDraftContent>(emptyContent);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -212,6 +196,22 @@ function AdminSupplyTableList() {
   }, [filter]);
 
   useEffect(() => { void loadList(null, false); }, [loadList]);
+  // Admins curate venues on this page, so load them as soon as we know the viewer can create drafts.
+  const canWrite = Boolean(list?.canCreateDraft);
+  useEffect(() => { if (canWrite) void loadVenues(); }, [canWrite]);
+  // "Duplicate" on a Table detail page links here with ?duplicate=<tableId>; prefill a new draft from it, minus the date.
+  useEffect(() => {
+    const sourceTableId = new URLSearchParams(window.location.search).get("duplicate");
+    if (!canWrite || !sourceTableId) return;
+    window.history.replaceState(null, "", "/admin/tables");
+    void (async () => {
+      const response = await fetch(`/api/supply/tables/${encodeURIComponent(sourceTableId)}`, { credentials: "same-origin", cache: "no-store", headers: { accept: "application/json" } }).catch(() => null);
+      const result = response ? await requestData(response, isDetail) : null;
+      const source = result?.ok ? result.data.draft?.content ?? result.data.published?.content : null;
+      if (!source) { setMutationMessage("That Table could not be copied."); setMutationState("error"); return; }
+      openManualDraft({ ...source, localDate: "" });
+    })();
+  }, [canWrite]);
 
   async function loadVenues() {
     setVenueState("loading");
@@ -225,9 +225,9 @@ function AdminSupplyTableList() {
     } catch { setVenueState("error"); setMutationMessage("Venue options could not be loaded. Try again shortly."); }
   }
 
-  function openManualDraft() {
-    if (!list?.canCreateDraft || list.providerState !== "fixture" || !list.mutationsEnabled || mutationState === "unknown" || mutationState === "running") return;
-    setContent(emptyContent()); setFormErrors({}); setMutationMessage(""); setMutationState("idle");
+  function openManualDraft(initial: SupplyDraftContent = emptyContent()) {
+    if (mutationState === "unknown" || mutationState === "running") return;
+    setContent(initial); setFormErrors({}); setMutationMessage(""); setMutationState("idle");
     setDialog("create"); void loadVenues();
   }
 
@@ -238,7 +238,7 @@ function AdminSupplyTableList() {
 
   async function createManualDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!list || !list.canCreateDraft || list.providerState !== "fixture" || !list.mutationsEnabled || (mutationState === "unknown" && pendingListAction !== "create")) return;
+    if (!list || !list.canCreateDraft || (mutationState === "unknown" && pendingListAction !== "create")) return;
     const payload: SupplyCreateDraftRequest["source"] = { kind: "manual", content };
     const body = { source: payload };
     const operationId = operationIdFor(createOperation, body);
@@ -262,74 +262,86 @@ function AdminSupplyTableList() {
     }
   }
 
-  async function createCandidateDraft(candidate: SupplyStagedCandidateDTO) {
-    if (!list || !candidate.canCreateDraft || list.providerState !== "fixture" || !list.mutationsEnabled || (mutationState === "unknown" && pendingListAction !== "create")) return;
-    const source: SupplyCreateDraftRequest["source"] = { kind: "candidate", revisionId: candidate.sourceRevisionId, tableId: candidate.tableId };
-    const body = { source };
-    const operationId = operationIdFor(createOperation, body);
-    setMutationState("running"); setPendingListAction("create"); setMutationMessage("");
-    try {
-      const response = await fetch("/api/supply/drafts", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ ...body, operationId }) });
-      const result = await requestData(response, isCreateResult);
-      if (!response.ok || !result?.ok) { const error = result && !result.ok ? result.error : null; setMutationState(error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? "Draft creation could not be confirmed."); if (!error?.retryable) { createOperation.current = null; setPendingListAction(null); } return; }
-      createOperation.current = null; setPendingListAction(null);
-      window.location.assign(`/admin/tables/${encodeURIComponent(result.data.tableId)}`);
-    } catch { setMutationState("unknown"); setMutationMessage("We’re not sure that saved. Try again; it won’t save twice."); }
-  }
-
-  async function runSync() {
-    if (!list || !list.canCreateDraft || list.providerState !== "fixture" || !list.mutationsEnabled || (mutationState === "unknown" && pendingListAction !== "sync")) return;
-    const body = {};
-    const operationId = operationIdFor(syncOperation, { sync: true });
-    setMutationState("running"); setPendingListAction("sync"); setMutationMessage("");
-    try {
-      const response = await fetch(syncPath, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ operationId, ...body }) });
-      const result = await response.json().catch(() => null) as { ok?: boolean; data?: unknown; error?: { message?: string; retryable?: boolean } } | null;
-      if (!response.ok || !result?.ok) { setMutationState(result?.error?.retryable ? "unknown" : "error"); setMutationMessage(result?.error?.message ?? "Sync could not be confirmed."); if (!result?.error?.retryable) { syncOperation.current = null; setPendingListAction(null); } return; }
-      syncOperation.current = null; setPendingListAction(null); setMutationState("idle"); setMutationMessage("Airtable check complete. Updating the Tables ready for review."); await loadList(null, false);
-    } catch { setMutationState("unknown"); setMutationMessage("We could not confirm whether the Airtable check finished. Refresh this page before trying again."); }
-  }
-
   const visibleItems = useMemo(() => items.filter((item) => {
     const match = search.trim().toLowerCase();
     return !match || `${item.title} ${item.neighborhood}`.toLowerCase().includes(match);
   }), [items, search]);
-  const provider = list ? providerDescription(list.providerState) : null;
-  const ProviderIcon = provider?.icon ?? Database;
-  const fixtureMutationsEnabled = Boolean(list?.providerState === "fixture" && list.mutationsEnabled);
   const closeDialog = useCallback(() => setDialog("closed"), []);
 
   return <AdminSupplyShell>
     <PageHeader className="supply-management-heading" titleId="supply-list-heading" title="Tables" description="Review details, make a draft, and approve changes before guests can see them." status={state === "ready" && list ? <span className="status-pill status-pill-neutral"><Table2 aria-hidden="true" />{items.length} on this page</span> : undefined} />
 
     {state !== "ready" && <StatePanel state={state} message={message} onRetry={() => void loadList(null, false)} />}
-    {state === "ready" && list && provider && <>
-      <section className={`supply-mode-card ${provider.className}`} aria-label="Airtable mode"><span className="supply-mode-icon"><ProviderIcon aria-hidden="true" /></span><div><p className="eyebrow">AIRTABLE</p><h2>{provider.title}</h2><p>{provider.text}</p></div><span className={`supply-mode-capability ${fixtureMutationsEnabled ? "is-enabled" : ""}`}>{fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here"}</span></section>
-
-      {list.stagedCandidates.length > 0 && <section className="supply-candidate-section" aria-labelledby="staged-candidates-heading">
-        <div className="supply-section-heading"><div><p className="eyebrow">FROM AIRTABLE</p><h2 id="staged-candidates-heading">New from Airtable</h2><p>Guests can’t see these yet.</p></div><span className="status-pill status-pill-pending"><Clock3 aria-hidden="true" />{list.stagedCandidates.length} to review</span></div>
-        <div className="supply-candidate-list">{list.stagedCandidates.map((candidate) => {
-          const source: SupplyCreateDraftRequest["source"] = { kind: "candidate", revisionId: candidate.sourceRevisionId, tableId: candidate.tableId };
-          const canRetry = pendingListAction === "create" && mutationState === "unknown" && createOperation.current?.fingerprint === JSON.stringify({ source });
-          return <article className="supply-candidate-row" key={candidate.sourceRevisionId + candidate.tableId}>
-            <span className="supply-candidate-icon"><Database aria-hidden="true" /></span>
-            <div className="supply-candidate-main"><strong>{candidate.title}</strong><span>{formatDate(candidate.localDate, candidate.startLocalTime)} · {candidate.startLocalTime} · {candidate.neighborhood}</span><small>Not visible to members yet</small></div>
-            <button className="button button-outline" type="button" disabled={!candidate.canCreateDraft || !fixtureMutationsEnabled || mutationState === "running" || (mutationState === "unknown" && !canRetry)} onClick={() => void createCandidateDraft(candidate)}>{canRetry ? "Try again" : "Start draft"}<ArrowRight aria-hidden="true" /></button>
-          </article>;
-        })}</div>
-      </section>}
-
-      <section className="supply-list-controls"><div><p className="eyebrow">CURRENT TABLES</p><h2>Manage Tables</h2></div><div className="supply-list-actions"><label className="supply-search"><span className="visually-hidden">Search Tables on this page</span><input type="search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Search title or neighborhood" /></label><label className="supply-filter"><span className="visually-hidden">Filter by Table status</span><select value={filter} onChange={(event) => { setFilter(event.currentTarget.value); setItems([]); setCursor(null); }}><option value="">All statuses</option><option value="draft">Draft</option><option value="accepted">Approved</option><option value="published">Published</option><option value="review_required">Review needed</option><option value="upstream_missing">Source missing</option></select><ChevronDown aria-hidden="true" /></label><button className="icon-action" type="button" aria-label="Refresh Table list" onClick={() => void loadList(null, false)}><RefreshCw aria-hidden="true" /></button>{list.canCreateDraft && <><a className="button button-outline" href="/admin/tables/weekly-clone"><CalendarDays aria-hidden="true" />Copy a week</a><button className="button button-primary" type="button" disabled={!fixtureMutationsEnabled || mutationState === "running" || mutationState === "unknown"} onClick={openManualDraft}><FilePlus2 aria-hidden="true" />Create draft</button></>}</div></section>
+    {state === "ready" && list && <>
+      <section className="supply-list-controls"><div><p className="eyebrow">CURRENT TABLES</p><h2>Manage Tables</h2></div><div className="supply-list-actions"><label className="supply-search"><span className="visually-hidden">Search Tables on this page</span><input type="search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Search title or neighborhood" /></label><label className="supply-filter"><span className="visually-hidden">Filter by Table status</span><select value={filter} onChange={(event) => { setFilter(event.currentTarget.value); setItems([]); setCursor(null); }}><option value="">All statuses</option><option value="draft">Draft</option><option value="accepted">Approved</option><option value="published">Published</option><option value="review_required">Review needed</option><option value="upstream_missing">Source missing</option></select><ChevronDown aria-hidden="true" /></label><button className="icon-action" type="button" aria-label="Refresh Table list" onClick={() => void loadList(null, false)}><RefreshCw aria-hidden="true" /></button>{list.canCreateDraft && <><a className="button button-outline" href="/admin/tables/weekly-clone"><CalendarDays aria-hidden="true" />Copy a week</a><button className="button button-primary" type="button" disabled={mutationState === "running" || mutationState === "unknown"} onClick={() => openManualDraft()}><FilePlus2 aria-hidden="true" />Create draft</button></>}</div></section>
 
       {mutationMessage && <div className={`supply-mutation-feedback ${mutationState === "error" || mutationState === "conflict" ? "is-error" : mutationState === "unknown" ? "is-warning" : ""}`} role={mutationState === "error" || mutationState === "conflict" || mutationState === "unknown" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{mutationMessage}{mutationState === "unknown" && <span>Keep this page open and try the same action again.</span>}</div>}
-      {visibleItems.length === 0 ? <PageState variant="empty" className="supply-list-empty" title={search || filter ? "No Tables match these filters" : "No Table supply records yet"} message={search || filter ? "Clear the search or lifecycle filter to see more records." : "A complete sync or an authorized draft will appear here. No sample records are shown."} action={(search || filter) ? <button className="button button-outline" type="button" onClick={() => { setSearch(""); setFilter(""); void loadList(null, false, ""); }}>Clear filters</button> : undefined} /> : <div className="supply-table-list" aria-label="Table supply records">{visibleItems.map((item) => <a className="supply-table-row" href={`/admin/tables/${encodeURIComponent(item.tableId)}`} key={item.tableId}><span className="supply-table-date"><CalendarDays aria-hidden="true" /><strong>{formatDate(item.localDate, item.startLocalTime)}</strong><small>{item.startLocalTime} Atlanta time</small></span><span className="supply-table-main"><strong>{item.title || "Untitled Table draft"}</strong><span><MapPin aria-hidden="true" />{item.neighborhood || "Neighborhood not set"}</span>{item.syncState === "missing" && <span className="supply-source-missing" role="status"><CircleAlert aria-hidden="true" />Source record missing in latest sync</span>}</span><span className={`status-pill ${item.lifecycle === "published" ? "status-pill-success" : item.lifecycle === "review_required" || item.lifecycle === "upstream_missing" ? "status-pill-warning" : "status-pill-pending"}`}>{lifecycleLabels[item.lifecycle]}</span><span className="supply-table-revision">{item.draftRevision === null ? "No draft" : `Draft v${item.draftRevision}`}</span><ArrowRight aria-hidden="true" /></a>)}</div>}
+      {visibleItems.length === 0 ? <PageState variant="empty" className="supply-list-empty" title={search || filter ? "No Tables match these filters" : "No Table supply records yet"} message={search || filter ? "Clear the search or lifecycle filter to see more records." : list.canCreateDraft ? "Add your venues below, then create the first Table draft." : "Tables assigned to you will appear here."} action={(search || filter) ? <button className="button button-outline" type="button" onClick={() => { setSearch(""); setFilter(""); void loadList(null, false, ""); }}>Clear filters</button> : undefined} /> : <div className="supply-table-list" aria-label="Table supply records">{visibleItems.map((item) => <a className="supply-table-row" href={`/admin/tables/${encodeURIComponent(item.tableId)}`} key={item.tableId}><span className="supply-table-date"><CalendarDays aria-hidden="true" /><strong>{formatDate(item.localDate, item.startLocalTime)}</strong><small>{item.startLocalTime} Atlanta time</small></span><span className="supply-table-main"><strong>{item.title || "Untitled Table draft"}</strong><span><MapPin aria-hidden="true" />{item.neighborhood || "Neighborhood not set"}</span></span><span className={`status-pill ${item.lifecycle === "published" ? "status-pill-success" : item.lifecycle === "review_required" || item.lifecycle === "upstream_missing" ? "status-pill-warning" : "status-pill-pending"}`}>{lifecycleLabels[item.lifecycle]}</span><span className="supply-table-revision">{item.draftRevision === null ? "No draft" : `Draft v${item.draftRevision}`}</span><ArrowRight aria-hidden="true" /></a>)}</div>}
 
       {cursor && <div className="supply-pagination"><span>More Table records are available.</span><button className="button button-outline" type="button" onClick={() => void loadList(cursor, true)}>Load more Tables<ArrowRight aria-hidden="true" /></button></div>}
-      {list.canCreateDraft && <section className="supply-sync-strip"><span className="supply-sync-strip-icon"><RefreshCw aria-hidden="true" /></span><div><h2>Check Airtable</h2><p>Pulls in new or changed tables for you to review. Nothing goes live.</p></div><button className="button button-outline" type="button" onClick={() => void runSync()} disabled={!fixtureMutationsEnabled || mutationState === "running" || (mutationState === "unknown" && pendingListAction !== "sync")}>{mutationState === "running" ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{mutationState === "running" ? "Checking…" : mutationState === "unknown" && pendingListAction === "sync" ? "Check again" : "Check Airtable"}</button></section>}
+      {list.canCreateDraft && <VenuePanel venues={venues?.items ?? null} venueState={venueState} onAdd={() => setEditingVenue("new")} onEdit={setEditingVenue} />}
     </>}
 
-    <ManualDraftDialog open={dialog === "create"} onClose={closeDialog} onSubmit={createManualDraft} formRef={manualFormRef} content={content} setContent={setContent} updateStop={updateStop} venues={venues?.items ?? []} venueState={venueState} mutationState={mutationState} mutationMessage={mutationMessage} fieldErrors={formErrors} mutationsEnabled={fixtureMutationsEnabled && Boolean(list?.canCreateDraft)} />
+    <ManualDraftDialog open={dialog === "create"} onClose={closeDialog} onSubmit={createManualDraft} formRef={manualFormRef} content={content} setContent={setContent} updateStop={updateStop} venues={venues?.items ?? []} venueState={venueState} mutationState={mutationState} mutationMessage={mutationMessage} fieldErrors={formErrors} mutationsEnabled={canWrite} />
+    {editingVenue && <VenueDialog venue={editingVenue === "new" ? null : editingVenue} onClose={() => setEditingVenue(null)} onSaved={() => { setEditingVenue(null); void loadVenues(); }} />}
   </AdminSupplyShell>;
+}
+
+function VenuePanel(props: Readonly<{ venues: readonly SupplyVenueOptionDTO[] | null; venueState: LoadState; onAdd: () => void; onEdit: (venue: SupplyVenueOptionDTO) => void }>) {
+  return <section className="supply-venue-section" aria-labelledby="supply-venues-heading">
+    <div className="supply-section-heading"><div><p className="eyebrow">VENUES</p><h2 id="supply-venues-heading">Venues</h2><p>Stops on a Table can only use active venues. Editing a venue doesn’t change Tables already published.</p></div><button className="button button-outline" type="button" onClick={props.onAdd}><Plus aria-hidden="true" />Add venue</button></div>
+    {props.venueState === "error" && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />Venues could not be loaded.</p>}
+    {props.venues && props.venues.length === 0 && <p className="supply-inline-state">No venues yet. Add the bars and restaurants you work with.</p>}
+    {props.venues && props.venues.length > 0 && <div className="supply-venue-list">{props.venues.map((venue) => <article className="supply-venue-row" key={venue.venueId}>
+      <span className="supply-venue-icon"><Store aria-hidden="true" /></span>
+      <div className="supply-venue-main"><strong>{venue.name}</strong><span>{venue.address} · {venue.neighborhood}</span>{!venue.active && <small>Archived</small>}</div>
+      <button className="button button-outline" type="button" aria-label={`Edit ${venue.name}`} onClick={() => props.onEdit(venue)}><Pencil aria-hidden="true" />Edit</button>
+    </article>)}</div>}
+  </section>;
+}
+
+function VenueDialog(props: Readonly<{ venue: SupplyVenueOptionDTO | null; onClose: () => void; onSaved: () => void }>) {
+  const venueId = useMemo(() => props.venue?.venueId ?? crypto.randomUUID(), [props.venue]);
+  const [form, setForm] = useState<SupplySaveVenueRequest>({ name: props.venue?.name ?? "", address: props.venue?.address ?? "", neighborhood: props.venue?.neighborhood ?? "", active: props.venue?.active ?? true });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
+  const dialogRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    dialogRef.current?.querySelector<HTMLElement>("input")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); props.onClose(); } };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [props.onClose]);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true); setMessage(""); setFieldErrors({});
+    try {
+      // PUT by a client-generated id: retrying after a dropped response updates the same venue instead of duplicating it.
+      const response = await fetch(`/api/supply/venues/${venueId}`, { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(form) });
+      const result = await requestData(response, isVenue);
+      if (!response.ok || !result?.ok) { const error = result && !result.ok ? result.error : null; setMessage(error?.message ?? "The venue could not be saved."); setFieldErrors(error?.fields ?? {}); return; }
+      props.onSaved();
+    } catch { setMessage("We’re not sure that saved. Try again; it won’t create a duplicate."); }
+    finally { setBusy(false); }
+  }
+  const set = (key: "name" | "address" | "neighborhood") => (event: React.ChangeEvent<HTMLInputElement>) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, [key]: value })); };
+  return <div className="supply-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) props.onClose(); }}>
+    <section className="supply-modal" role="dialog" aria-modal="true" aria-labelledby="supply-venue-title" ref={dialogRef} tabIndex={-1}>
+      <div className="supply-modal-heading"><span className="supply-modal-icon"><Store aria-hidden="true" /></span><button className="icon-button" type="button" aria-label="Close venue editor" disabled={busy} onClick={props.onClose}>×</button></div>
+      <h2 id="supply-venue-title">{props.venue ? "Edit venue" : "Add venue"}</h2>
+      <form className="supply-editor-form" onSubmit={(event) => void save(event)}>
+        <fieldset className="supply-form-lock" disabled={busy}>
+          <Field label="Venue name" id="venue-name" error={fieldErrors.name}><input id="venue-name" required maxLength={180} value={form.name} onChange={set("name")} /></Field>
+          <Field label="Street address" id="venue-address" error={fieldErrors.address}><input id="venue-address" required maxLength={400} value={form.address} onChange={set("address")} /></Field>
+          <Field label="Neighborhood" id="venue-neighborhood" error={fieldErrors.neighborhood}><input id="venue-neighborhood" required maxLength={120} value={form.neighborhood} onChange={set("neighborhood")} /></Field>
+          {props.venue && <label className="supply-field supply-checkbox" htmlFor="venue-active"><input id="venue-active" type="checkbox" checked={form.active} onChange={(event) => { const active = event.currentTarget.checked; setForm((current) => ({ ...current, active })); }} /><span>Active (uncheck to archive; existing Tables keep it)</span></label>}
+        </fieldset>
+        {message && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />{message}</p>}
+        <div className="supply-modal-actions"><button className="button button-outline" type="button" onClick={props.onClose} disabled={busy}>Cancel</button><button className="button button-primary" type="submit" disabled={busy}>{busy ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <Save aria-hidden="true" />}{busy ? "Saving…" : "Save venue"}</button></div>
+      </form>
+    </section>
+  </div>;
 }
 
 function ManualDraftDialog(props: Readonly<{
@@ -367,7 +379,8 @@ function ManualDraftDialog(props: Readonly<{
     <section className="supply-modal supply-editor-modal" role="dialog" aria-modal="true" aria-labelledby="supply-create-title" ref={dialogRef} tabIndex={-1}>
       <div className="supply-modal-heading"><span className="supply-modal-icon"><FilePlus2 aria-hidden="true" /></span><button className="icon-button" type="button" aria-label="Close draft editor" disabled={locked} onClick={props.onClose}>×</button></div>
       <h2 id="supply-create-title">New table draft</h2><p className="supply-modal-intro">Guests won’t see this until you approve and publish it.</p>
-      {props.venueState === "loading" && <p className="supply-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading approved venue options…</p>}
+      {props.venueState === "loading" && <p className="supply-inline-state" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />Loading venues…</p>}
+      {props.venueState === "ready" && !props.venues.some((venue) => venue.active) && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />Add at least one venue on the Tables page before creating a draft.</p>}
       {props.venueState === "error" && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />Venue options are unavailable. Retry by closing and reopening the editor.</p>}
       {props.venueState === "forbidden" && <p className="supply-inline-state is-error" role="alert"><ShieldCheck aria-hidden="true" />Your account cannot view venue options.</p>}
       <form ref={props.formRef} className="supply-editor-form" onSubmit={props.onSubmit}>
@@ -385,7 +398,7 @@ function ManualDraftDialog(props: Readonly<{
               <select id={`draft-stop-${stop.role}-venue`} required value={stop.venueId} disabled={props.venueState !== "ready" || !props.mutationsEnabled} onChange={(event) => {
                 const venue = props.venues.find((item) => item.venueId === event.currentTarget.value);
                 props.updateStop(index, { venueId: venue?.venueId ?? "", venueName: venue?.name ?? "", venueAddress: venue?.address ?? "" });
-              }}><option value="">Choose a venue</option>{props.venues.map((venue) => <option key={venue.venueId} value={venue.venueId}>{venue.name} · {venue.neighborhood}</option>)}</select>
+              }}><option value="">Choose a venue</option>{props.venues.filter((venue) => venue.active).map((venue) => <option key={venue.venueId} value={venue.venueId}>{venue.name} · {venue.neighborhood}</option>)}</select>
             </Field>
             <Field label="Minutes from start" id={`draft-stop-${stop.role}-offset`} error={props.fieldErrors[`stops.${stop.role}.minutesFromStart`]}><input id={`draft-stop-${stop.role}-offset`} type="number" min={0} max={720} step={5} value={stop.minutesFromStart} onChange={(event) => props.updateStop(index, { minutesFromStart: Number(event.currentTarget.value) })} /></Field>
             <label className="supply-field" htmlFor={`draft-stop-${stop.role}-notes`}><span>Note for guests</span><textarea id={`draft-stop-${stop.role}-notes`} rows={2} maxLength={500} value={stop.publicNotes} onChange={(event) => props.updateStop(index, { publicNotes: event.currentTarget.value })} /></label>
@@ -435,7 +448,7 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       setContent(draftContent);
       saveSnapshotRef.current = draftContent ? JSON.stringify(draftContent) : "";
       setPreview(null); setFieldErrors({}); setMutationState("idle"); setMutationMessage(""); setState("ready");
-      if (result.data.canEditDraft && result.data.mutationsEnabled) void loadVenueOptions();
+      if (result.data.canEditDraft) void loadVenueOptions();
     } catch { setState("error"); setDetail(null); setMessage("Table detail could not be loaded. Try again shortly."); }
   }, [tableId]);
 
@@ -461,12 +474,11 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
 
   const dirty = Boolean(content && JSON.stringify(content) !== saveSnapshotRef.current);
   const draft = detail?.draft ?? null;
-  const fixtureMutationsEnabled = Boolean(detail?.providerState === "fixture" && detail.mutationsEnabled);
-  const editable = Boolean(detail?.canEditDraft && fixtureMutationsEnabled && draft && content);
+  const editable = Boolean(detail?.canEditDraft && draft && content);
 
   async function saveDraft(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!detail || !draft || !content || !editable || !fixtureMutationsEnabled) return;
+    if (!detail || !draft || !content || !editable) return;
     const requestBody = { expectedDraftRevision: draft.revision, content };
     const operationId = operationIdFor(saveOperation, requestBody);
     setMutationState("running"); setMutationKind("save"); setMutationMessage(""); setFieldErrors({});
@@ -478,9 +490,10 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       if (!response.ok || !result?.ok) {
         const error = result && !result.ok ? result.error : null;
         const isConflict = response.status === 409 || error?.code === "revision_conflict" || error?.code === "protected_change";
-        setMutationState(isConflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? "Draft changes could not be confirmed."); setFieldErrors(error?.fields ?? {});
+        // loadDetail() resets the feedback, so reload first and then explain why the save was refused.
         if (isConflict) { saveOperation.current = null; await loadDetail(); }
         else if (!error?.retryable) saveOperation.current = null;
+        setMutationState(isConflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? "Draft changes could not be confirmed."); setFieldErrors(error?.fields ?? {});
         return;
       }
       saveOperation.current = null; setDetail((current) => current ? { ...current, draft: result.data } : current);
@@ -504,8 +517,7 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
   }
 
   async function revisionAction(kind: "accept" | "publish") {
-    if (!detail || !draft || !preview || !fixtureMutationsEnabled) return;
-    if (detail.currentSyncState === "missing") return;
+    if (!detail || !draft || !preview) return;
     if (kind === "accept" && (!detail.canAccept || !preview.canAccept)) return;
     if (kind === "publish" && (!detail.canPublish || !preview.canPublish)) return;
     const requestBody = { expectedDraftRevision: draft.revision };
@@ -522,9 +534,9 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       if (!response.ok || !result?.ok) {
         const error = result && !result.ok ? result.error : null;
         const conflict = response.status === 409 || error?.code === "revision_conflict" || error?.code === "protected_change";
-        setMutationState(conflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? `The ${kind} result could not be confirmed.`);
         if (conflict) { operationRef.current = null; await loadDetail(); }
         else if (!error?.retryable) operationRef.current = null;
+        setMutationState(conflict ? "conflict" : error?.retryable ? "unknown" : "error"); setMutationMessage(error?.message ?? `The ${kind} result could not be confirmed.`);
         return;
       }
       operationRef.current = null; setDialog("closed"); setPreview(null); setMutationState("idle");
@@ -534,9 +546,6 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
     finally { setMutationKind(null); }
   }
 
-  const provider = detail ? providerDescription(detail.providerState) : null;
-  const ProviderIcon = provider?.icon ?? Database;
-  const isStale = detail?.currentSyncState !== "current";
 
   return <AdminSupplyShell>
     <a href="/admin/tables" className="page-header-back"><ArrowLeft aria-hidden="true" />Tables</a>
@@ -545,16 +554,15 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       <PageHeader className="supply-detail-heading" titleId="supply-detail-title"
         title={draft?.content.title || detail.published?.content.title || detail.accepted?.content.title || "Table draft"}
         description={`${draft?.content.neighborhood || detail.published?.content.neighborhood || detail.accepted?.content.neighborhood || "Neighborhood not set"} · Updated ${formatTimestamp(draft?.updatedAt ?? detail.published?.updatedAt ?? detail.accepted?.updatedAt ?? "")}`}
-        status={<StatusBadge tone={detail.lifecycle === "published" ? "success" : "pending"}>{lifecycleLabels[detail.lifecycle]}</StatusBadge>} />
-      {provider && <section className={`supply-mode-inline ${provider.className}`}><ProviderIcon aria-hidden="true" /><span><strong>{provider.title}</strong>{(fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here") !== provider.title && <small>{fixtureMutationsEnabled ? "Test mode" : "Editing is turned off here"}</small>}</span></section>}
-      {isStale && <section className="supply-detail-warning" role="status"><CircleAlert aria-hidden="true" /><div><strong>{detail.currentSyncState === "missing" ? "Removed from Airtable" : "Changed in Airtable"}</strong><p>{detail.currentSyncState === "missing" ? "This table isn’t in Airtable anymore. Guests still see the live version." : "Airtable has newer details. Review them below."}</p></div></section>}
+        status={<StatusBadge tone={detail.lifecycle === "published" ? "success" : "pending"}>{lifecycleLabels[detail.lifecycle]}</StatusBadge>}
+        actions={detail.canAccept ? <a className="button button-outline" href={`/admin/tables?duplicate=${encodeURIComponent(tableId)}`}><Copy aria-hidden="true" />Duplicate</a> : undefined} />
       {mutationMessage && <div className={`supply-mutation-feedback ${mutationState === "error" || mutationState === "conflict" ? "is-error" : mutationState === "unknown" ? "is-warning" : ""}`} role={mutationState === "error" || mutationState === "conflict" || mutationState === "unknown" ? "alert" : "status"}><CircleAlert aria-hidden="true" />{mutationMessage}{mutationState === "conflict" && <button className="text-action" type="button" onClick={() => void loadDetail()}>Reload current revision</button>}{mutationState === "unknown" && <small>Retry the same action while the operation is unchanged.</small>}</div>}
 
       <div className="supply-revision-grid">
         {detail.published && <SupplySnapshot title="Current guest-visible revision" label={`Published · ${formatTimestamp(detail.published.updatedAt)}`} revision={detail.published} privateNotes={false} />}
         {detail.accepted && <SupplySnapshot title="Accepted revision" label={`Accepted · ${formatTimestamp(detail.accepted.updatedAt)}`} revision={detail.accepted} privateNotes />}
       </div>
-      {!draft && <section className="supply-no-draft"><span className="data-state-icon"><FileCheck2 aria-hidden="true" /></span><div><h2>No draft yet</h2><p>Start one from “New from Airtable” on the Tables page.</p><a className="button button-outline" href="/admin/tables">Back to Tables<ArrowRight aria-hidden="true" /></a></div></section>}
+      {!draft && <section className="supply-no-draft"><span className="data-state-icon"><FileCheck2 aria-hidden="true" /></span><div><h2>No draft yet</h2><p>This Table has no editable draft.</p><a className="button button-outline" href="/admin/tables">Back to Tables<ArrowRight aria-hidden="true" /></a></div></section>}
 
       {draft && content && <section className="supply-editor-section" aria-labelledby="supply-editor-title"><div className="supply-section-heading"><div><p className="eyebrow">DRAFT</p><h2 id="supply-editor-title">{detail.canEditDraft ? "Edit draft" : "Draft"}</h2><p>Guests won’t see changes until you publish.</p></div><span className={`status-pill ${draft.state === "draft" ? "status-pill-pending" : "status-pill-neutral"}`}>{draft.state}</span></div>
         <form className="supply-detail-form" onSubmit={(event) => void saveDraft(event)}>
@@ -567,7 +575,7 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
           <label className="supply-field supply-private-notes" htmlFor="detail-host-notes"><span>Notes for staff (guests don’t see these)</span><textarea id="detail-host-notes" rows={3} maxLength={2000} disabled={!editable || mutationState === "running"} value={content.hostNotes} onChange={(event) => updateField("hostNotes", event.currentTarget.value)} /><small></small></label>
           <fieldset className="supply-stops-fieldset"><legend>Three-stop itinerary</legend><p>Drinks → dinner → dessert. Only public notes appear in the member itinerary.</p>
             {content.stops.map((stop, index) => <section className="supply-stop-editor" key={stop.role}><div className="supply-stop-editor-heading"><span>{index + 1}</span><div><strong>{stop.role[0]!.toUpperCase() + stop.role.slice(1)}</strong><small>{stop.minutesFromStart} minutes after the table begins</small></div></div>
-              <Field label={`${stop.role[0]!.toUpperCase() + stop.role.slice(1)} venue`} id={`detail-${stop.role}-venue`} error={fieldErrors[`stops.${stop.role}.venueId`] ?? fieldErrors.venue}><select id={`detail-${stop.role}-venue`} required disabled={!editable || mutationState === "running" || !venues} value={stop.venueId} onChange={(event) => { const venue = venues?.items.find((item) => item.venueId === event.currentTarget.value); updateDetailStop(index, { venueId: venue?.venueId ?? "", venueName: venue?.name ?? "", venueAddress: venue?.address ?? "" }); }}><option value="">Choose a venue</option>{venues?.items.map((venue) => <option key={venue.venueId} value={venue.venueId}>{venue.name} · {venue.neighborhood}</option>)}{stop.venueId && !venues?.items.some((venue) => venue.venueId === stop.venueId) && <option value={stop.venueId}>{stop.venueName} · unavailable</option>}</select></Field>
+              <Field label={`${stop.role[0]!.toUpperCase() + stop.role.slice(1)} venue`} id={`detail-${stop.role}-venue`} error={fieldErrors[`stops.${stop.role}.venueId`] ?? fieldErrors.venue}><select id={`detail-${stop.role}-venue`} required disabled={!editable || mutationState === "running" || !venues} value={stop.venueId} onChange={(event) => { const venue = venues?.items.find((item) => item.venueId === event.currentTarget.value); updateDetailStop(index, { venueId: venue?.venueId ?? "", venueName: venue?.name ?? "", venueAddress: venue?.address ?? "" }); }}><option value="">Choose a venue</option>{venues?.items.filter((venue) => venue.active).map((venue) => <option key={venue.venueId} value={venue.venueId}>{venue.name} · {venue.neighborhood}</option>)}{stop.venueId && !venues?.items.some((venue) => venue.active && venue.venueId === stop.venueId) && <option value={stop.venueId}>{stop.venueName} · unavailable</option>}</select></Field>
               <Field label="Minutes from start" id={`detail-${stop.role}-offset`} error={fieldErrors[`stops.${stop.role}.minutesFromStart`]}><input id={`detail-${stop.role}-offset`} type="number" min={0} max={720} step={5} disabled={!editable || mutationState === "running"} value={stop.minutesFromStart} onChange={(event) => updateDetailStop(index, { minutesFromStart: Number(event.currentTarget.value) })} /></Field>
               <label className="supply-field" htmlFor={`detail-${stop.role}-public-notes`}><span>Note for guests</span><textarea id={`detail-${stop.role}-public-notes`} rows={2} maxLength={500} disabled={!editable || mutationState === "running"} value={stop.publicNotes} onChange={(event) => updateDetailStop(index, { publicNotes: event.currentTarget.value })} /></label>
               <p className="supply-venue-summary"><MapPin aria-hidden="true" />{stop.venueName || "Venue not selected"}{stop.venueAddress ? ` · ${stop.venueAddress}` : ""}</p>
@@ -580,11 +588,10 @@ export function AdminSupplyTableDetail({ tableId, footer }: Readonly<{ tableId: 
       {preview && draft && <section className="supply-preview-section" aria-labelledby="supply-preview-title"><div className="supply-section-heading"><div><p className="eyebrow">PREVIEW</p><h2 id="supply-preview-title">Check the details before approving.</h2><p>{preview.startsAt ? `Starts ${formatTimestamp(preview.startsAt)}.` : "This draft doesn’t have a valid start time yet."}</p></div><span className={`status-pill ${preview.valid ? "status-pill-success" : "status-pill-warning"}`}>{preview.valid ? "Ready" : "Needs fixes"}</span></div>
         {preview.issues.length > 0 && <ul className="supply-validation-list">{preview.issues.map((issue, index) => <li key={`${issue.field}-${issue.stopRole ?? "table"}-${index}`}><CircleAlert aria-hidden="true" /><span><strong>{issue.stopRole ? `${issue.stopRole[0]!.toUpperCase()}${issue.stopRole.slice(1)} · ` : ""}{fieldLabel(issue.field)}</strong>{issue.message}</span></li>)}</ul>}
         {preview.changes.length > 0 && <div className="supply-change-list"><h3>Changes</h3>{preview.changes.map((change, index) => <div key={`${change.field}-${index}`}><strong>{fieldLabel(change.field)}</strong><span>{change.before ?? "No previous value"}</span><ArrowRight aria-hidden="true" /><span>{change.after ?? "Removed"}</span></div>)}</div>}
-        {preview.valid && preview.changes.length === 0 && <p className="supply-no-changes">This revision matches the current source snapshot.</p>}
-        <div className="supply-review-actions"><p>{detail.currentSyncState === "missing" ? "This table isn’t in Airtable anymore. Guests still see the live version." : "Approved changes aren’t live until you publish."}</p><div><button className="button button-outline" type="button" disabled={detail.currentSyncState === "missing" || !detail.canAccept || !preview.canAccept || !fixtureMutationsEnabled || mutationState === "running"} onClick={() => setDialog("accept")}><BadgeCheck aria-hidden="true" />Approve changes</button><button className="button button-primary" type="button" disabled={detail.currentSyncState === "missing" || !detail.canPublish || !preview.canPublish || !fixtureMutationsEnabled || mutationState === "running"} onClick={() => setDialog("publish")}><Check aria-hidden="true" />Publish</button></div></div>
+        {preview.valid && preview.changes.length === 0 && <p className="supply-no-changes">This revision matches the published version.</p>}
+        <div className="supply-review-actions"><p>Approved changes aren’t live until you publish.</p><div><button className="button button-outline" type="button" disabled={!detail.canAccept || !preview.canAccept || mutationState === "running"} onClick={() => setDialog("accept")}><BadgeCheck aria-hidden="true" />Approve changes</button><button className="button button-primary" type="button" disabled={!detail.canPublish || !preview.canPublish || mutationState === "running"} onClick={() => setDialog("publish")}><Check aria-hidden="true" />Publish</button></div></div>
       </section>}
 
-      {!fixtureMutationsEnabled && <p className="supply-disabled-note"><Ban aria-hidden="true" />Write actions are disabled outside the isolated local fixture environment. Draft writes, acceptance and publication are unavailable here.</p>}
     </>}
     <SupplyConfirmDialog mode={dialog === "accept" || dialog === "publish" ? dialog : "closed"} onClose={() => setDialog("closed")} onConfirm={() => void revisionAction(dialog as "accept" | "publish")} disabled={mutationState === "running"} busy={mutationState === "running"} />
     {footer}

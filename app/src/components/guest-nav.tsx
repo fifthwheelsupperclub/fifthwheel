@@ -1,11 +1,9 @@
-import { BadgeCheck, ClipboardList, House, Table2 } from "lucide-react";
+import { BadgeCheck, House } from "lucide-react";
 
 // One sidebar for every signed-in guest screen. Add or rename a nav item here, nowhere else.
-export type GuestNavKey = "home" | "tables" | "requests" | "seats";
+export type GuestNavKey = "home" | "seats";
 const ITEMS: ReadonlyArray<readonly [GuestNavKey, string, string, typeof House]> = [
   ["home", "/member", "Home", House],
-  ["tables", "/tables", "Tables", Table2],
-  ["requests", "/requests", "Requests", ClipboardList],
   ["seats", "/my-seats", "My Seats", BadgeCheck],
 ];
 

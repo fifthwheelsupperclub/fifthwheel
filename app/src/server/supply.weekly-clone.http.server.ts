@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import type {
-  WeeklyCloneErrorCode, WeeklyCloneResponse, WeeklyCloneStartRequest, WeeklyCloneUndoRequest,
+  WeeklyCloneErrorCode, WeeklyCloneResponse, WeeklyCloneStartRequest,
 } from "../supply.weekly-clone.contract.ts";
 import type { WeeklyCloneResult, WeeklyCloneService } from "./supply.weekly-clone.contract.server.ts";
 import { assertExactOrigin } from "./origin.server.ts";
@@ -11,7 +11,6 @@ import { getAccessTokenForPrincipal } from "./session.cookies.server.ts";
 const noStore = { "cache-control": "private, no-store", vary: "Cookie, Origin" };
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const weekDatePattern = /^\d{4}-\d{2}-\d{2}$/;
-const hashPattern = /^[a-f0-9]{32}$/;
 const maxBodyBytes = 4096;
 type Factory = () => WeeklyCloneService;
 
@@ -23,7 +22,6 @@ function status(code: WeeklyCloneErrorCode): number {
     case "not_found": return 404;
     case "revision_conflict":
     case "operation_conflict": return 409;
-    case "provider_unavailable":
     case "temporarily_unavailable": return 503;
   }
 }
@@ -38,7 +36,7 @@ function error(code: WeeklyCloneErrorCode, message: string, retryable = false, c
 
 function serviceResponse<T>(result: WeeklyCloneResult<T>, correlationId: string): Response {
   if (!result.ok) {
-    const retryable = result.error.code === "temporarily_unavailable" || result.error.code === "provider_unavailable";
+    const retryable = result.error.code === "temporarily_unavailable";
     return response({ ok: false, error: { code: result.error.code, message: result.error.safeMessage, retryable, correlationId } }, status(result.error.code));
   }
   return response({ ok: true, data: result.value, correlationId } satisfies WeeklyCloneResponse<T>, 200);
@@ -108,18 +106,16 @@ export function createWeeklyCloneHttpHandlers(createService: Factory, expectedOr
       const correlationId = randomUUID();
       const origin = requireOrigin(request, correlationId); if (origin) return origin;
       const body = await bodyFor(request, correlationId); if (body instanceof Response) return body;
-      if (!validObject(body, ["operationId", "sourceWeekStart", "targetWeekStart", "expectedPlanHash"])
+      if (!validObject(body, ["operationId", "sourceWeekStart", "targetWeekStart"])
         || typeof body.operationId !== "string" || !uuidPattern.test(body.operationId)
         || typeof body.sourceWeekStart !== "string" || !weekDatePattern.test(body.sourceWeekStart)
-        || typeof body.targetWeekStart !== "string" || !weekDatePattern.test(body.targetWeekStart)
-        || typeof body.expectedPlanHash !== "string" || !hashPattern.test(body.expectedPlanHash)) {
-        return error("invalid_input", "Check the operation ID, preview dates, and plan hash.", false, correlationId);
+        || typeof body.targetWeekStart !== "string" || !weekDatePattern.test(body.targetWeekStart)) {
+        return error("invalid_input", "Check the operation ID and preview dates.", false, correlationId);
       }
       const requestBody: WeeklyCloneStartRequest = {
         operationId: body.operationId,
         sourceWeekStart: body.sourceWeekStart,
         targetWeekStart: body.targetWeekStart,
-        expectedPlanHash: body.expectedPlanHash,
       };
       try { return serviceResponse(await createService().clone({ accessToken: token(request), request: requestBody }), correlationId); }
       catch { return serviceUnavailable(correlationId); }
@@ -143,27 +139,13 @@ export function createWeeklyCloneHttpHandlers(createService: Factory, expectedOr
       try { return serviceResponse(await createService().readOperation({ accessToken: token(request), operationId }), correlationId); }
       catch { return serviceUnavailable(correlationId); }
     },
-    async reconcile(request: Request, operationId: string): Promise<Response> {
-      const correlationId = randomUUID();
-      const origin = requireOrigin(request, correlationId); if (origin) return origin;
-      if (!uuidPattern.test(operationId)) return error("invalid_input", "Use a valid operation identifier.", false, correlationId);
-      const body = await bodyFor(request, correlationId); if (body instanceof Response) return body;
-      if (!validObject(body, [])) return error("invalid_input", "Reconciliation does not accept request fields.", false, correlationId);
-      try { return serviceResponse(await createService().reconcile({ accessToken: token(request), operationId }), correlationId); }
-      catch { return serviceUnavailable(correlationId); }
-    },
     async undo(request: Request, operationId: string): Promise<Response> {
       const correlationId = randomUUID();
       const origin = requireOrigin(request, correlationId); if (origin) return origin;
       if (!uuidPattern.test(operationId)) return error("invalid_input", "Use a valid operation identifier.", false, correlationId);
       const body = await bodyFor(request, correlationId); if (body instanceof Response) return body;
-      if (!validObject(body, ["undoOperationId", "expectedManifestRevision"])
-        || typeof body.undoOperationId !== "string" || !uuidPattern.test(body.undoOperationId)
-        || !Number.isSafeInteger(body.expectedManifestRevision) || Number(body.expectedManifestRevision) < 1) {
-        return error("invalid_input", "Check the undo operation and manifest revision.", false, correlationId);
-      }
-      const requestBody: WeeklyCloneUndoRequest = { undoOperationId: body.undoOperationId, expectedManifestRevision: Number(body.expectedManifestRevision) };
-      try { return serviceResponse(await createService().undo({ accessToken: token(request), operationId, request: requestBody }), correlationId); }
+      if (!validObject(body, [])) return error("invalid_input", "Undo does not accept request fields.", false, correlationId);
+      try { return serviceResponse(await createService().undo({ accessToken: token(request), operationId }), correlationId); }
       catch { return serviceUnavailable(correlationId); }
     },
   });

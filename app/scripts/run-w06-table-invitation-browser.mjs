@@ -165,6 +165,7 @@ function fixtureSql(f) {
   const validation = sql(JSON.stringify({ valid: true, issues: [] }));
   return `begin;
 insert into public.app_user_roles(user_id,role) values (${sql(f.adminId)},'admin');
+select set_config('app.skip_waitlist_confirmation','on',true);
 insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game,source) values
   (${sql(f.adminSignup)},${sql(f.adminEmail)},'W06.5','Admin','1990-01-01','Woman',array['Women'],21,120,'Inman Park',array['Wednesday'],'synthetic W06.5 browser fixture','Open','Yes, surprise me','landing-page'),
   (${sql(f.memberSignup)},${sql(f.memberEmail)},'W06.5','Member','1990-01-01','Woman',array['Women','Non-binary people'],21,120,'Inman Park',array['Wednesday'],'synthetic W06.5 browser fixture','Open','Yes, surprise me','landing-page'),
@@ -173,9 +174,9 @@ insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,a
   (${sql(f.adminAdmission)},${sql(f.adminSignup)},${sql(f.adminEmail)},'activated',${sql(f.adminId)},${sql(f.adminId)},now()),
   (${sql(f.memberAdmission)},${sql(f.memberSignup)},${sql(f.memberEmail)},'activated',${sql(f.adminId)},${sql(f.memberId)},now()),
   (${sql(f.otherAdmission)},${sql(f.otherSignup)},${sql(f.otherEmail)},'activated',${sql(f.adminId)},${sql(f.otherId)},now());
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values
-  (${sql(f.memberGuest)},${sql(f.memberId)},${sql(f.memberAdmission)},'approved',1,1,'W06.5','Member','1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me'),
-  (${sql(f.otherGuest)},${sql(f.otherId)},${sql(f.otherAdmission)},'approved',1,1,'W06.5','Other','1990-01-01','man',array['woman'],21,120,'Chamblee',array['Thursday'],'Open','Yes, surprise me');
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values
+  (${sql(f.memberGuest)},${sql(f.memberId)},${sql(f.memberAdmission)},'W06.5','Member','1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me'),
+  (${sql(f.otherGuest)},${sql(f.otherId)},${sql(f.otherAdmission)},'W06.5','Other','1990-01-01','man',array['woman'],21,120,'Chamblee',array['Thursday'],'Open','Yes, surprise me');
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values (${sql(f.tableId)},'draft','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
   (${sql(f.revisionId)},${sql(f.tableId)},1,'draft',${sql(tableContent)}::jsonb,${sql(f.adminId)});
@@ -185,8 +186,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   values (${sql(f.requestId)},${sql(f.tableId)},${sql(f.memberGuest)},${sql(f.memberId)},${sql(f.tableTitle)},${sql(f.tableDate)},'19:00','Inman Park','pending');
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at)
   values (${sql(f.proposalId)},${sql(f.tableId)},1,'approved',${sql(f.revisionId)},${validation}::jsonb,${sql(f.adminId)},${sql(f.adminId)},${sql(f.adminId)},${sql(f.adminId)},now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version)
-  values (${sql(f.proposalId)},${sql(f.requestId)},${sql(f.memberGuest)},1,1,1);
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision)
+  values (${sql(f.proposalId)},${sql(f.requestId)},${sql(f.memberGuest)},1);
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state)
   values (${sql(f.invitationId)},${sql(f.tableId)},${sql(f.memberGuest)},${sql(f.memberId)},${sql(f.requestId)},${sql(f.proposalId)},${sql(f.adminId)},'active');
 insert into public.app_table_invitation_outbox(outbox_id,invitation_id,operation_id,state,attempt_count,error_code,queued_at,next_attempt_at,attempted_at,message_kind)
