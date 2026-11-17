@@ -75,7 +75,6 @@ import { Route as ApiAdminRefundsObligationIdRouteImport } from './routes/api/ad
 import { Route as ApiAdminStaffAssignmentsContactRouteImport } from './routes/api/admin/staff-assignments.contact'
 import { Route as ApiAdminStaffAssignmentsHostRouteImport } from './routes/api/admin/staff-assignments.host'
 import { Route as ApiAdminStaffAssignmentsVenueRouteImport } from './routes/api/admin/staff-assignments.venue'
-import { Route as ApiAdminSupplySyncRouteImport } from './routes/api/admin/supply/sync'
 import { Route as ApiAdminSupplyWeeklyCloneRouteImport } from './routes/api/admin/supply/weekly-clone'
 import { Route as ApiMeCheckoutAttemptsAttemptIdRouteImport } from './routes/api/me/checkout-attempts.$attemptId'
 import { Route as ApiMeSeatsSeatIdRouteImport } from './routes/api/me/seats.$seatId'
@@ -114,7 +113,6 @@ import { Route as ApiSupplyDraftsDraftIdPreviewRouteImport } from './routes/api/
 import { Route as ApiSupplyDraftsDraftIdPublishRouteImport } from './routes/api/supply/drafts.$draftId.publish'
 import { Route as ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteImport } from './routes/api/admin/supply/weekly-clone.operations.$operationId'
 import { Route as ApiMeTableInvitationsInvitationIdCheckoutReturnRouteImport } from './routes/api/me/table-invitations.$invitationId.checkout.return'
-import { Route as ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport } from './routes/api/admin/supply/weekly-clone.operations.$operationId.reconcile'
 import { Route as ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRouteImport } from './routes/api/admin/supply/weekly-clone.operations.$operationId.undo'
 
 const IndexRoute = IndexRouteImport.update({
@@ -460,11 +458,6 @@ const ApiAdminStaffAssignmentsVenueRoute =
     path: '/venue',
     getParentRoute: () => ApiAdminStaffAssignmentsRoute,
   } as any)
-const ApiAdminSupplySyncRoute = ApiAdminSupplySyncRouteImport.update({
-  id: '/api/admin/supply/sync',
-  path: '/api/admin/supply/sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAdminSupplyWeeklyCloneRoute =
   ApiAdminSupplyWeeklyCloneRouteImport.update({
     id: '/api/admin/supply/weekly-clone',
@@ -688,12 +681,6 @@ const ApiMeTableInvitationsInvitationIdCheckoutReturnRoute =
     path: '/return',
     getParentRoute: () => ApiMeTableInvitationsInvitationIdCheckoutRoute,
   } as any)
-const ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute =
-  ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport.update({
-    id: '/reconcile',
-    path: '/reconcile',
-    getParentRoute: () => ApiAdminSupplyWeeklyCloneOperationsOperationIdRoute,
-  } as any)
 const ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute =
   ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRouteImport.update({
     id: '/undo',
@@ -768,7 +755,6 @@ export interface FileRoutesByFullPath {
   '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
   '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
   '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
-  '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
   '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
@@ -807,7 +793,6 @@ export interface FileRoutesByFullPath {
   '/api/supply/drafts/$draftId/publish': typeof ApiSupplyDraftsDraftIdPublishRoute
   '/api/admin/supply/weekly-clone/operations/$operationId': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteWithChildren
   '/api/me/table-invitations/$invitationId/checkout/return': typeof ApiMeTableInvitationsInvitationIdCheckoutReturnRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRoutesByTo {
@@ -873,7 +858,6 @@ export interface FileRoutesByTo {
   '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
   '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
   '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
-  '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
   '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
@@ -912,7 +896,6 @@ export interface FileRoutesByTo {
   '/api/supply/drafts/$draftId/publish': typeof ApiSupplyDraftsDraftIdPublishRoute
   '/api/admin/supply/weekly-clone/operations/$operationId': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteWithChildren
   '/api/me/table-invitations/$invitationId/checkout/return': typeof ApiMeTableInvitationsInvitationIdCheckoutReturnRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRoutesById {
@@ -983,7 +966,6 @@ export interface FileRoutesById {
   '/api/admin/staff-assignments/contact': typeof ApiAdminStaffAssignmentsContactRoute
   '/api/admin/staff-assignments/host': typeof ApiAdminStaffAssignmentsHostRoute
   '/api/admin/staff-assignments/venue': typeof ApiAdminStaffAssignmentsVenueRoute
-  '/api/admin/supply/sync': typeof ApiAdminSupplySyncRoute
   '/api/admin/supply/weekly-clone': typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   '/api/me/checkout-attempts/$attemptId': typeof ApiMeCheckoutAttemptsAttemptIdRoute
   '/api/me/seats/$seatId': typeof ApiMeSeatsSeatIdRouteWithChildren
@@ -1022,7 +1004,6 @@ export interface FileRoutesById {
   '/api/supply/drafts/$draftId/publish': typeof ApiSupplyDraftsDraftIdPublishRoute
   '/api/admin/supply/weekly-clone/operations/$operationId': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteWithChildren
   '/api/me/table-invitations/$invitationId/checkout/return': typeof ApiMeTableInvitationsInvitationIdCheckoutReturnRoute
-  '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   '/api/admin/supply/weekly-clone/operations/$operationId/undo': typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 export interface FileRouteTypes {
@@ -1094,7 +1075,6 @@ export interface FileRouteTypes {
     | '/api/admin/staff-assignments/contact'
     | '/api/admin/staff-assignments/host'
     | '/api/admin/staff-assignments/venue'
-    | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
     | '/api/me/seats/$seatId'
@@ -1133,7 +1113,6 @@ export interface FileRouteTypes {
     | '/api/supply/drafts/$draftId/publish'
     | '/api/admin/supply/weekly-clone/operations/$operationId'
     | '/api/me/table-invitations/$invitationId/checkout/return'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1199,7 +1178,6 @@ export interface FileRouteTypes {
     | '/api/admin/staff-assignments/contact'
     | '/api/admin/staff-assignments/host'
     | '/api/admin/staff-assignments/venue'
-    | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
     | '/api/me/seats/$seatId'
@@ -1238,7 +1216,6 @@ export interface FileRouteTypes {
     | '/api/supply/drafts/$draftId/publish'
     | '/api/admin/supply/weekly-clone/operations/$operationId'
     | '/api/me/table-invitations/$invitationId/checkout/return'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   id:
     | '__root__'
@@ -1308,7 +1285,6 @@ export interface FileRouteTypes {
     | '/api/admin/staff-assignments/contact'
     | '/api/admin/staff-assignments/host'
     | '/api/admin/staff-assignments/venue'
-    | '/api/admin/supply/sync'
     | '/api/admin/supply/weekly-clone'
     | '/api/me/checkout-attempts/$attemptId'
     | '/api/me/seats/$seatId'
@@ -1347,7 +1323,6 @@ export interface FileRouteTypes {
     | '/api/supply/drafts/$draftId/publish'
     | '/api/admin/supply/weekly-clone/operations/$operationId'
     | '/api/me/table-invitations/$invitationId/checkout/return'
-    | '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
     | '/api/admin/supply/weekly-clone/operations/$operationId/undo'
   fileRoutesById: FileRoutesById
 }
@@ -1402,7 +1377,6 @@ export interface RootRouteChildren {
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   HostAttendanceTableIdRoute: typeof HostAttendanceTableIdRoute
   ApiAdminMemberAccountsDeleteRoute: typeof ApiAdminMemberAccountsDeleteRoute
-  ApiAdminSupplySyncRoute: typeof ApiAdminSupplySyncRoute
   ApiAdminSupplyWeeklyCloneRoute: typeof ApiAdminSupplyWeeklyCloneRouteWithChildren
   ApiMeCheckoutAttemptsAttemptIdRoute: typeof ApiMeCheckoutAttemptsAttemptIdRoute
   ApiMeTableInvitationsInvitationIdRoute: typeof ApiMeTableInvitationsInvitationIdRouteWithChildren
@@ -1885,13 +1859,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminStaffAssignmentsVenueRouteImport
       parentRoute: typeof ApiAdminStaffAssignmentsRoute
     }
-    '/api/admin/supply/sync': {
-      id: '/api/admin/supply/sync'
-      path: '/api/admin/supply/sync'
-      fullPath: '/api/admin/supply/sync'
-      preLoaderRoute: typeof ApiAdminSupplySyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/admin/supply/weekly-clone': {
       id: '/api/admin/supply/weekly-clone'
       path: '/api/admin/supply/weekly-clone'
@@ -2157,13 +2124,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/me/table-invitations/$invitationId/checkout/return'
       preLoaderRoute: typeof ApiMeTableInvitationsInvitationIdCheckoutReturnRouteImport
       parentRoute: typeof ApiMeTableInvitationsInvitationIdCheckoutRoute
-    }
-    '/api/admin/supply/weekly-clone/operations/$operationId/reconcile': {
-      id: '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
-      path: '/reconcile'
-      fullPath: '/api/admin/supply/weekly-clone/operations/$operationId/reconcile'
-      preLoaderRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRouteImport
-      parentRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdRoute
     }
     '/api/admin/supply/weekly-clone/operations/$operationId/undo': {
       id: '/api/admin/supply/weekly-clone/operations/$operationId/undo'
@@ -2473,14 +2433,11 @@ const ApiSupplyVenuesRouteWithChildren = ApiSupplyVenuesRoute._addFileChildren(
 )
 
 interface ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren {
-  ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute
   ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute: typeof ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute
 }
 
 const ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren: ApiAdminSupplyWeeklyCloneOperationsOperationIdRouteChildren =
   {
-    ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute:
-      ApiAdminSupplyWeeklyCloneOperationsOperationIdReconcileRoute,
     ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute:
       ApiAdminSupplyWeeklyCloneOperationsOperationIdUndoRoute,
   }
@@ -2604,7 +2561,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   HostAttendanceTableIdRoute: HostAttendanceTableIdRoute,
   ApiAdminMemberAccountsDeleteRoute: ApiAdminMemberAccountsDeleteRoute,
-  ApiAdminSupplySyncRoute: ApiAdminSupplySyncRoute,
   ApiAdminSupplyWeeklyCloneRoute: ApiAdminSupplyWeeklyCloneRouteWithChildren,
   ApiMeCheckoutAttemptsAttemptIdRoute: ApiMeCheckoutAttemptsAttemptIdRoute,
   ApiMeTableInvitationsInvitationIdRoute:

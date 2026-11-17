@@ -1,6 +1,6 @@
 /** Browser-safe supply management DTOs. */
 
-import type { SupplyStopRole } from "./supply.contract.ts";
+export type SupplyStopRole = "drinks" | "dinner" | "dessert";
 
 export type SupplyDraftContent = Readonly<{
   title: string;
@@ -31,7 +31,6 @@ export type SupplyTableListItemDTO = Readonly<{
   acceptedRevisionId: string | null;
   publishedRevisionId: string | null;
   updatedAt: string;
-  sourceRevisionId: string | null;
   syncState: "current" | "stale" | "missing";
   canCreateDraft: boolean;
 }>;

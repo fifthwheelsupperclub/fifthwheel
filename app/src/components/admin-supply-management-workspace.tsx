@@ -45,7 +45,7 @@ function isListItem(value: unknown): value is SupplyTableListItemDTO {
     && (Number.isSafeInteger(value.draftRevision) || value.draftRevision === null)
     && (typeof value.acceptedRevisionId === "string" || value.acceptedRevisionId === null)
     && (typeof value.publishedRevisionId === "string" || value.publishedRevisionId === null)
-    && typeof value.updatedAt === "string" && (typeof value.sourceRevisionId === "string" || value.sourceRevisionId === null)
+    && typeof value.updatedAt === "string"
     && ["current", "stale", "missing"].includes(String(value.syncState))
     && typeof value.canCreateDraft === "boolean";
 }

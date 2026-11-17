@@ -5,8 +5,8 @@ import type { WeeklyCloneService } from "./supply.weekly-clone.contract.server.t
 import { createWeeklyCloneHttpHandlers } from "./supply.weekly-clone.http.server.ts";
 
 const preview: WeeklyClonePreviewDTO = {
-  providerState: "fixture", mutationsEnabled: true, weekStartPolicy: "monday", sourceWeekStart: "2026-11-16", targetWeekStart: "2026-11-23",
-  weekDelta: 1, planHash: "aabbccddeeff00112233445566778899", items: [], eligibleCount: 0, conflictCount: 0,
+  weekStartPolicy: "monday", sourceWeekStart: "2026-11-16", targetWeekStart: "2026-11-23",
+  weekDelta: 1, items: [], eligibleCount: 0, conflictCount: 0,
 };
 
 function setup() {
@@ -17,7 +17,7 @@ function setup() {
       return { ok: true as const, value: preview };
     },
     async listOperations(input: { accessToken?: string | null; cursor?: string | null; limit: number }) {
-      calls.listLimit = input.limit; calls.listCursor = input.cursor; return { ok: true as const, value: { providerState: "fixture" as const, mutationsEnabled: true, items: [], nextCursor: null } };
+      calls.listLimit = input.limit; calls.listCursor = input.cursor; return { ok: true as const, value: { items: [], nextCursor: null } };
     },
     async readOperation(input: { operationId: string }) { calls.readId = input.operationId; return { ok: false as const, error: { code: "not_found" as const, safeMessage: "not found" } }; },
   } as unknown as WeeklyCloneService;
@@ -55,4 +55,13 @@ test("operation detail rejects malformed ids before calling the service", async 
   const { calls, handlers } = setup();
   const response = await handlers.readOperation(new Request("http://127.0.0.1:8086/api/admin/supply/weekly-clone/operations/nope"), "nope");
   assert.equal(response.status, 400); assert.equal(calls.readId, undefined);
+});
+
+test("undo accepts only an empty JSON body", async () => {
+  const { handlers } = setup();
+  const id = "59d4e311-1a24-45b8-b361-93527521d008";
+  const response = await handlers.undo(new Request(`http://127.0.0.1:8086/api/admin/supply/weekly-clone/operations/${id}/undo`, {
+    method: "POST", headers: { origin: "http://127.0.0.1:8086", "content-type": "application/json" }, body: JSON.stringify({ undoOperationId: id }),
+  }), id);
+  assert.equal(response.status, 400);
 });

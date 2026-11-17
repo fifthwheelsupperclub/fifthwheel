@@ -26,7 +26,7 @@ const config = readFileSync(join(workdir, "supabase", "config.toml"), "utf8");
 assert.match(config, /^project_id\s*=\s*"fifthwheel-rewrite-test"\s*$/m, "wrong local project");
 assert.equal(existsSync(join(workdir, "supabase", ".temp", "project-ref")), false, "linked/hosted target forbidden");
 assert.equal(process.env.SUPABASE_PROJECT_REF, undefined, "hosted project ref forbidden");
-assert.equal(psql("select to_regprocedure('public.place_guest_at_table(uuid,uuid,uuid,uuid,uuid,boolean)') is not null"), "t", "apply 20261117100000 first");
+assert.equal(psql("select to_regprocedure('public.place_guest_at_table(uuid,uuid,uuid,uuid,uuid,boolean)') is not null"), "t", "apply 20261117120000 first");
 assert.equal(psql(`select count(*) from auth.users where id in (${[admin, host, ...users].map(q).join(",")})`), "0", "fixture collision");
 
 const place = (i, op, ack, user = users[i]) => `public.place_guest_at_table(${q(admin)},${q(signups[i])},${q(table)},${q(user)},${q(ops[op])},${ack})`;

@@ -35,7 +35,7 @@ Rules at placement:
 
 A placed guest can sign in only through their invitation: their access exists only once they are placed. Payment still confirms the Seat (`decision-seat-confirmed-at-payment`).
 
-Implementation: `app/supabase/migrations/20261117000000_waitlist_confirmation_email.sql` and `20261117100000_remove_approval_steps.sql` (`place_guest_at_table`, `list_placement_queue`).
+Implementation: `app/supabase/migrations/20261117000000_waitlist_confirmation_email.sql` and `20261117120000_remove_approval_steps.sql` (`place_guest_at_table`, `list_placement_queue`).
 
 ## Consequences
 

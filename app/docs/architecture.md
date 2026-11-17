@@ -10,7 +10,7 @@ Version 3 · 2026-11-11 · Fresh-rewrite design contracts; no implementation or 
 
 The previous app is archived under `archives/app-2026-11-11-before-restart/`. It is a visual/reference source, not the runtime or an implementation to patch. Create a fresh application entry, route tree, layouts, feature modules and tests. No imports of archived application code, prototype UI or historical migration runner are allowed. Reimplement the product contracts; extract documented visual tokens/assets without inheriting prototype state or old payment/refund copy.
 
-React/TypeScript, TanStack Start/Vite, Supabase, Stripe, Airtable supply and email remain the documented technical defaults. Recreate framework entry/configuration from supported conventions rather than preserving old route files. Verify pinned installed versions at implementation time. No framework or provider changes are authorized by the visual/IA clarification alone. Use routes for URLs/loaders, features for pages/forms, domain for pure rules, authorized server services and provider adapters, and shared layout/UI components.
+React/TypeScript, TanStack Start/Vite, Supabase, Stripe and email remain the documented technical defaults. Recreate framework entry/configuration from supported conventions rather than preserving old route files. Verify pinned installed versions at implementation time. No framework or provider changes are authorized by the visual/IA clarification alone. Use routes for URLs/loaders, features for pages/forms, domain for pure rules, authorized server services and provider adapters, and shared layout/UI components.
 
 Fresh local schema and fixtures must be isolated. A fresh codebase does not authorize resetting hosted data or blindly applying historical migrations. Inventory and reconcile live records before designing the eventual additive migration/cutover. All external writes remain separately authorized.
 
@@ -19,8 +19,6 @@ flowchart LR
   G[Guest / staff / partner] --> R[TanStack routes and features]
   R --> S[Authorized server use cases]
   S --> DB[Supabase transactional core and read model]
-  AT[Airtable Table / Venue supply] --> SY[Versioned sync worker]
-  SY --> DB
   DB --> OB[Durable jobs / outbox]
   OB --> EM[Email provider]
   OB --> ST[Stripe create / refund / reconcile]
@@ -28,27 +26,26 @@ flowchart LR
   WH --> S
 ```
 
-No guest request reads Airtable directly or writes provider-specific fields. No UI component is a source of identity, price, paid status or permissions. No app API accepts a caller-selected Stripe environment in production.
+No UI component is a source of identity, price, paid status or permissions. No app API accepts a caller-selected Stripe environment in production.
 
-## 2. Source ownership and synchronization
+## 2. Source ownership
 
 | Data                                                                                                                                        | Authority              | Rules                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Supply title, local scheduled date/time, neighborhood, venue itinerary, host-facing supply notes, publication intent                        | Airtable Events/Venues | App staff builder writes Airtable via server; synchronization materializes Supabase read model. Private notes are never published. |
-| Table runtime state, approval version, roster, holds, paid count, operational cancellation/proceed                                          | Supabase               | Airtable Status is publication intent only; it cannot set runtime cancellation/completion/paid state.                              |
+| Supply title, local scheduled date/time, neighborhood, venue itinerary, host-facing supply notes, publication intent                        | Supabase               | Admins curate Venues and Tables in the app (draft → approve → publish revisions). Private notes are never published.               |
+| Table runtime state, approval version, roster, holds, paid count, operational cancellation/proceed                                          | Supabase               | Supply revisions never set runtime cancellation/completion/paid state.                                                             |
 | Guest/contact/DOB, identity checks, requests, waitlist claim, offers, Seats, money ledger, attendance, vote, feedback, reports, roles/audit | Supabase               | UUID ownership; no runtime writes to legacy Airtable guest/booking tables after cutover.                                           |
 | Charges and refund settlement                                                                                                               | Stripe                 | Supabase stores verified ledger, obligations and reconciliation state. Stripe success cannot be inferred from client URL.          |
 
-### Sync contract
+### Supply curation contract
 
-- `external_records(provider, entity_kind, external_id, core_id, source_hash, last_seen_run)` uniquely maps Airtable base+record to UUID; never match by title for identity.
-- A sync run fully paginates Events and Venues, stages candidate rows, validates required fields and references, then atomically applies accepted rows and a run watermark. Retry same run/hash is a no-op. Incomplete pagination never marks records absent.
-- Convert Airtable calendar date + strict local HH:mm time in `America/New_York` to UTC `timestamptz`. Reject invalid/nonexistent or ambiguous local time for explicit staff correction; never rely on server timezone or guess a time. UTC is authoritative for all window comparisons.
-- Require title/date/time/neighborhood and three valid stop references before publication; allow repeated venue for dinner/dessert. Steps have ordered offsets relative to start (0, +45m, +120m defaults), address, venue name and public notes. Data dictionary is verified in W02 before mapping implementation; unsupported upstream fields become explicit adapter/schema setup tasks.
-- Draft edits apply to an unpublished snapshot. Publication requires admin action after successful sync. Approval captures accepted `supply_revision` and guest-rule versions. After an invitation exists, changed schedule/venue fields become a visible sync conflict and are not applied to that active Table. Cosmetic public title corrections may apply with audit. No rescheduling; cancel and create a new Table for a changed night.
-- Missing record after a completed scan is flagged `upstream_missing`; retain current snapshot, suppress new publication/approval and require admin review. It does not delete or cancel paid Tables.
-- Staff write timeout to Airtable is `outcome_unknown`; read/reconcile before retrying create. Use a client-generated operation UUID in a dedicated Airtable operation field to deduplicate writes/clones; add the field during setup. Runtime critical writes never rely on Airtable retry semantics.
-- Nightly full reconciliation checks mappings/hashes/conflicts and core linkage. Sync failure leaves last-good published snapshot readable, displays last-updated time to staff and blocks publication of unsynced supply. Core payment/attendance for an accepted unchanged revision continues independently of Airtable outage.
+- Admins curate supply in the app; Supabase is the only source of truth. There is no external supply provider or sync.
+- `app_supply_venues` holds name, address, neighborhood and an `active` flag. Venues are archived, never deleted, because published revisions reference their ids. Only active venues can be chosen for a stop.
+- A Table is a head plus immutable revisions (draft → accepted → published). Each stop snapshots the venue name and address, so later venue edits never rewrite a published Table.
+- Store the local date and strict `HH:mm` start time in `America/New_York`; convert to UTC `timestamptz` for every window comparison. Reject nonexistent or ambiguous local times for explicit staff correction.
+- Require title/date/time/neighborhood and three ordered stops (drinks → dinner → dessert, default offsets 0/+45m/+120m) before acceptance. A venue may repeat across stops.
+- Every create/update/accept/publish and weekly clone carries a client-generated operation UUID; a retry with the same body replays the stored result and a different body is an `operation_conflict`.
+- Approval captures the accepted `supply_revision`. After activity (invitation, paid Seat, proceed), schedule and venue edits are refused as `protected_change`; cosmetic corrections may still be saved. No rescheduling; cancel and create a new Table for a changed night.
 
 ## 3. Core schema contract
 
