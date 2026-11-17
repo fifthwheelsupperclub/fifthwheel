@@ -1,4 +1,6 @@
 ---
+
+> **Superseded 2026-11-16.** This flow was removed; staff place guests directly from the waitlist queue (`place_guest_at_table`). See [PRD §0](../PRD.md#0-version-4-change-2026-11-16-no-approval-steps). Kept as history.
 id: run-fifthwheel-w06-roster
 type: run-packet
 status: in-progress

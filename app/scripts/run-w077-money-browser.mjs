@@ -172,11 +172,12 @@ function fixtureSql(f) {
   const out = ["begin;", `insert into public.app_user_roles(user_id,role) values (${sql(f.admin.id)},'admin');`];
   const people = [{ ...f.admin, first: "Admin", guest: null, n: "admin" }, ...f.members.map((m) => ({ ...m, first: `M${m.i}`, n: "m" }))];
   for (const p of people) {
-    out.push(`insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game,source) values (${sql(p.signup)},${sql(p.email)},'W077',${sql(p.first)},'1990-01-01','Woman',array['Women','Non-binary people'],21,120,'Inman Park',array['Wednesday'],'synthetic W07.7 fixture','Open','Yes, surprise me','landing-page');`);
+    out.push(`select set_config('app.skip_waitlist_confirmation','on',true);
+insert into public.waitlist_signups(id,email_normalized,first_name,last_name,birthdate,identity,open_to,match_age_min,match_age_max,neighborhood,nights,referral,looking_for,surprise_game,source) values (${sql(p.signup)},${sql(p.email)},'W077',${sql(p.first)},'1990-01-01','Woman',array['Women','Non-binary people'],21,120,'Inman Park',array['Wednesday'],'synthetic W07.7 fixture','Open','Yes, surprise me','landing-page');`);
     out.push(`insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values (${sql(p.admission)},${sql(p.signup)},${sql(p.email)},'activated',${sql(f.admin.id)},${sql(p.id)},now());`);
   }
   for (const m of f.members) {
-    out.push(`insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values (${sql(m.guest)},${sql(m.id)},${sql(m.admission)},'approved',1,1,'W077',${sql(`M${m.i}`)},'1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me');`);
+    out.push(`insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,nights,looking_for,surprise_game) values (${sql(m.guest)},${sql(m.id)},${sql(m.admission)},'W077',${sql(`M${m.i}`)},'1990-01-01','woman',array['woman','non_binary'],21,120,'Inman Park',array['Wednesday'],'Open','Yes, surprise me');`);
   }
   const validation = sql(JSON.stringify({ valid: true, issues: [] }));
   for (const t of f.tables) {
@@ -188,7 +189,7 @@ function fixtureSql(f) {
     for (const m of f.members.filter((x) => x.table === t.k)) out.push(`insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,table_title,table_local_date,table_start_local_time,table_neighborhood,state) values (${sql(m.request)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(t.title)},${sql(t.date)},'19:00','Inman Park','pending');`);
     out.push(`insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values (${sql(t.proposal)},${sql(t.id)},1,'approved',${sql(t.revision)},${validation}::jsonb,${sql(f.admin.id)},${sql(f.admin.id)},${sql(f.admin.id)},${sql(f.admin.id)},now(),now());`);
     for (const m of f.members.filter((x) => x.table === t.k)) {
-      out.push(`insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values (${sql(t.proposal)},${sql(m.request)},${sql(m.guest)},1,1,1);`);
+      out.push(`insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values (${sql(t.proposal)},${sql(m.request)},${sql(m.guest)},1);`);
       out.push(`insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values (${sql(m.invitation)},${sql(t.id)},${sql(m.guest)},${sql(m.id)},${sql(m.request)},${sql(t.proposal)},${sql(f.admin.id)},'active');`);
       out.push(`insert into public.app_table_invitation_outbox(outbox_id,invitation_id,operation_id,state,attempt_count,queued_at,next_attempt_at,attempted_at,accepted_at,message_kind) values (${sql(m.outbox)},${sql(m.invitation)},${sql(m.outboxOp)},'accepted',1,now(),now(),now(),now(),'invitation');`);
     }

@@ -2,6 +2,18 @@
 
 Version 3 · 2026-11-11 · Fresh-rewrite requirements baseline. This document records inherited policies and the explicit clarifications below; it does not claim a finished app, approved screen designs or release authorization.
 
+## 0. Version 4 change (2026-11-16): no approval steps
+
+Version 4 removes every staff approval before an invitation (`knowledge/decisions/staff-place-guests-directly.md`). Where this section conflicts with anything below, this section wins.
+
+- **Waitlist → queue.** Joining the waitlist queues a confirmation email and adds the person to a staff placement queue. Test submissions and the legacy import send nothing.
+- **No admission approval (replaces the admin-confirmed app invitation in R00, A27, A31, D14).** Access is created when an admin places the person at a Table. A placed guest signs in through the link in their Table invitation email. People on the waitlist who haven't been placed cannot sign in.
+- **No photo, selfie or profile review (replaces D05, the photo/selfie and review parts of R01, A02, A33).** Profiles are form fields only, and edits take effect immediately.
+- **No browsing or seat requests (replaces D02, D11, R02, A04, A05).** Guests are invite-only.
+- **No roster proposal or approval (replaces R03, A06 and the host proposal role).** An admin adds one guest at a time; the invitation is queued in the same step. The hard blocks at placement are 21+ on the Table date and at most five active invitations. Mutual age ranges, the 12-year span and mutual openness are warnings the admin may override; this replaces D06's "staff cannot override". The three-guest minimum stays with the T−24 decision (D07).
+- **Removal (R16).** Removal no longer suggests a replacement. Staff fill the seat from the placement queue.
+- Payment, Seats, cancellations, refunds, the night of, voting and feedback are unchanged.
+
 ## 1. Purpose and authority
 
 Deliver the complete product-app MVP: verified guest onboarding, staff-curated paid Tables, night-of attendance and private voting, post-night feedback, and staff/restaurant operations. Build a fresh app from these requirements. Preserve the previous app’s visual style; improve UI layouts, information architecture and navigation where that makes the experience more intuitive. The root Astro marketing presentation remains unchanged; its waitlist submission integration is explicitly in scope.
@@ -15,10 +27,10 @@ Explicit current-chat decisions: app access is invited from the marketing waitli
 | ID | Current decision | Earlier material affected |
 | --- | --- | --- |
 | D01 | Complete the MVP, including persisted night-of workflows. | Earlier refactor-only non-goals. |
-| D02 | Guests browse published Tables and request a Seat; staff approve composition before invitations enable payment. | Clarifies `knowledge/decisions/staff-approve-before-invites.md`; replaces open browse/pay ambiguity. |
+| D02 | *Superseded by §0 (v4):* staff place guests from the waitlist queue; the invitation enables payment. ~~Guests browse published Tables and request a Seat; staff approve composition before invitations enable payment.~~ | Clarifies `knowledge/decisions/staff-approve-before-invites.md`; replaces open browse/pay ambiguity. |
 | D03 | Table invitations stay open until revoked or the Table closes. Checkout holds and authentication links have independent expiry rules. T−2-day unpaid reminder. | Preserves `invitations-do-not-expire.md`; replaces current two-hour invite reservation. |
 | D04 | Guests request cancellation. Staff confirm removal and decide full/partial/no refund; Table cancellation refunds all remaining paid amounts. | Resolves proposed `refunds.md`; replaces current automatic timed tiers. |
-| D05 | Staff review identity photos/selfie before payment. | Resolves verification-gate uncertainty. |
+| D05 | *Superseded by §0 (v4):* no photo/selfie review. ~~Staff review identity photos/selfie before payment.~~ | Resolves verification-gate uncertainty. |
 | D06 | 21+, age from DOB on Table date; mutual age ranges for every pair; span ≤12 years; 3–5 guests; each guest has at least one mutually open connection. Staff cannot override hard rules. | Replaces prototype ten-year scoring constraint; preserves accepted age rules. |
 | D07 | T−24-hour staff alert and mandatory staff cancellation below three paid guests; 3–5 may proceed if valid. | Resolves proposed `table-cutoffs.md`. |
 | D08 | Checked-in paid guests choose one eligible attendee or nobody, during [start+90m, start+120m); reveal only own mutual result after close. | Resolves eligibility, ballot and reveal questions in `voting-window-mutual-only.md`. |

@@ -89,7 +89,7 @@ async function signInViaActualMail(page: Page, email: string, returnTo: string):
     throw new Error("The intercepted sign-in email did not preserve the requested local return path");
   }
   await page.goto(actionLink.href);
-  await page.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.waitForURL(`${appOrigin}${returnTo}`, { timeout: 20_000 });
 }
 
@@ -201,7 +201,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
         throw new Error("The member sign-in email did not preserve the Table invitation continuation");
       }
       await member.goto(magicLink.href);
-      await member.getByRole("button", { name: "Continue to Fifth Wheel" }).click();
+      await member.getByRole("button", { name: "Continue", exact: true }).click();
       await member.waitForURL(invitationUrl, { timeout: 20_000 });
       await expect(member.getByRole("heading", { name: tableTitle })).toBeVisible();
       await expect(member.getByText("Email service accepted", { exact: true })).toHaveCount(2);
@@ -223,21 +223,18 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
         await expect(member.getByRole("heading", { name: "Evening itinerary" })).toBeVisible();
       });
 
-      await member.goto(`${appOrigin}/requests`);
-      const requestCard = member.locator(".request-history-card").filter({ hasText: tableTitle });
-      await expect(requestCard).toHaveCount(1);
-      await expect(member.getByRole("heading", { name: "Invited — pay to confirm" })).toBeVisible();
-      await expect(requestCard.getByText("This is a separate offer.", { exact: false })).toHaveCount(0);
-      await expect(requestCard.getByText("Email provider accepted", { exact: false })).toHaveCount(0);
-      await expect(requestCard.getByRole("button", { name: "Withdraw request" })).toHaveCount(0);
-      await expect(requestCard.getByRole("link", { name: "Pay to confirm" })).toHaveAttribute("href", invitePath);
+      // Members no longer have a Requests page; Home is where an open invitation shows.
+      await member.goto(`${appOrigin}/member`);
+      await expect(member.getByRole("heading", { name: `You’re invited to ${tableTitle}` })).toBeVisible();
+      await expect(member.getByRole("link", { name: /Review invitation/ })).toHaveAttribute("href", invitePath);
+      await expect(member.getByText("Email provider accepted", { exact: false })).toHaveCount(0);
       const historyResponse = await member.request.get(`${appOrigin}/api/me/requests?limit=20`);
       expect(historyResponse.status()).toBe(200);
       const historyJson = await historyResponse.json();
       expect(historyJson).toMatchObject({ ok: true, data: { items: [expect.objectContaining({ state: "pending", tableInvitation: expect.objectContaining({ state: "active", deliveryState: "accepted" }) })] } });
-      await screenshotPair(member, "w065-member-request-offer-overlay", async () => {
-        await member.goto(`${appOrigin}/requests`);
-        await expect(member.locator(".request-history-card").filter({ hasText: tableTitle }).getByRole("link", { name: "Pay to confirm" })).toBeVisible();
+      await screenshotPair(member, "w065-member-home-invitation", async () => {
+        await member.goto(`${appOrigin}/member`);
+        await expect(member.getByRole("link", { name: /Review invitation/ })).toBeVisible();
       });
     } finally { await memberContext.close(); }
 

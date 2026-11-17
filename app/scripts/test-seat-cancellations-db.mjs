@@ -131,9 +131,9 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
   ${members.map((_, i) => `(${quote(signups[i])},${quote(emails[i])},'W07','Guest ${i + 1}','1990-01-01','Woman',array['Women'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
   ${members.map((user, i) => `(${quote(admissions[i])},${quote(signups[i])},${quote(emails[i])},'activated',${quote(admin)},${quote(user)},now())`).join(",\n  ")};
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
-  ${members.map((user, i) => `(${quote(guests[i])},${quote(user)},${quote(admissions[i])},'approved',1,1,'W07','Guest ${i + 1}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
+  ${members.map((user, i) => `(${quote(guests[i])},${quote(user)},${quote(admissions[i])},'W07','Guest ${i + 1}','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me')`).join(",\n  ")};
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values
   ${tables.map((table) => `(${quote(table)},'published','current')`).join(",\n  ")};
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
@@ -143,8 +143,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
   ${tables.map((table, i) => `(${quote(tableRequests[i])},${quote(table)},${quote(guests[i])},${quote(members[i])},'W07.4 Table ${i + 1}',current_date+60,'19:00','Inman Park','pending')`).join(",\n  ")};
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
   ${tables.map((table, i) => `(${quote(proposals[i])},${quote(table)},1,'approved',${quote(revisions[i])},'{"valid":true,"issues":[]}'::jsonb,${quote(admin)},${quote(admin)},${quote(admin)},${quote(admin)},now(),now())`).join(",\n  ")};
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
-  ${tables.map((_, i) => `(${quote(proposals[i])},${quote(tableRequests[i])},${quote(guests[i])},1,1,1)`).join(",\n  ")};
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+  ${tables.map((_, i) => `(${quote(proposals[i])},${quote(tableRequests[i])},${quote(guests[i])},1)`).join(",\n  ")};
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
   ${tables.map((table, i) => `(${quote(invitations[i])},${quote(table)},${quote(guests[i])},${quote(members[i])},${quote(tableRequests[i])},${quote(proposals[i])},${quote(admin)},'active')`).join(",\n  ")};
 insert into public.app_checkout_attempts(attempt_id,invitation_id,table_id,guest_id,auth_user_id,proposal_revision,profile_revision,supply_revision_id,state,

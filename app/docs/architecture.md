@@ -1,5 +1,7 @@
 # Fifthwheel MVP — Technical Design and Architecture
 
+> **2026-11-16:** admission approval, photo/selfie identity review, member browse/seat requests and roster proposal/approval were removed. Staff now place waitlisted guests from a queue, and the Table invitation sends on placement. See [PRD §0](PRD.md#0-version-4-change-2026-11-16-no-approval-steps). Sections below that describe those flows are historical.
+
 Version 3 · 2026-11-11 · Fresh-rewrite design contracts; no implementation or deployed behavior is claimed. [PRD](PRD.md) is the product authority.
 
 [PRD](PRD.md) owns policy R00–R11 and decisions D01–D18. [Backlog](tasks-checklist.md) owns sequence/checks. All paths below are relative to `app/` unless explicitly prefixed with repository root.

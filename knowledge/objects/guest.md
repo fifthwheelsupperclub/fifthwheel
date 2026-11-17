@@ -49,10 +49,10 @@ A person Fifth Wheel may waitlist, invite, seat, or show on a ballot. Distinguis
 | Action | Actor | Preconditions | State change | Failure behavior |
 | --- | --- | --- | --- | --- |
 | Register / sign in | Guest | Email is on the waitlist, or a profile already exists | Account exists; signup links by `waitlist.profile_id` | Unknown emails do not get a code. Staff sign in with `is_admin` on the same profile. |
-| Complete profile | Guest | Signed in | Profile usable for curation | Unverified guests may be blocked; not proven in production |
-| Verify identity | Guest | Signed in | Verification recorded | Failure path not modeled |
-| Browse and request a Seat | Verified Guest with approved profile | Published future Table | One active Seat request is recorded; this does not grant an Invitation or Seat | Duplicate active request is prevented; a full Table may collect requests without promising availability |
-| Pay for seat | Guest | Named Table Invitation after staff roster approval, verified identity and approved complete profile | Seat confirmed after verified payment | Stripe failure leaves seat unconfirmed; an application or published Table alone does not grant payment access |
+| Join the waitlist | Guest | Marketing form | Waitlist signup; confirmation email queued; enters the staff placement queue | Duplicate emails get the same neutral response and no second email |
+| Placed at a Table | Admin | Waitlist signup, published future Table with fewer than five invitations, age 21+ on the Table date | Access, profile and a Table Invitation are created; the invitation email is queued | Preference-rule warnings need the admin to confirm; nothing is written until then |
+| Edit profile | Guest | Signed in | Profile saved | No review step |
+| Pay for seat | Guest | Active Table Invitation, signed in | Seat confirmed after verified payment | Stripe failure leaves seat unconfirmed |
 
 ## States and transitions
 
@@ -69,14 +69,14 @@ Exact state names in code are not copied here.
 
 Guests see only eligible attendees on a ballot and only mutual interest after voting (`decision-voting-window-mutual-only`). Staff see waitlist and table composition. Do not treat matching tenets as guest-facing attributes until named in UI.
 
-The browse/request and separate invitation/payment gates follow [app/docs/PRD.md](../../app/docs/PRD.md), R02/A04/A05 and R03/R04.
+Placement follows `decision-staff-place-guests-directly`; guests cannot browse or request Tables.
 
 - A Guest has exactly one identity and a non-empty `open_to` set containing one or more of `woman`, `man`, and `non_binary`. Preserve all seven possible sets exactly. Mutual openness is checked against each pair's identities and preference sets; equal preference sets are not required.
-- An active Seat request requires verified email and a current complete approved profile. Calculate the Guest's age on the Table's Atlanta-local date; age must be at least 21 and the matching-age range must be valid.
-- DOB, identity, photo, or selfie changes require renewed profile review. Preference changes revalidate future offers. A roster proposal tied to an older profile version is stale and cannot be approved without revalidation.
-- App admission, profile approval, Seat request, roster selection, Table invitation, and paid Seat are distinct states. A request or app admission never grants Table-invitation or payment authority.
+- Calculate the Guest's age on the Table's Atlanta-local date; placement requires at least 21. The matching-age range and mutual openness are checked as warnings at placement.
+- There is no photo, selfie or profile review. Profile edits take effect immediately.
+- Placement creates app access and the Table invitation together. Payment confirms the Seat.
 
-These profile and curation preconditions follow [app/docs/PRD.md](../../app/docs/PRD.md), R01–R04, A01/A02/A05/A06/A32.
+These preconditions follow `decision-staff-place-guests-directly` (2026-11-16).
 
 ## Mental-model notes
 

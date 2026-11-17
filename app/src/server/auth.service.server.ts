@@ -8,6 +8,7 @@ import type {
   ServiceResult,
   VerifiedAuthIdentity,
 } from "./admission.contracts.server.ts";
+import { SupabaseAuthLinkError } from "./auth.link.supabase.server.ts";
 
 export type AuthServiceDependencies = Readonly<{
   admissionRepository: Pick<AdmissionRepository, "findActiveAdmissionByEmail" | "activateFromVerifiedIdentity">;
@@ -75,15 +76,25 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       if (email) {
         try {
           const admission = await dependencies.admissionRepository.findActiveAdmissionByEmail(email);
-          if (admission && admission.state === "activated" && admission.email_normalized === email) {
+          // A placed guest holds an `invited` admission until their first sign-in; nobody else has one.
+          if (admission && (admission.state === "activated" || admission.state === "invited") && admission.email_normalized === email) {
             const allowed = await dependencies.linkRequestRepository.claimRecipientCooldown({
               admissionId: admission.id,
               requestedAt: now().toISOString(),
               cooldownSeconds: 300,
             });
             if (allowed) {
-              const link = await dependencies.authProvider.createMagicLink({ emailNormalized: email, redirectTo: callback, kind: "magiclink", safeReturnTo: safeNextPath(input.safeReturnTo, dependencies.appOrigin) });
-              await dependencies.sendLink({ recipientEmail: email, actionLink: link.actionLink, kind: "magiclink" });
+              const safeReturnTo = safeNextPath(input.safeReturnTo, dependencies.appOrigin);
+              let kind: "invite" | "magiclink" = admission.state === "invited" ? "invite" : "magiclink";
+              let link;
+              try { link = await dependencies.authProvider.createMagicLink({ emailNormalized: email, redirectTo: callback, kind, safeReturnTo }); }
+              catch (error) {
+                // An already-confirmed Auth user cannot take an invite link; a definitive rejection falls back to a magic link.
+                if (kind !== "invite" || !(error instanceof SupabaseAuthLinkError) || error.code !== "provider_rejected") throw error;
+                kind = "magiclink";
+                link = await dependencies.authProvider.createMagicLink({ emailNormalized: email, redirectTo: callback, kind, safeReturnTo });
+              }
+              await dependencies.sendLink({ recipientEmail: email, actionLink: link.actionLink, kind });
             }
           }
         } catch {

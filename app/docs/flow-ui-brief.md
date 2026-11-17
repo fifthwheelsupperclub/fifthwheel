@@ -1,5 +1,7 @@
 # Fifthwheel MVP — App Flow Map and UI Design Brief
 
+> **2026-11-16:** admission approval, photo/selfie identity review, member browse/seat requests and roster proposal/approval were removed. Staff now place waitlisted guests from a queue, and the Table invitation sends on placement. See [PRD §0](PRD.md#0-version-4-change-2026-11-16-no-approval-steps). Sections below that describe those flows are historical.
+
 Version 3 · 2026-11-11 · Required experience for the product app. [PRD](PRD.md) owns policy; [Architecture](architecture.md) owns contracts; [Backlog](tasks-checklist.md) maps acceptance.
 
 ## 1. Experience structure

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { EmailTabs } from "./email-tabs";
 import { eventDate, eventTime, eventWhen, instantDate, instantTime, timestamp } from "../format/datetime";
 import { Button } from "./ui/button";
@@ -11,17 +11,18 @@ import { type StaffNavKey } from "./staff-nav";
 import { AlertCircle, CheckCircle2, ChevronRight, Clock3, Flag, LoaderCircle, MapPin, RefreshCw, UserCheck, UtensilsCrossed } from "lucide-react";
 import "./ops-workspaces.css";
 
-type Area = "admin-notices" | "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "host" | "restaurant";
-type Reply<T> = { ok: true; data: T } | { ok: false; status: number; reason: string | null; message: string };
+type Area = "admin-notices" | "admin-overview" | "admin-decisions" | "admin-staff" | "admin-feedback" | "admin-waitlist" | "host" | "restaurant";
+type Reply<T> = { ok: true; data: T } | { ok: false; status: number; reason: string | null; message: string; issues: string[] };
 type Load<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; status: number; message: string };
 
 async function call<T>(path: string, body?: unknown): Promise<Reply<T>> {
   try {
     const response = await fetch(path, body === undefined ? { credentials: "same-origin" } : { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    const json = await response.json().catch(() => null) as { ok?: boolean; data?: T; error?: { reason?: string | null; safeMessage?: string } } | null;
+    const json = await response.json().catch(() => null) as { ok?: boolean; data?: T; error?: { reason?: string | null; safeMessage?: string; issues?: string[] } } | null;
     if (response.ok && json?.ok) return { ok: true, data: json.data as T };
-    return { ok: false, status: response.status, reason: json?.error?.reason ?? null, message: json?.error?.safeMessage ?? "This is temporarily unavailable. Try again shortly." };
-  } catch { return { ok: false, status: 0, reason: null, message: "The connection failed. Try again." }; }
+    return { ok: false, status: response.status, reason: json?.error?.reason ?? null, message: json?.error?.safeMessage ?? "This is temporarily unavailable. Try again shortly.",
+      issues: Array.isArray(json?.error?.issues) ? json.error.issues : [] };
+  } catch { return { ok: false, status: 0, reason: null, message: "The connection failed. Try again.", issues: [] }; }
 }
 function useLoad<T>(path: string) {
   const [load, setLoad] = useState<Load<T>>({ state: "loading" });
@@ -33,12 +34,12 @@ function useLoad<T>(path: string) {
   return { load, reload };
 }
 const when = (date: string, time: string) => eventWhen(date, time);
-const blockerText: Record<string, string> = { select_three_to_five: "Needs 3–5 paid guests", age_under_21: "A paid guest is under 21", profile_not_approved: "A paid guest’s profile needs review",
+const blockerText: Record<string, string> = { select_three_to_five: "Needs 3–5 paid guests", age_under_21: "A paid guest is under 21",
   pair_age_mismatch: "Two guests are outside each other’s age range", missing_mutual_open_connection: "A guest has no mutual connection", age_span_exceeded: "Ages span more than 12 years" };
 
 function Shell({ area, children }: Readonly<{ area: Area; children: ReactNode }>) {
   const role = area.startsWith("admin") ? "admin" : area === "host" ? "host" : "restaurant";
-  const active = { "admin-overview": "overview", "admin-decisions": "decisions", "admin-staff": "assignments", "admin-notices": "emails", "admin-feedback": "reports", host: "host-tables", restaurant: "restaurant" }[area as string] as StaffNavKey | undefined;
+  const active = { "admin-overview": "overview", "admin-decisions": "decisions", "admin-staff": "assignments", "admin-notices": "emails", "admin-feedback": "reports", "admin-waitlist": "waitlist", host: "host-tables", restaurant: "restaurant" }[area as string] as StaffNavKey | undefined;
   return <AppShell role={role} active={active} className="ops-workspace"><div className="ops-content">{children}</div></AppShell>;
 }
 function Status({ area, load, retry, children }: Readonly<{ area: Area; load: Load<unknown>; retry: () => void; children: ReactNode }>) {
@@ -78,6 +79,19 @@ export function AdminTableDecisions() {
             ? <><button className="button button-primary" type="button" disabled={busy === t.tableId} onClick={() => void proceed()}>{busy === t.tableId ? "Confirming…" : "Confirm"}</button><button className="button button-outline" type="button" onClick={() => setConfirm(null)}>Back</button></>
             : t.canProceed ? <button className="button button-primary" type="button" onClick={() => setConfirm({ tableId: t.tableId, operationId: crypto.randomUUID() })}>Confirm table</button> : null)}
           <a className="button button-outline" href={`/admin/tables/${t.tableId}`}>Manage</a></div></li>)}</ul>}
+  </Shell>}</Status>;
+}
+
+// ---- Host: assigned tables -------------------------------------------------------------------------------------------
+type HostTable = { tableId: string; title: string; localDate: string; startLocalTime: string; neighborhood: string; invitedCount: number };
+export function HostAssignedTables() {
+  const { load, reload } = useLoad<{ items: HostTable[] }>("/api/host/tables");
+  return <Status area="host" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="host">
+    <PageHeader title="Your tables" description="Upcoming tables you’re hosting. Admins add the guests." />
+    {load.data.items.length === 0 ? <section className="ops-state"><h2>No upcoming tables</h2><p>Tables appear here once an admin assigns you.</p></section>
+      : <ul className="ops-list">{load.data.items.map((t) => <li className="ops-card" key={t.tableId}>
+        <div><h2>{t.title}</h2><p className="ops-meta"><span>{when(t.localDate, t.startLocalTime)}</span><span><MapPin aria-hidden="true" />{t.neighborhood}</span><span>{t.invitedCount} invited</span></p></div>
+        <div className="ops-actions"><a className="button button-outline" href={`/host/attendance/${encodeURIComponent(t.tableId)}`}>Attendance</a></div></li>)}</ul>}
   </Shell>}</Status>;
 }
 
@@ -157,13 +171,13 @@ export function RestaurantWorkspace() {
   </Shell>}</Status>;
 }
 
-// ---- Admin: remove a guest, optionally replace ----------------------------------------------------------------------
-type Suggestion = { expectedRevision: number; remainingValid: boolean; candidate: { requestId: string; guestId: string; displayName: string; requestCreatedAt: string } | null };
-type Removal = { removal: { seatCancelled: boolean; refundCents: number }; replacement: { state: "sent" | "none" | "stale" }; roster: { revision: number; valid: boolean; needsReview: boolean } };
+// ---- Admin: remove a guest (replacements are added from the waitlist queue) -----------------------------------------
+type Suggestion = { expectedRevision: number; remainingValid: boolean };
+type Removal = { removal: { seatCancelled: boolean; refundCents: number }; roster: { revision: number; valid: boolean; needsReview: boolean } };
 const removalErrors: Record<string, string> = { revision_conflict: "The roster changed. Close this and reopen it.", invitation_not_removable: "This guest was already removed.",
   table_not_active: "This Table is cancelled or completed.", refund_amount_exceeds_balance: "That refund is more than this guest has paid." };
 
-/** Removal always commits. The replacement is revalidated on the server at the moment of "Yes". */
+/** Removal always commits. To fill the seat, add someone from the waitlist queue afterwards. */
 export function RemoveGuestAction({ invitationId, guestName, onDone }: Readonly<{ invitationId: string; guestName: string; onDone: () => void }>) {
   const [open, setOpen] = useState(false);
   const [suggestion, setSuggestion] = useState<Load<Suggestion>>({ state: "loading" });
@@ -177,18 +191,17 @@ export function RemoveGuestAction({ invitationId, guestName, onDone }: Readonly<
     const result = await call<Suggestion>(`/api/admin/invitations/${encodeURIComponent(invitationId)}/replacement-suggestion`);
     setSuggestion(result.ok ? { state: "ready", data: result.data } : { state: "error", status: result.status, message: result.message });
   }
-  async function remove(replaceRequestId: string | null) {
+  async function remove() {
     if (suggestion.state !== "ready") return;
     const cents = Math.round(Number(refund) * 100);
     if (!Number.isFinite(cents) || cents < 0 || cents > 2500) { setMessage("Enter a refund between $0 and $25."); return; }
     setWorking(true); setMessage("");
     const result = await call<Removal>(`/api/admin/invitations/${encodeURIComponent(invitationId)}/remove`,
-      { operationId, expectedRevision: suggestion.data.expectedRevision, refundCents: cents, replaceRequestId });
+      { operationId, expectedRevision: suggestion.data.expectedRevision, refundCents: cents });
     setWorking(false);
     if (result.ok) setOutcome(result.data); else setMessage(removalErrors[result.reason ?? ""] ?? result.message);
   }
   function close() { setOpen(false); if (outcome) onDone(); }
-  const candidate = suggestion.state === "ready" ? suggestion.data.candidate : null;
   return <>
     <button className="button button-outline ops-remove" type="button" onClick={() => void start()}>Remove from Table…</button>
     {open && <div className="ops-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) close(); }}>
@@ -197,23 +210,20 @@ export function RemoveGuestAction({ invitationId, guestName, onDone }: Readonly<
         {outcome ? <>
           <h2 id={`remove-${invitationId}`}>{guestName} was removed</h2>
           <p>{outcome.removal.seatCancelled ? (outcome.removal.refundCents > 0 ? `Seat cancelled. ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(outcome.removal.refundCents / 100)} refund owed. Send it from Refunds.` : "Seat cancelled. No refund owed.") : "Invitation withdrawn."}</p>
-          <p>{outcome.replacement.state === "sent" ? "The replacement has been invited." : outcome.replacement.state === "stale" ? "That guest no longer fits the group, so no invitation was sent." : "No replacement was invited."}</p>
+          <p>To fill the seat, add someone from the <a href="/admin/waitlist">waitlist queue</a>.</p>
           {outcome.roster.needsReview && <p className="ops-alert" role="status"><AlertCircle aria-hidden="true" />The remaining group no longer meets the roster rules. Review this Table before it starts; a Table with fewer than three valid paid guests cannot proceed.</p>}
           <div className="ops-modal-actions"><a className="button button-outline" href="/admin/refunds">Open Refunds</a><button className="button button-primary" type="button" onClick={close}>Close</button></div>
         </> : <>
           <h2 id={`remove-${invitationId}`}>Remove {guestName} from this table?</h2>
-          {suggestion.state === "loading" && <p role="status"><LoaderCircle className="ops-spin" aria-hidden="true" /> Checking for a replacement…</p>}
+          {suggestion.state === "loading" && <p role="status"><LoaderCircle className="ops-spin" aria-hidden="true" /> Loading…</p>}
           {suggestion.state === "error" && <p role="alert" className="ops-alert"><AlertCircle aria-hidden="true" />{suggestion.message}</p>}
           {suggestion.state === "ready" && <>
             <p>Their invitation ends. If they paid, their seat is cancelled and you’ll owe the refund below.</p>
             <label className="ops-field">Refund ($0–$25)<input inputMode="decimal" value={refund} onChange={(event) => setRefund(event.currentTarget.value)} disabled={working} /></label>
-            {candidate ? <p><strong>Invite {candidate.displayName} instead?</strong> They asked to join this table and still fit the group. We’ll check again before anything is sent.</p>
-              : <p>No eligible replacement is available. Removing still goes ahead.</p>}
             {message && <p role="alert" className="ops-alert"><AlertCircle aria-hidden="true" />{message}</p>}
             <div className="ops-modal-actions">
               <button className="button button-outline" type="button" disabled={working} onClick={() => setOpen(false)}>Keep {guestName}</button>
-              {candidate && <button className="button button-primary" type="button" disabled={working} onClick={() => void remove(candidate.requestId)}>{working ? "Removing…" : `Remove and invite ${candidate.displayName}`}</button>}
-              <button className={`button ${candidate ? "button-outline" : "button-primary"}`} type="button" disabled={working} onClick={() => void remove(null)}>{candidate ? "Remove only" : working ? "Removing…" : "Remove"}</button>
+              <button className="button button-primary" type="button" disabled={working} onClick={() => void remove()}>{working ? "Removing…" : "Remove"}</button>
             </div></>}
         </>}
       </section></div>}
@@ -273,11 +283,7 @@ const queues: Queue[] = [
   { key: "cancellationsPending", label: "Cancellation requests", help: "Guests waiting for a decision.", href: "/admin/cancellations" },
   { key: "cancellationsFlagged", label: "Flagged by a host", help: "Hosts want you to look at these cancellation requests.", href: "/admin/cancellations" },
   { key: "tableInvitationDeliveryProblems", label: "Invitation emails not sent or unconfirmed", help: "Check status first, then send again.", href: "/admin/table-invitations" },
-  { key: "admissionDeliveryProblems", label: "Sign-in link emails not sent or unconfirmed", help: "Open the waitlist to send again or check status.", href: "/admin/waitlist" },
-  { key: "identityReviews", label: "Profiles waiting for review", help: "Approve, or ask for changes.", href: "/admin/identity-review" },
-  { key: "seatRequests", label: "Seat requests waiting", help: "Guests who asked and aren’t on a roster yet.", href: "/admin/seat-requests" },
-  { key: "rostersAwaitingApproval", label: "Rosters awaiting approval", help: "A host sent a roster for you to approve.", href: "/admin/seat-requests" },
-  { key: "waitlistAwaitingInvite", label: "Waitlist people not yet approved", help: "No sign-in link has been sent.", href: "/admin/waitlist" },
+  { key: "waitlistAwaitingPlacement", label: "Waitlist people not placed at a Table", help: "Add them to an upcoming Table to send their invitation.", href: "/admin/waitlist" },
   { key: "conductReportsNew", label: "New conduct reports", help: "Private. Triage them.", href: "/admin/conduct-reports" },
   { key: "conductReportsReviewDue", label: "Reports due for 12-month review", help: "Delete unless on hold.", href: "/admin/conduct-reports" },
   { key: "supplyNeedsAttention", label: "Tables whose source changed or went missing", help: "Review supply before accepting or publishing.", href: "/admin/tables" },
@@ -324,7 +330,7 @@ function noticeReason(code: string | null): string | null {
   if (/unavailable|timeout/.test(code)) return "The email service was unavailable";
   return "Something went wrong sending it";
 }
-const kindLabels: Record<string, string> = { seat_confirmed: "Seat confirmed", cancellation_decision: "Cancellation decision", table_cancelled: "Table cancelled", member_removed: "Removed from Table", t48_reminder: "Invitation reminder" };
+const kindLabels: Record<string, string> = { seat_confirmed: "Seat confirmed", cancellation_decision: "Cancellation decision", table_cancelled: "Table cancelled", member_removed: "Removed from Table", t48_reminder: "Invitation reminder", waitlist_confirmed: "Waitlist confirmation" };
 export function AdminNoticeProblems() {
   const { load, reload } = useLoad<{ items: NoticeProblem[] }>("/api/admin/notices");
   const [message, setMessage] = useState("");
@@ -346,5 +352,76 @@ export function AdminNoticeProblems() {
               <p className="ops-meta"><span>{n.attempts} attempt{n.attempts === 1 ? "" : "s"}</span>{noticeReason(n.errorCode) && <span>{noticeReason(n.errorCode)}</span>}</p></div>
             <div className="ops-actions"><button className="button button-outline" type="button" onClick={() => void resolve(n, "retry")}>Send again</button><button className="button button-outline" type="button" onClick={() => void resolve(n, "dismiss")}>Dismiss</button></div></li>)}</ul></section>;
       })}</>}
+  </Shell>}</Status>;
+}
+
+// ---- Admin: waitlist placement queue --------------------------------------------------------------------------------
+type QueuePerson = { signupId: string; firstName: string; lastName: string; email: string; age: number; identity: string; openTo: string[];
+  matchAgeMin: number; matchAgeMax: number; neighborhood: string; nights: string[]; lookingFor: string; receivedAt: string };
+type QueueTable = { tableId: string; title: string; localDate: string; startLocalTime: string; neighborhood: string; invitedCount: number };
+type PlacementQueue = { people: QueuePerson[]; tables: QueueTable[] };
+const warningText: Record<string, string> = { pair_age_mismatch: "Two guests would be outside each other’s age range",
+  missing_mutual_open_connection: "Someone would have no mutual “open to” match", age_span_exceeded: "Ages would span more than 12 years" };
+const placementErrors: Record<string, string> = { already_invited: "They’re already invited to this Table.", age_under_21: "They’d be under 21 on the Table date.",
+  table_full: "This Table already has 5 guests.", table_not_active: "This Table is cancelled or completed.", table_not_future: "This Table has already started.",
+  stale_table: "This Table isn’t published.", auth_user_mismatch: "Their sign-in account doesn’t match this email. Tell the operations owner.", operation_conflict: "Close this and try again." };
+
+/** Waitlisted people waiting for a Table. Adding someone queues their invitation email right away; preference rules are warnings. */
+export function AdminPlacementQueue() {
+  const { load, reload } = useLoad<PlacementQueue>("/api/admin/placements");
+  const [person, setPerson] = useState<QueuePerson | null>(null);
+  const [tableId, setTableId] = useState("");
+  const [operationId, setOperationId] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [working, setWorking] = useState(false);
+  const [message, setMessage] = useState("");
+  const [placed, setPlaced] = useState("");
+  const opener = useRef<HTMLElement | null>(null);
+  function open(p: QueuePerson) { opener.current = document.activeElement as HTMLElement | null; setPerson(p); setTableId(""); setWarnings([]); setMessage(""); setOperationId(crypto.randomUUID()); }
+  function close() { setPerson(null); opener.current?.focus(); }
+  useEffect(() => {
+    if (!person) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && !working) { event.preventDefault(); close(); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [person, working]);
+  async function place(acknowledgeWarnings: boolean) {
+    if (!person || !tableId) return;
+    setWorking(true); setMessage("");
+    const result = await call<{ invitationId: string }>("/api/admin/placements", { signupId: person.signupId, tableId, operationId, acknowledgeWarnings });
+    setWorking(false);
+    if (result.ok) { setPlaced(`${person.firstName} was added and their invitation email is on its way.`); setPerson(null); void reload(); return; }
+    if (result.reason === "placement_warnings") { setWarnings(result.issues); setOperationId(crypto.randomUUID()); return; }
+    setMessage(placementErrors[result.reason ?? ""] ?? result.message);
+  }
+  return <Status area="admin-waitlist" load={load} retry={() => void reload()}>{load.state === "ready" && <Shell area="admin-waitlist">
+    <PageHeader title="Waitlist" description="People waiting for a Table, oldest first. Adding someone sends their invitation email." />
+    {placed && <p className="overview-health" role="status"><CheckCircle2 aria-hidden="true" />{placed}</p>}
+    {load.data.people.length === 0 ? <section className="ops-state"><CheckCircle2 aria-hidden="true" /><h2>Nobody is waiting</h2><p>New signups appear here after they join the waitlist.</p></section>
+      : <ul className="ops-list">{load.data.people.map((p) => <li className="ops-card" key={p.signupId}>
+        <div><h2>{p.firstName} {p.lastName}</h2>
+          <p className="ops-meta"><span>{p.age} · {p.identity}</span><span><MapPin aria-hidden="true" />{p.neighborhood}</span><span>Joined {instantDate(p.receivedAt)}</span></p>
+          <p>Open to {p.openTo.join(", ") || "—"} · ages {p.matchAgeMin}–{p.matchAgeMax} · {p.lookingFor}{p.nights.length ? ` · ${p.nights.join(", ")}` : ""}</p>
+          <p className="ops-meta"><span>{p.email}</span></p></div>
+        <div className="ops-actions"><button className="button button-primary" type="button" onClick={() => open(p)}>Add to Table…</button></div>
+      </li>)}</ul>}
+    {person && <div className="ops-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) close(); }}>
+      <section className="ops-modal" role="dialog" aria-modal="true" aria-labelledby="place-title">
+        <h2 id="place-title">Add {person.firstName} {person.lastName} to a Table</h2>
+        {load.data.tables.length === 0 ? <p>No upcoming Tables are open. Publish one first.</p>
+          : <Field label="Table" className="ops-field"><select autoFocus value={tableId} disabled={working} onChange={(event) => { setTableId(event.currentTarget.value); setWarnings([]); setMessage(""); setOperationId(crypto.randomUUID()); }}>
+            <option value="">Choose a Table</option>
+            {load.data.tables.map((t) => <option key={t.tableId} value={t.tableId} disabled={t.invitedCount >= 5}>{t.title} · {when(t.localDate, t.startLocalTime)} · {t.neighborhood} · {t.invitedCount}/5 invited</option>)}
+          </select></Field>}
+        <p>They’ll get an invitation email right away and confirm their seat by paying.</p>
+        {warnings.length > 0 && <div className="ops-alert" role="alert"><AlertCircle aria-hidden="true" /><div><strong>This group breaks a matching rule</strong>
+          <ul>{warnings.map((w) => <li key={w}>{warningText[w] ?? w}</li>)}</ul><p>You can still add them.</p></div></div>}
+        {message && <p role="alert" className="ops-alert"><AlertCircle aria-hidden="true" />{message}</p>}
+        <div className="ops-modal-actions">
+          <button className="button button-outline" type="button" disabled={working} onClick={close}>Cancel</button>
+          <button className="button button-primary" type="button" disabled={working || !tableId} onClick={() => void place(warnings.length > 0)}>
+            {working ? "Adding…" : warnings.length > 0 ? "Add anyway" : "Add and send invitation"}</button>
+        </div>
+      </section></div>}
   </Shell>}</Status>;
 }

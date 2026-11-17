@@ -1,4 +1,6 @@
 ---
+
+> **2026-11-16:** the profile-review (P-IDREVIEW), photo upload, seat-request and roster screens described here were removed. Staff place guests from the waitlist queue (/admin/waitlist). See app/docs/PRD.md §0.
 id: ux-design-refactor-plan
 type: design-audit-and-plan
 status: proposal — audit and planning only; no UI, code, styling or copy changed

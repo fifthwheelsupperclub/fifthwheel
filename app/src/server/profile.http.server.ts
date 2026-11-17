@@ -1,16 +1,12 @@
-/** Same-origin HTTP boundary for member profile and admin identity-review services. */
+/** Same-origin HTTP boundary for the member profile service. */
 
 import { getAccessTokenForPrincipal } from "./session.cookies.server.ts";
 import { assertExactOrigin } from "./origin.server.ts";
 import type { ProfileServicePort, ProfileServiceResult } from "./profile.contract.server.ts";
-import type {
-  IdentityReviewDecisionRequest,
-  MemberProfileSaveRequest,
-  UploadIntentRequest,
-} from "../profile.contract.ts";
+import type { MemberProfileSaveRequest } from "../profile.contract.ts";
 
 type HttpDependencies = Readonly<{ service: () => ProfileServicePort; appOrigin: string | undefined }>;
-type Handler = (request: Request, params?: Readonly<{ fileId?: string; guestId?: string }>) => Promise<Response>;
+type Handler = (request: Request) => Promise<Response>;
 
 function jsonResponse(body: unknown, status: number, extra: Record<string, string> = {}): Response {
   return Response.json(body, {
@@ -92,18 +88,18 @@ function originError(request: Request, expectedOrigin: string | undefined): Resp
   }, 403);
 }
 
-function createHandler(dependencies: HttpDependencies, method: (service: ProfileServicePort, request: Request, payload: Record<string, unknown> | null, params: Readonly<{ fileId?: string; guestId?: string }>) => Promise<ProfileServiceResult<unknown>>, options: Readonly<{ mutating?: boolean; detailHeaders?: boolean }> = {}): Handler {
-  return async (request, params = {}) => {
+function createHandler(dependencies: HttpDependencies, method: (service: ProfileServicePort, request: Request, payload: Record<string, unknown> | null) => Promise<ProfileServiceResult<unknown>>, options: Readonly<{ mutating?: boolean }> = {}): Handler {
+  return async (request) => {
     if (options.mutating) {
       const denied = originError(request, dependencies.appOrigin);
       if (denied) return denied;
     }
-    const payload = request.method === "GET" || request.method === "DELETE" && request.headers.get("content-length") === "0"
+    const payload = request.method === "GET"
       ? null
       : request.headers.get("content-type")?.includes("application/json") ? await readJson(request) : null;
     try {
-      const result = await method(dependencies.service(), request, payload, params);
-      return jsonResponse(result, statusFor(result), options.detailHeaders ? { "referrer-policy": "no-referrer" } : {});
+      const result = await method(dependencies.service(), request, payload);
+      return jsonResponse(result, statusFor(result));
     } catch {
       return unavailable();
     }
@@ -116,67 +112,6 @@ export function createProfileHttpHandlers(dependencies: HttpDependencies) {
     memberSave: createHandler(dependencies, async (service, request, payload) =>
       payload ? service.saveMemberProfile(getAccessTokenForPrincipal(request), payload as unknown as MemberProfileSaveRequest)
         : { ok: false, code: "invalid_input", message: "Submit a valid profile.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    uploadIntent: createHandler(dependencies, async (service, request, payload) =>
-      payload ? service.createMemberUploadIntent(getAccessTokenForPrincipal(request), payload as unknown as UploadIntentRequest)
-        : { ok: false, code: "invalid_input", message: "Submit a valid upload request.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    uploadContent: (async (request: Request, params?: Readonly<{ fileId?: string }>) => {
-      const denied = originError(request, dependencies.appOrigin);
-      if (denied) return denied;
-      const fileId = params?.fileId ?? "";
-      try {
-        const result = await dependencies.service().receiveMemberUpload(
-          getAccessTokenForPrincipal(request),
-          fileId,
-          request.headers.get("x-fw-upload-token") ?? "",
-          request,
-        );
-        return jsonResponse(result, statusFor(result));
-      } catch {
-        return unavailable();
-      }
-    }) satisfies Handler,
-    uploadComplete: createHandler(dependencies, async (service, request, payload, params) =>
-      payload ? service.completeMemberUpload(getAccessTokenForPrincipal(request), params.fileId ?? "", {
-        expectedProfileRevision: payload.expectedProfileRevision as number,
-        expectedCriticalIdentityVersion: payload.expectedCriticalIdentityVersion as number,
-      }) : { ok: false, code: "invalid_input", message: "Submit a valid completion request.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    uploadReadUrl: createHandler(dependencies, async (service, request, payload, params) =>
-      payload ? service.getOwnerFileReadUrl(getAccessTokenForPrincipal(request), params.fileId ?? "", {
-        expectedProfileRevision: payload.expectedProfileRevision as number,
-        expectedCriticalIdentityVersion: payload.expectedCriticalIdentityVersion as number,
-      }) : { ok: false, code: "invalid_input", message: "Submit a valid read request.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    uploadDelete: createHandler(dependencies, async (service, request, payload, params) =>
-      payload ? service.deleteMemberProfileFile(getAccessTokenForPrincipal(request), params.fileId ?? "", {
-        operationId: payload.operationId as string,
-        expectedProfileRevision: payload.expectedProfileRevision as number,
-      }) : { ok: false, code: "invalid_input", message: "Submit a valid delete request.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    memberSubmit: createHandler(dependencies, async (service, request, payload) =>
-      payload ? service.submitMemberProfile(getAccessTokenForPrincipal(request), {
-        operationId: payload.operationId as string,
-        expectedProfileRevision: payload.expectedProfileRevision as number,
-      }) : { ok: false, code: "invalid_input", message: "Submit a valid profile submission.", retryable: false, correlationId: crypto.randomUUID() },
-    { mutating: true }),
-    adminList: createHandler(dependencies, async (service, request) => {
-      const url = new URL(request.url);
-      const status = url.searchParams.get("status");
-      const limit = Number(url.searchParams.get("limit") ?? "25");
-      return service.listAdminIdentityReviews(getAccessTokenForPrincipal(request), {
-        ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}),
-        limit,
-        status: status === "all" ? "all" : "submitted",
-      });
-    }),
-    adminDetail: createHandler(dependencies, async (service, request, _payload, params) =>
-      service.readAdminIdentityReview(getAccessTokenForPrincipal(request), params.guestId ?? ""),
-    { detailHeaders: true }),
-    adminDecision: createHandler(dependencies, async (service, request, payload, params) =>
-      payload ? service.decideAdminIdentityReview(getAccessTokenForPrincipal(request), params.guestId ?? "", payload as unknown as IdentityReviewDecisionRequest)
-        : { ok: false, code: "invalid_input", message: "Submit a valid review decision.", retryable: false, correlationId: crypto.randomUUID() },
     { mutating: true }),
   });
 }

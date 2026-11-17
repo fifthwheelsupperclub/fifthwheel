@@ -84,10 +84,10 @@ insert into public.waitlist_signups(id,email_normalized,first_name,last_name,bir
 insert into public.app_admissions(id,waitlist_signup_id,email_normalized,state,approved_by,auth_user_id,activated_at) values
  ('${admission}','${signup}','${emails[0]}','activated','${admin}','${user}',now()),
  ('${refundAdmission}','${refundSignup}','${emails[1]}','activated','${admin}','${refundUser}',now());
-insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,identity_status,reviewed_identity_version,critical_identity_version,
+insert into public.app_member_profiles(guest_id,auth_user_id,admission_id,
   first_name,last_name,date_of_birth,identity,open_to,match_age_min,match_age_max,neighborhood,looking_for,surprise_game) values
- ('${guest}','${user}','${admission}','approved',1,1,'Paid','Member','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me'),
- ('${refundGuest}','${refundUser}','${refundAdmission}','approved',1,1,'Late','Member','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');
+ ('${guest}','${user}','${admission}','Paid','Member','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me'),
+ ('${refundGuest}','${refundUser}','${refundAdmission}','Late','Member','1990-01-01','woman',array['woman'],21,120,'Inman Park','Open','Yes, surprise me');
 insert into public.app_supply_table_heads(table_id,lifecycle,sync_state) values ('${table}','published','current'),('${refundTable}','published','current');
 insert into public.app_supply_table_revisions(revision_id,table_id,revision,state,content,created_by) values
  ('${revision}','${table}',1,'published',jsonb_build_object('title','W07.2 Dinner','localDate',to_char(current_date+60,'YYYY-MM-DD'),'startLocalTime','19:00','neighborhood','Inman Park','stops',jsonb_build_array('{}','{}','{}')),'${admin}'),
@@ -99,8 +99,8 @@ insert into public.app_table_requests(request_id,table_id,guest_id,auth_user_id,
 insert into public.app_table_roster_proposals(proposal_id,table_id,revision,state,supply_revision_id,validation,created_by,updated_by,submitted_by,approved_by,submitted_at,approved_at) values
  ('${proposal}','${table}',1,'approved','${revision}','{"valid":true,"issues":[]}'::jsonb,'${admin}','${admin}','${admin}','${admin}',now(),now()),
  ('${refundProposal}','${refundTable}',1,'approved','${refundRevision}','{"valid":true,"issues":[]}'::jsonb,'${admin}','${admin}','${admin}','${admin}',now(),now());
-insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision,captured_critical_identity_version,captured_reviewed_identity_version) values
- ('${proposal}','${request}','${guest}',1,1,1),('${refundProposal}','${refundRequest}','${refundGuest}',1,1,1);
+insert into public.app_table_roster_proposal_members(proposal_id,request_id,guest_id,captured_profile_revision) values
+ ('${proposal}','${request}','${guest}',1),('${refundProposal}','${refundRequest}','${refundGuest}',1);
 insert into public.app_table_invitations(invitation_id,table_id,guest_id,auth_user_id,source_request_id,proposal_id,approved_by,state) values
  ('${invitation}','${table}','${guest}','${user}','${request}','${proposal}','${admin}','active'),
  ('${refundInvitation}','${refundTable}','${refundGuest}','${refundUser}','${refundRequest}','${refundProposal}','${admin}','active');
@@ -143,14 +143,14 @@ begin
     raise exception 'confirmed asynchronous failure did not atomically release its attempt and finish the event'; end if;
 
   -- A later verified paid event for that released session is still fulfilled/refunded safely.
-  -- Change profile after a delayed charge: retain the verified charge and create a full refund obligation.
-  update public.app_member_profiles set profile_revision=2 where guest_id='${refundGuest}';
+  -- The Table's supply goes stale after a delayed charge: retain the verified charge and create a full refund obligation.
+  update public.app_supply_table_heads set sync_state='stale' where table_id='${refundTable}';
   persisted:=public.persist_stripe_checkout_event('evt_w072late','checkout.session.async_payment_succeeded','test','','${new Date().toISOString()}','cs_test_w072late');
   late_paid:=public.fulfill_paid_checkout_session('evt_w072late','test','','${refundAttempt}','cs_test_w072late','pi_w072late','complete','paid',2500,'usd',clock_timestamp());
   if late_paid->>'paymentState'<>'refund_pending' or late_paid->>'seatId' is not null or late_paid->>'refundObligationId' is null then raise exception 'ineligible late payment did not create refund obligation'; end if;
   select count(*) into obligation_count from public.app_refund_obligations where payment_id=(late_paid->>'paymentId')::uuid and amount_cents=2500 and state='open';
   if obligation_count<>1 then raise exception 'late charge refund liability missing'; end if;
-  update public.app_member_profiles set profile_revision=1 where guest_id='${refundGuest}';
+  update public.app_supply_table_heads set sync_state='current' where table_id='${refundTable}';
   eligibility:=public.read_checkout_eligibility('${refundUser}','${refundInvitation}','seat-checkout-v1','approved copy',true);
   if eligibility->'eligibility'->>'reasonCode'<>'payment_unresolved' then raise exception 'unsettled refund did not block a new checkout'; end if;
   recovery:=public.read_my_checkout_attempt('${refundUser}','${refundAttempt}');
