@@ -137,19 +137,19 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     await expect(admin.getByRole("heading", { name: "Invitation emails" })).toBeVisible();
     const card = admin.locator(".admin-invitation-card").filter({ hasText: tableTitle });
     await expect(card).toHaveCount(1);
-    await expect(card.getByText("Email delivery failed", { exact: true })).toBeVisible();
+    await expect(card.getByText("Not sent", { exact: true })).toBeVisible();
     await card.locator("details.admin-invitation-attempts summary").click();
     await expect(card.getByText("Attempt 1 · failed", { exact: true })).toBeVisible();
     await screenshotPair(admin, "w065-admin-failed-delivery", async () => {
       await admin.goto(`${appOrigin}/admin/table-invitations`);
       const screenshotCard = admin.locator(".admin-invitation-card").filter({ hasText: tableTitle });
-      await expect(screenshotCard.getByText("Email delivery failed", { exact: true })).toBeVisible();
+      await expect(screenshotCard.getByText("Not sent", { exact: true })).toBeVisible();
       await screenshotCard.locator("details.admin-invitation-attempts summary").click();
       await expect(screenshotCard.getByText("Attempt 1 · failed", { exact: true })).toBeVisible();
     });
 
     await card.getByRole("button", { name: "Send again" }).click();
-    await expect(admin.getByText(/A new email attempt is queued/i)).toBeVisible();
+    await expect(admin.getByText("Queued to send again.", { exact: true })).toBeVisible();
     await expect(card.getByText("Waiting to send", { exact: true })).toBeVisible();
 
     // The one-shot poller can only run when the synthetic outbox is the sole eligible row.
@@ -167,11 +167,11 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     if (!tableLink || tableLink.searchParams.get("returnTo") !== invitePath || /token_hash|auth\/callback/i.test(allMessageText(invitationMail))) {
       throw new Error("Table invitation email did not contain the expected separate sign-in continuation");
     }
-    expect(allMessageText(invitationMail)).toContain("separate Table offer");
+    expect(allMessageText(invitationMail)).toContain("Pay to confirm your seat.");
 
     await admin.reload();
     const acceptedCard = admin.locator(".admin-invitation-card").filter({ hasText: tableTitle });
-    await expect(acceptedCard.getByText("Email service accepted", { exact: true })).toBeVisible();
+    await expect(acceptedCard.getByText("Sent", { exact: true })).toBeVisible();
     await acceptedCard.locator("details.admin-invitation-attempts summary").click();
     await expect(acceptedCard.getByText("Attempt 2 · accepted", { exact: true })).toBeVisible();
     await expect(acceptedCard.getByRole("button", { name: "Send again" })).toHaveCount(0);
@@ -186,7 +186,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
     expect(JSON.stringify(adminJson)).not.toContain(providerMessageId);
     await screenshotPair(admin, "w065-admin-accepted-delivery", async () => {
       await admin.goto(`${appOrigin}/admin/table-invitations`);
-      await expect(admin.locator(".admin-invitation-card").filter({ hasText: tableTitle }).getByText("Email service accepted", { exact: true })).toBeVisible();
+      await expect(admin.locator(".admin-invitation-card").filter({ hasText: tableTitle }).getByText("Sent", { exact: true })).toBeVisible();
     });
 
     const memberContext = await localContext(browser);
@@ -204,8 +204,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await member.getByRole("button", { name: "Continue", exact: true }).click();
       await member.waitForURL(invitationUrl, { timeout: 20_000 });
       await expect(member.getByRole("heading", { name: tableTitle })).toBeVisible();
-      await expect(member.getByText("Email service accepted", { exact: true })).toHaveCount(2);
-      await expect(member.getByText("Email service accepted", { exact: true }).first()).toBeVisible();
+      await expect(member.getByText("Resend accepted it", { exact: false })).toHaveCount(0); // delivery status is staff-only
       await expect(member.getByRole("heading", { name: "Evening itinerary" })).toBeVisible();
       await expect(member.getByText("Test Bar")).toBeVisible();
       await expect(member.getByText(/PRIVATE W06\.5/)).toHaveCount(0);
@@ -227,7 +226,7 @@ test("W06.5 delivers a separate Table offer through Mailpit and returns a real m
       await member.goto(`${appOrigin}/member`);
       await expect(member.getByRole("heading", { name: `You’re invited to ${tableTitle}` })).toBeVisible();
       await expect(member.getByRole("link", { name: /Review invitation/ })).toHaveAttribute("href", invitePath);
-      await expect(member.getByText("Email provider accepted", { exact: false })).toHaveCount(0);
+      await expect(member.getByText("Resend accepted it", { exact: false })).toHaveCount(0);
       const historyResponse = await member.request.get(`${appOrigin}/api/me/requests?limit=20`);
       expect(historyResponse.status()).toBe(200);
       const historyJson = await historyResponse.json();
