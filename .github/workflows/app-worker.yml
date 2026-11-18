@@ -1,8 +1,9 @@
 # Drains the Table-invitation and refund queues every 5 minutes. Secrets: APP_URL, JOB_SECRET, optional HEARTBEAT_URL.
+# The :02 offset avoids GitHub's busiest top-of-hour schedule window.
 # HEARTBEAT_URL (e.g. a healthchecks.io ping URL) is pinged only after a 200, so a stopped or failing worker alerts independently of GitHub.
 name: app-worker
 on:
-  schedule: [{ cron: "*/5 * * * *" }]
+  schedule: [{ cron: "2-59/5 * * * *" }]
   workflow_dispatch:
 jobs:
   drain:
@@ -15,6 +16,19 @@ jobs:
           JOB_SECRET: ${{ secrets.JOB_SECRET }}
           HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
         run: |
+          if [[ -z "${APP_URL}" ]]; then
+            echo "::error::Required GitHub Actions secret APP_URL is missing."
+            exit 1
+          fi
+          if [[ ! "${APP_URL}" =~ ^https://[^/]+/?$ ]]; then
+            echo "::error::APP_URL must be an HTTPS origin with no path."
+            exit 1
+          fi
+          if [[ ${#JOB_SECRET} -lt 32 ]]; then
+            echo "::error::Required GitHub Actions secret JOB_SECRET is missing or too short."
+            exit 1
+          fi
+          APP_URL="${APP_URL%/}"
           curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 10 \
             -X POST -H "Authorization: Bearer ${JOB_SECRET}" "${APP_URL}/api/internal/worker"
           if [ -n "${HEARTBEAT_URL}" ]; then curl --silent --max-time 20 "${HEARTBEAT_URL}" > /dev/null; fi
