@@ -189,7 +189,16 @@ for (const path of envFiles) {
 }
 
 function run(command, commandArgs, options = {}) {
-  const result = spawnSync(command, commandArgs, { encoding: "utf8", ...options });
+  const result = spawnSync(command, commandArgs, {
+    encoding: "utf8",
+    ...options,
+    env: {
+      ...process.env,
+      SUPABASE_TELEMETRY_DISABLED: "1",
+      DO_NOT_TRACK: "1",
+      ...options.env,
+    },
+  });
   if (result.error) fail(`could not run ${command}: ${result.error.message}`);
   return result;
 }
