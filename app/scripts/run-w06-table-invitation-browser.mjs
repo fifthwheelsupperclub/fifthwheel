@@ -20,7 +20,7 @@ const configPath = join(testWorkdir, "supabase", "config.toml");
 const linkedRefPath = join(testWorkdir, "supabase", ".temp", "project-ref");
 const lockPath = join(tmpdir(), "fifthwheel-rewrite-test-w06-table-invitation.lock");
 const screenshots = join(appRoot, "docs", "implementation", "screenshots");
-const screenshotStems = ["w065-admin-failed-delivery", "w065-admin-accepted-delivery", "w065-member-invitation-detail", "w065-member-request-offer-overlay"];
+const screenshotStems = ["w065-admin-failed-delivery", "w065-admin-accepted-delivery", "w065-member-invitation-detail", "w065-member-home-invitation"];
 
 function fail(message) { throw new Error(message); }
 function sql(value) { return `'${String(value).replaceAll("'", "''")}'`; }
