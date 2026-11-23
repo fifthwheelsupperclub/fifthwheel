@@ -1,6 +1,6 @@
 # Operator runbook (rewrite)
 
-Status: drafted 2026-11-15 from the code as built. Everything here is **unverified against production**: no hosted project, domain, provider account or scheduler has been touched. Steps marked **[human]** need you (or a named operator) to act or explicitly authorize that exact action. Nothing in this document deploys, sends, charges or refunds anything.
+Status: drafted 2026-11-15 from the code as built; scheduler rechecked 2026-11-19. The GitHub worker workflow is enabled, but its scheduled runs have had multi-hour gaps: runs #18 and #19 succeeded at 9:34 PM EST on Nov 18 and 5:44 AM EST on Nov 19. Three older failures had empty `APP_URL` and `JOB_SECRET`; subsequent worker requests succeeded. GitHub Actions may delay or drop schedule events, so this cadence is best effort. Steps marked **[human]** need you (or a named operator) to act or explicitly authorize that exact action. Nothing in this document deploys, sends, charges or refunds anything.
 
 ## 1. What runs where
 
@@ -8,7 +8,7 @@ Status: drafted 2026-11-15 from the code as built. Everything here is **unverifi
 |---|---|---|
 | App (guest, admin, host, restaurant, API, webhook) | One Node web service built from `app/` (`pnpm build`, `pnpm start`, health `GET /api/health`) | [`render.yaml`](../../render.yaml) is a blueprint for a **new** Render service. Always-on plan recommended so Stripe webhooks and magic links never meet a sleeping instance. |
 | Database, Auth, Storage | A **new** hosted Supabase project (never the legacy one) | Apply `app/supabase/migrations/*` in order with the Supabase CLI against the new project. Never run `reset`. |
-| Background worker | `POST /api/internal/worker` every 5 minutes | Scheduler: [`.github/workflows/app-worker.yml`](../../../.github/workflows/app-worker.yml). Needs repository secrets `APP_URL`, `JOB_SECRET`, optional `HEARTBEAT_URL`. |
+| Background worker | `POST /api/internal/worker` every 15 minutes (best effort) | GitHub Actions scheduler: [`.github/workflows/app-worker.yml`](../../../.github/workflows/app-worker.yml). Needs repository secrets `APP_URL`, `JOB_SECRET`, optional `HEARTBEAT_URL`. |
 | Email | Resend (`RESEND_API_KEY`, verified sending domain) | Local runs use loopback Mailpit only. |
 | Payments | Stripe | Keys, webhook endpoint and mode must match (`scripts/preflight.mjs` checks the prefixes). |
 | Supply | In-app admin editing | The Airtable provider is intentionally disabled. |
@@ -26,7 +26,7 @@ Required variables (names only): `NODE_ENV=production`, `APP_ORIGIN`, `MARKETING
 - **Supabase:** create the project; apply migrations; Auth: disable signups, set the site URL to `APP_ORIGIN` and allow only `APP_ORIGIN/auth/callback` as a redirect; set a one-hour email token expiry; keep the secret key server-side only.
 - **Resend:** verify the sending domain; create a key restricted to sending.
 - **Stripe:** create a webhook endpoint at `APP_ORIGIN/api/webhooks/stripe` for the checkout and charge events the app handles; copy its signing secret into `STRIPE_WEBHOOK_SECRET`. Use test mode first. A live dry run (one real $25 payment and refund on a staff account) needs your explicit go-ahead.
-- **Scheduler:** set the three GitHub secrets. `HEARTBEAT_URL` should be a monitor (for example Healthchecks) that alerts when pings stop; it is the alarm that works when the worker itself is broken.
+- **Scheduler:** set the GitHub secrets `APP_URL`, `JOB_SECRET`, and optionally `HEARTBEAT_URL`. GitHub Actions schedule events are best effort and may be delayed or dropped. `HEARTBEAT_URL` should be a monitor (for example Healthchecks) that alerts when pings stop; it is the alarm that works when the worker itself is broken.
 - **Admin accounts:** roles are provisioned by an operator with database access (insert into `app_user_roles` for a confirmed Auth user). There is no self-serve staff signup.
 
 ## 4. Daily operation
@@ -42,7 +42,7 @@ Open **/admin**. Each card is a queue with a count and a link. Urgent cards are 
 | Vote results not finalized | A closed vote has no results a day later | Ask engineering; opening any eligible guest's reveal also runs the finalizer |
 | Others | Reviews, requests, rosters, cancellations, reports, supply conflicts, unstaffed Tables | Open the linked queue |
 
-The banner at the top shows the worker heartbeat. If it says the worker has not reported in, emails and refunds are not moving: check the GitHub Action, `JOB_SECRET`, `APP_URL`, and `GET /api/health`.
+The banner at the top shows the worker heartbeat. If it says the worker has not reported in, emails and refunds are not moving: check the GitHub Actions run history, `JOB_SECRET`, `APP_URL`, and `GET /api/health`.
 
 ## 5. Unknown outcomes (never guess)
 
@@ -61,7 +61,7 @@ Email, refunds and payments can end in an *unknown* state when a provider did no
 
 ## 7. Secrets and rotation **[human]**
 
-Rotate `JOB_SECRET` by changing it in the host and in the GitHub secret together (one pass fails in between; the next succeeds). Rotate `STRIPE_WEBHOOK_SECRET` by adding the new secret in Stripe, updating the host, then removing the old endpoint secret. Rotating Supabase keys requires a redeploy. Never commit values; `.env*` is ignored.
+Rotate `JOB_SECRET` by changing it in the app host and GitHub secret together (one pass fails in between; the next succeeds). Rotate `STRIPE_WEBHOOK_SECRET` by adding the new secret in Stripe, updating the host, then removing the old endpoint secret. Rotating Supabase keys requires a redeploy. Never commit values; `.env*` is ignored.
 
 ## 8. Backup and restore **[human]**
 
@@ -85,7 +85,8 @@ Updated 2026-11-16. Closed since the first draft (evidence in the [task ledger](
 
 Still open:
 
-- **Never run on a host:** no deploy, real send through Resend, run of the GitHub scheduler, or heartbeat alert has happened. The `pnpm start` entry point was only run locally.
+- **Scheduler reliability:** GitHub Actions has missed most five-minute triggers. The workflow now follows the accepted 15-minute cadence, but GitHub may still delay or drop scheduled events; run history and heartbeat monitoring remain necessary.
+- **Live provider behavior:** Resend email delivery and heartbeat alerts have not been verified end-to-end. Successful worker responses do not prove email delivery or scheduling reliability.
 - **Live Stripe mode:** live keys, the live webhook endpoint and a real card are unverified until the owner-run dry run (§9 step 5).
 - **Stripe Dashboard payment methods** are not card-only (Link, Cash App, Klarna and bank are offered). Turn them off in the Dashboard before checkout opens.
 - **Reconciliation** only shows findings. There is no resolution workflow: staff fix the problem in Stripe or the ledger, and the next complete run clears the finding. It has not run in live mode.

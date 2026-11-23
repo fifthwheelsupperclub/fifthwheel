@@ -33,3 +33,22 @@ createServer(async (req, res) => {
     res.end("Server error");
   }
 }).listen(port, "0.0.0.0", () => console.log(`fifthwheel app listening on ${port}`));
+
+// GitHub's schedule fires hours apart, but /admin calls the worker unhealthy after 10 minutes, so the always-on server ticks it itself.
+// ponytail: one timer per process; the worker's leases make overlapping instances safe, the GitHub workflow stays as a backup.
+const jobSecret = process.env.JOB_SECRET?.trim() ?? "";
+if (jobSecret.length >= 32) {
+  let running = false;
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      const response = await app.fetch(new Request(`http://127.0.0.1:${port}/api/internal/worker`, { method: "POST", headers: { authorization: `Bearer ${jobSecret}` } }));
+      if (!response.ok) console.error(`worker pass failed: HTTP ${response.status}`);
+    } catch (error) {
+      console.error("worker pass failed:", error instanceof Error ? error.message : "unknown error");
+    } finally { running = false; }
+  };
+  setInterval(tick, 5 * 60_000).unref();
+  setTimeout(tick, 30_000).unref();
+}

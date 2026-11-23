@@ -1,9 +1,9 @@
-# Drains the Table-invitation and refund queues every 5 minutes. Secrets: APP_URL, JOB_SECRET, optional HEARTBEAT_URL.
-# The :02 offset avoids GitHub's busiest top-of-hour schedule window.
+# Drains the Table-invitation and refund queues every 15 minutes. Secrets: APP_URL, JOB_SECRET, optional HEARTBEAT_URL.
+# The 15-minute cadence follows the accepted free-hosting decision; the offset avoids GitHub's busiest top-of-hour schedule window.
 # HEARTBEAT_URL (e.g. a healthchecks.io ping URL) is pinged only after a 200, so a stopped or failing worker alerts independently of GitHub.
 name: app-worker
 on:
-  schedule: [{ cron: "2-59/5 * * * *" }]
+  schedule: [{ cron: "7,22,37,52 * * * *" }]
   workflow_dispatch:
 jobs:
   drain:
