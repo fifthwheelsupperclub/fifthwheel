@@ -288,11 +288,12 @@ function AdminSupplyTableList() {
 }
 
 function VenuePanel(props: Readonly<{ venues: readonly SupplyVenueOptionDTO[] | null; venueState: LoadState; onAdd: () => void; onEdit: (venue: SupplyVenueOptionDTO) => void }>) {
+  const sortedVenues = [...(props.venues ?? [])].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
   return <section className="supply-venue-section" aria-labelledby="supply-venues-heading">
     <div className="supply-section-heading"><div><p className="eyebrow">VENUES</p><h2 id="supply-venues-heading">Venues</h2><p>Stops on a Table can only use active venues. Editing a venue doesn’t change Tables already published.</p></div><button className="button button-outline" type="button" onClick={props.onAdd}><Plus aria-hidden="true" />Add venue</button></div>
     {props.venueState === "error" && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />Venues could not be loaded.</p>}
     {props.venues && props.venues.length === 0 && <p className="supply-inline-state">No venues yet. Add the bars and restaurants you work with.</p>}
-    {props.venues && props.venues.length > 0 && <div className="supply-venue-list">{props.venues.map((venue) => <article className="supply-venue-row" key={venue.venueId}>
+    {props.venues && props.venues.length > 0 && <div className="supply-venue-list">{sortedVenues.map((venue) => <article className="supply-venue-row" key={venue.venueId}>
       <span className="supply-venue-icon"><Store aria-hidden="true" /></span>
       <div className="supply-venue-main"><strong>{venue.name}</strong><span>{venue.address} · {venue.neighborhood}</span>{!venue.active && <small>Archived</small>}</div>
       <button className="button button-outline" type="button" aria-label={`Edit ${venue.name}`} onClick={() => props.onEdit(venue)}><Pencil aria-hidden="true" />Edit</button>
