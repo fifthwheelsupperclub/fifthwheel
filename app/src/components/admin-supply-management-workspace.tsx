@@ -289,9 +289,10 @@ function AdminSupplyTableList() {
 
 function VenuePanel(props: Readonly<{ venues: readonly SupplyVenueOptionDTO[] | null; venueState: LoadState; onAdd: () => void; onEdit: (venue: SupplyVenueOptionDTO) => void }>) {
   const sortedVenues = [...(props.venues ?? [])].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
-  const venueCounts = [...new Set(sortedVenues.map((venue) => venue.neighborhood))]
+  const countableVenues = sortedVenues.filter((venue) => venue.neighborhood.trim().toLocaleLowerCase("en") !== "test");
+  const venueCounts = [...new Set(countableVenues.map((venue) => venue.neighborhood))]
     .sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }))
-    .map((neighborhood) => `${neighborhood} ${sortedVenues.filter((venue) => venue.neighborhood === neighborhood).length}`);
+    .map((neighborhood) => `${neighborhood} ${countableVenues.filter((venue) => venue.neighborhood === neighborhood).length}`);
   return <section className="supply-venue-section" aria-labelledby="supply-venues-heading">
     <div className="supply-section-heading"><div><p className="eyebrow">VENUES</p><h2 id="supply-venues-heading">Venues</h2><p>Stops on a Table can only use active venues. Editing a venue doesn’t change Tables already published.</p></div><button className="button button-outline" type="button" onClick={props.onAdd}><Plus aria-hidden="true" />Add venue</button></div>
     {props.venueState === "error" && <p className="supply-inline-state is-error" role="alert"><CircleAlert aria-hidden="true" />Venues could not be loaded.</p>}
