@@ -10,6 +10,7 @@
 .supply-section-heading .eyebrow { margin-bottom: 5px; }
 .supply-section-heading h2, .supply-list-controls h2 { margin: 0; font-family: var(--display); font-size: var(--display-md); font-weight: 400; line-height: 1.15; }
 .supply-section-heading p:last-child { max-width: 720px; margin: 7px 0 0; color: var(--muted-strong); font-size: var(--text-staff); line-height: 1.55; }
+.supply-venue-counts { margin: 0 0 11px; color: var(--muted-strong); font-size: var(--text-sm); line-height: 1.5; }
 .supply-venue-list { overflow: hidden; border: 1px solid #403320; border-radius: 13px; background: #1b150e; }
 .supply-venue-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 15px 17px; border-bottom: 1px solid #352b1d; }
 .supply-venue-row:last-child { border-bottom: 0; }
